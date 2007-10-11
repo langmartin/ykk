@@ -21,3 +21,7 @@
      (call-with-current-input-port
       (make-string-input-port string)
       thunk))))
+
+(define (port? obj)
+  (or (input-port? obj)
+      (output-port? obj)))

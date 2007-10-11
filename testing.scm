@@ -2,8 +2,15 @@
 
 (define effecting '())
 
+(define-syntax if-car
+  (syntax-rules ()
+    ((_ rest default)
+     (if (null? rest)
+         default
+         (car rest)))))
+
 (define (define-test* which thunk expected . test)
-  (let ((test? (optional test equal?)))
+  (let ((test? (if-car test equal?)))
     (set! which
           (cons (lambda ()
                   (let ((result (thunk)))
@@ -25,6 +32,15 @@
   (syntax-rules ()
     ((_ args ...)
      (define-test functional args ...))))
+
+(define-syntax define-functional-tests
+  (syntax-rules ()
+    ((_ (call ...))
+     (define-functional-test call ...))
+    ((_ call1 call2 ...)
+     (begin
+       (define-functional-tests call1)
+       (define-functional-tests call2 ...)))))
 
 (define-syntax define-effecting-test
   (syntax-rules ()

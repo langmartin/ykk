@@ -1,16 +1,23 @@
-(define (optional rest default)
-  (if (null? rest)
-      default
-      rest))
+(define-syntax if-car
+  (syntax-rules ()
+    ((_ rest default)
+     (if (null? rest)
+         default
+         (car rest)))))
 
-(define (port? obj)
-  (or (input-port? obj)
-      (output-port? obj)))
+(define-syntax optional
+  (syntax-rules ()
+    ((_ args ...) (if-car args ...))))
 
 (define (port-dot-rest port/data rest default-port)
   (if (port? port/data)
       (values port/data rest)
       (values default-port (cons port/data rest))))
+
+(define (string/port->port obj)
+  (if (port? obj)
+      obj
+      (make-string-input-port obj)))
 
 (define (wind-fluid getter setter value thunk)
   (let ((previous (getter)))
@@ -20,6 +27,50 @@
         thunk
         (lambda ()
           (setter previous)))))
+
+(define-syntax unless
+  (syntax-rules ()
+    ((_ test body ...)
+     (or test
+         (begin
+           body ...)))))
+
+(define-syntax when
+  (syntax-rules ()
+    ((_ test body ...)
+     (unless (not test)
+             body ...))))
+
+(define-syntax and-let*
+  (syntax-rules ()
+    ((_ ((binding expr)) body ...)
+     (let ((binding expr))
+       (and binding
+            (begin body ...))))
+    ((_ (expr))
+     (and expr))
+    ((_ (expr) body ...)
+     (and expr
+          (begin body ...)))
+    ((_ (claw1 claw2 ...) body ...)
+     (and-let* (claw1)
+               (and-let* (claw2 ...)
+                         body ...)))))
+
+(define (string-or-chars->predicate obj)
+   (cond ((PROCEDURE? obj)
+          obj)
+         ((LIST? obj)
+          (lambda (c)
+            (memq c obj)))
+         ((STRING? obj)
+          (string-or-chars->predicate
+           (string->list obj)))
+         ((CHAR? obj)
+          (lambda (c)
+            (char=? c obj)))
+         (ELSE
+          error "can't use " obj)))
 
 (define (next-chunk delims/proc port)
   (let* ((proc
@@ -38,20 +89,8 @@
                 (display (read-char port) out)
                 (lp))))))))
 
-(define (string-or-chars->predicate obj)
-   (cond ((PROCEDURE? obj)
-          obj)
-         ((LIST? obj)
-          (lambda (c)
-            (memq c obj)))
-         ((STRING? obj)
-          (string-or-chars->predicate
-           (string->list obj)))
-         ((CHAR? obj)
-          (lambda (c)
-            (char=? c obj)))
-         (ELSE
-          error "can't use " obj)))
+(define-functional-test
+  (next-chunk "%+" (make-string-input-port "hello%20there")) "hello")
 
 (define (crlf? port)
   (define (look ch)
