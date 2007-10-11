@@ -5,9 +5,10 @@
          default
          (car rest)))))
 
-(define-syntax optional
-  (syntax-rules ()
-    ((_ args ...) (if-car args ...))))
+(define (optional rest default)
+  (if (null? rest)
+      default
+      (car rest)))
 
 (define (port-dot-rest port/data rest default-port)
   (if (port? port/data)
@@ -41,14 +42,13 @@
      (unless (not test)
              body ...))))
 
+#;
 (define-syntax and-let*
   (syntax-rules ()
     ((_ ((binding expr)) body ...)
      (let ((binding expr))
        (and binding
             (begin body ...))))
-    ((_ (expr))
-     (and expr))
     ((_ (expr) body ...)
      (and expr
           (begin body ...)))

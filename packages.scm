@@ -7,29 +7,29 @@
 ;;;; smallish set of core utils that I keep wanting
 (define-interface util-interface
   (export
-   if-car
+   (if-car :syntax)
    optional
    port-dot-rest
    string/port->port
    wind-fluid
-   unless
-   when
-   and-let*
+   (unless :syntax)
+   (when :syntax)
+   (and-let* :syntax)
    next-chunk
    string-or-chars->predicate
    crlf?))
 
 (define-structure util util-interface
-  (open scheme signals extended-ports i/o-internal
+  (open scheme signals extended-ports i/o-internal srfi-2
         gambit-compat unit-testing)
   (files util))
 
 ;;;; a simple unit testing interface
 (define-interface unit-testing-interface
   (export
-   define-functional-test
-   define-functional-tests
-   define-effecting-test
+   (define-functional-test :syntax)
+   (define-functional-tests :syntax)
+   (define-effecting-test :syntax)
    run-functional-tests
    run-effecting-tests))
 
@@ -56,6 +56,15 @@
   (files gambit-compat))
 
 ;;;; I/O to support http
+(define-structure urlencoding
+  (export
+   urlencode-display
+   urlencode
+   urldecode)
+  (open scheme srfi-13 ascii bitwise extended-ports
+        util unit-testing)
+  (files urlencoding))
+
 ;; (define-structure io-http io-http-interface
-;;   (open scheme define-record-types i/o-internal
+;;   (open scheme define-record-types i/o-internal srfi-1 srfi-13 ascii bitwise
 ;;         util unit-testing))
