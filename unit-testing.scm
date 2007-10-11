@@ -28,6 +28,15 @@
        expected/test
        ...))))
 
+(define-syntax define-some-tests
+  (syntax-rules ()
+    ((_ which (args ...))
+     (define-test which args ...))
+    ((_ which call1 call2 ...)
+     (begin
+       (define-some-tests which call1)
+       (define-some-tests which call2 ...)))))
+
 (define-syntax define-functional-test
   (syntax-rules ()
     ((_ args ...)
@@ -35,17 +44,18 @@
 
 (define-syntax define-functional-tests
   (syntax-rules ()
-    ((_ (call ...))
-     (define-functional-test call ...))
-    ((_ call1 call2 ...)
-     (begin
-       (define-functional-tests call1)
-       (define-functional-tests call2 ...)))))
+    ((_ args ...)
+     (define-some-tests functional args ...))))
 
 (define-syntax define-effecting-test
   (syntax-rules ()
     ((_ args ...)
      (define-test effecting args ...))))
+
+(define-syntax define-effecting-tests
+  (syntax-rules ()
+    ((_ args ...)
+     (define-some-tests effecting args ...))))
 
 (define (run-functional-tests)
   (for-each (lambda (x) (x))

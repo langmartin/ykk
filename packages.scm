@@ -30,12 +30,13 @@
    (define-functional-test :syntax)
    (define-functional-tests :syntax)
    (define-effecting-test :syntax)
+   (define-effecting-tests :syntax)
    run-functional-tests
    run-effecting-tests))
 
 (define-structure unit-testing unit-testing-interface
   (open scheme signals)
-  (files testing))
+  (files unit-testing))
 
 ;;;; UUID gen
 (define-structure uuid
@@ -66,5 +67,5 @@
   (files urlencoding))
 
 ;; (define-structure io-http io-http-interface
-;;   (open scheme define-record-types i/o-internal srfi-1 srfi-13 ascii bitwise
-;;         util unit-testing))
+;;   (open scheme define-record-types i/o-internal srfi-1 srfi-13
+;;         util unit-testing urlencoding))
