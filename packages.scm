@@ -50,11 +50,11 @@
    port?
    with-output-to-string
    call-with-output-string
-   with-input-from-string))
+   with-input-from-string
+   call-with-input-string))
 
 (define-structure gambit-compat gambit-compat-interface
-  (open scheme i/o-internal extended-ports
-        util)
+  (open scheme i/o-internal extended-ports)
   (files gambit-compat))
 
 ;;;; I/O to support http
@@ -66,6 +66,17 @@
   (open scheme srfi-13 ascii bitwise extended-ports
         util unit-testing)
   (files urlencoding))
+
+(define-structure mime
+  (export
+   next-token
+   skip-while
+   http-token-char?
+   MIME:parse-content-type
+   MIME:read-headers)
+  (open scheme signals reading i/o-internal unicode-char-maps srfi-13 extended-ports
+        util gambit-compat)
+  (files mime))
 
 ;; (define-structure io-http io-http-interface
 ;;   (open scheme define-record-types i/o-internal srfi-1 srfi-13

@@ -14,6 +14,9 @@
    (make-string-input-port string)
    thunk))
 
+(define (call-with-input-string string receiver)
+  (receiver (make-string-input-port string)))
+
 (define (port? obj)
   (or (input-port? obj)
       (output-port? obj)))
