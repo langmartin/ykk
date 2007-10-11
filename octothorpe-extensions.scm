@@ -28,3 +28,16 @@
   (apply reader-ctor-dispatch (read port)))
 
 (define-sharp-macro #\, reading-handler)
+
+;;;; testing (can't unit-test it, these macros are global)
+
+;; (define-reader-ctor
+;;   'foo
+;;   (lambda expr
+;;     (cons 'foobar expr)))
+
+;; (define-reader-ctor 'list list)
+
+;; (read
+;;  (make-string-input-port
+;;   "(foo bar (baz (bif)) #,(list (+ 1 2) #,(foo bit) baz) blit)"))
