@@ -53,7 +53,8 @@
    with-input-from-string))
 
 (define-structure gambit-compat gambit-compat-interface
-  (open scheme i/o-internal)
+  (open scheme i/o-internal extended-ports
+        util)
   (files gambit-compat))
 
 ;;;; I/O to support http
