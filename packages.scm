@@ -8,6 +8,7 @@
 (define-interface util-interface
   (export
    (if-car :syntax)
+   (if-cadr :syntax)
    optional
    port-dot-rest
    string/port->port
@@ -75,7 +76,7 @@
    MIME:parse-content-type
    MIME:read-headers)
   (open scheme signals reading i/o-internal unicode-char-maps srfi-13 extended-ports
-        util gambit-compat)
+        util gambit-compat unit-testing)
   (files mime))
 
 ;; (define-structure io-http io-http-interface

@@ -5,6 +5,13 @@
          default
          (car rest)))))
 
+(define-syntax if-cadr
+  (syntax-rules ()
+    ((_ rest default)
+     (if (or (null? rest) (null? (cdr rest)))
+         default
+         (cadr rest)))))
+
 (define (optional rest default)
   (if (null? rest)
       default

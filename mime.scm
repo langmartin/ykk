@@ -1,34 +1,48 @@
 ;;;; compatibilty
 (define next-token-of next-chunk)
 
-(define (parse-error . words)
-  (apply error "parser error: " words))
+(define (parser-error port message . text)
+  (apply error "parser: " port " " message " " text))
 
-(define parser-error parse-error)
+(define (skip-while skip-chars . port)
+  (let ((port (optional port (current-input-port))))
+    (do ((c (peek-char port) (peek-char port)))
+        ((not (memv c skip-chars)) c)
+      (read-char port))))
 
-(define (skip-while chars . port)
-  (let ((pred (string-or-chars->predicate chars))
-        (port (optional port (current-output-port))))
-    (next-token-of (lambda (ch)
-                     (not (pred ch)))
-                   port)))
+(define-functional-test
+  (with-input-from-string "stop here, dude" (lambda () (skip-while '(#\s #\t))))
+  #\o)
 
-(define (assert-curr-char chars comment . port)
-  (let ((pred (string-or-chars->predicate chars))
-        (port (optional port (current-output-port))))
-    (let ((ch (read-char port)))
-      (if (pred ch)
-          ch
-          (parse-error "wrong character " ch " " comment)))))
+(define (assert-curr-char expected-chars comment . port)
+  (let ((port (optional port (current-input-port))))
+    (let ((c (read-char port)))
+      (if (memv c expected-chars) c
+          (parser-error port "Wrong character " c
+                        " (0x" (if (eof-object? c) "*eof*"
+                                   (number->string (char->integer c) 16)) ") "
+                                   comment ". " expected-chars " expected")))))
+
+(define-functional-test
+ (with-input-from-string "foo bar" (lambda () (assert-curr-char '(#\f) "broken")))
+ #\f)
 
 (define (peek-next-char . port)
-  (let ((port (optional port (current-output-port))))
+  (let ((port (optional port (current-input-port))))
     (read-char port) 
     (peek-char port)))
 
 (define (read-text-line . port)
-  (let ((port (optional port (current-output-port))))
-    (gobble-line port)))
+  (let ((port (optional port (current-input-port)))
+        (char-return #\return))
+    (if (eof-object? (peek-char port)) (peek-char port)
+        (let* ((line
+                (next-token '() (list #\newline #\return (eof-object))
+                            "reading a line" port))
+               (c (read-char port)))	; must be either \n or \r or EOF
+          (and (eqv? c char-return) (eqv? (peek-char port) #\newline)
+               (read-char port))			; skip \n that follows \r
+          line))))
 
 ;;; from http://okmij.org/ftp/Scheme/lib/input-parse.scm
 (define input-parse:init-buffer
@@ -36,10 +50,8 @@
     (lambda () buffer)))
 
 (define (next-token prefix-skipped-chars break-chars . comment/port)
-  (let ((comment (optional comment/port ""))
-        (port (if (pair? comment/port)
-                  (optional (cdr comment/port) (current-input-port))
-                  (current-input-port))))
+  (let ((comment (if-car comment/port ""))
+        (port (if-cadr comment/port (current-input-port))))
     (let outer ((buffer (input-parse:init-buffer)) (filled-buffer-l '())
                 (c (skip-while prefix-skipped-chars port)))
       (let ((curr-buf-len (string-length buffer)))
@@ -52,7 +64,7 @@
             (if (memq (eof-object) break-chars) ; was EOF expected?
                 (if (null? filled-buffer-l) (substring buffer 0 i)
                     (string-concatenate-reverse filled-buffer-l buffer i))
-                (parser-error "EOF while reading a token " comment)))
+                (parser-error port "EOF while reading a token " comment)))
            ((>= i curr-buf-len)
             (outer (make-string curr-buf-len)
                    (cons buffer filled-buffer-l) c))
@@ -60,6 +72,12 @@
             (string-set! buffer i c)
             (read-char port)             ; move to the next char
             (loop (+ 1 i) (peek-char port)))))))))
+
+(define-functional-test
+  (with-input-from-string
+      "test string."
+    (lambda () (next-token '(#\t #\e) '(#\n) "comment")))
+  "st stri")
 
 ;;;; the Oleg code
 ;	Handling of MIME Entities and their parts
@@ -192,7 +210,7 @@
 	    (let* ((header-name
 		    (string->symbol
 		     (string-upcase
-		      (next-token '() `(#\: #\space #\tab ,(eof-object)) ""
+		      (next-token '() (list #\: #\space #\tab (eof-object)) ""
 				  http-port))))
 		   (delim (skip-while '(#\space #\tab) http-port))
 		   (header-value
@@ -225,18 +243,17 @@
 	(read-new-header http-port '()))
       ))
 
-;;;; testing
-(define (foo)
-  (let ((doc 
-         (make-string-input-port
-          "H1: foobar
-H2: baz
-H3: thing
-  more things
-H4: blit
+;;;; Whole unit testing
+(define-functional-test
+  (call-with-input-string
+   "Host: header
+Content-type: text/html
 
-body")))
-    #;
-    (read-new-header doc '())
-    (next-token '() `(#\: #\space #\tab (eof-object)) "" doc)))
+body"
+   (lambda (port) (MIME:read-headers port)))
+  '((CONTENT-TYPE . "text/html") (HOST . "header")))
 
+(define-functional-tests
+  ((MIME:parse-content-type "text/html") '((=mime-type . "text/html")))
+  ((MIME:parse-content-type "text/html; charset=foo; encoding=bar")
+   '((encoding . "bar") (charset . "foo") (=mime-type . "text/html"))))
