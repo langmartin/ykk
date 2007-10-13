@@ -18,26 +18,14 @@
    (and-let* :syntax)
    next-chunk
    string-or-chars->predicate
-   crlf?))
+   crlf?
+   concat
+   assert))
 
 (define-structure util util-interface
   (open scheme signals extended-ports i/o-internal srfi-2
-        gambit-compat unit-testing)
+        gambit-compat)
   (files util))
-
-;;;; a simple unit testing interface
-(define-interface unit-testing-interface
-  (export
-   (define-functional-test :syntax)
-   (define-functional-tests :syntax)
-   (define-effecting-test :syntax)
-   (define-effecting-tests :syntax)
-   run-functional-tests
-   run-effecting-tests))
-
-(define-structure unit-testing unit-testing-interface
-  (open scheme signals)
-  (files unit-testing))
 
 ;;;; UUID gen
 (define-structure uuid
@@ -65,7 +53,7 @@
    urlencode
    urldecode)
   (open scheme srfi-13 ascii bitwise extended-ports
-        util unit-testing)
+        util)
   (files urlencoding))
 
 (define-structure mime
@@ -76,7 +64,7 @@
    MIME:parse-content-type
    MIME:read-headers)
   (open scheme signals reading i/o-internal unicode-char-maps srfi-13 extended-ports
-        util gambit-compat unit-testing)
+        util gambit-compat)
   (files mime))
 
 ;; (define-structure io-http io-http-interface

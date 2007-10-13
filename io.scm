@@ -52,21 +52,3 @@
          (string-split #\space
                        (read-line port)
                        3)))
-
-
-
-(define (read-mime-headers port)
-  (define (key acc)
-    (if (and (crlf? port) (crlf? port))
-        '()
-        (case (peek-char? port)
-          ((#\space #\tab)
-           (val))
-          (else
-           (let ((key (next-chunk ":" port)))
-             (read-char)
-             (cons (cons key (val))
-                   (key)))))))
-  (define (val)
-    )
-  )

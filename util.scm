@@ -96,8 +96,7 @@
                 (display (read-char port) out)
                 (lp))))))))
 
-(define-functional-test
-  (next-chunk "%+" (make-string-input-port "hello%20there")) "hello")
+(assert (next-chunk "%+" (make-string-input-port "hello%20there")) => "hello")
 
 (define (crlf? port)
   (define (look ch)
@@ -106,3 +105,26 @@
          (read-char port)))
   (and (look #\return)
        (look #\newline)))
+
+(define (concat . things)
+  (call-with-string-output-port
+   (lambda (port)
+     (for-each (lambda (x)
+                 (display x port))
+               things))))
+
+(define-syntax assert
+  (syntax-rules (=>)
+    ((_ expr => expected)
+     (let ((result expr))
+       (or (equal? result expected)
+           (error (concat "assertion " expected) result))))
+    ((_ e1 => r1 e2 ...)
+     (begin (assert e1 => r1)
+            (assert e2 ...)))
+    ((_ expr)
+     (let ((result expr))
+       (or result (error "assertion" result))))
+    ((_ e1 e2 ...)
+     (begin (a2 e1)
+            (a2 e2 ...)))))

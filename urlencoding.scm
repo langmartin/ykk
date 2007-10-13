@@ -29,9 +29,8 @@
                                 (list which one two)))))
             (lp))))))))
 
-(define-functional-test
-  (urldecode "hello+there%20how%20are%20you%2")
-  "hello there how are you%2")
+(assert
+  (urldecode "hello+there%20how%20are%20you%2") => "hello there how are you%2")
 
 (define hex-values "0123456789ABCDEF")
 
@@ -62,6 +61,5 @@
    (lambda (port)
      (urlencode-display string port))))
 
-(define-functional-test
-  (urlencode "hello there how's it going?")
-  "hello+there+how%27s+it+going%3F")
+(assert
+  (urlencode "hello there how's it going?") => "hello+there+how%27s+it+going%3F")

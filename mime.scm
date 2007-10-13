@@ -10,9 +10,9 @@
         ((not (memv c skip-chars)) c)
       (read-char port))))
 
-(define-functional-test
+(assert
   (with-input-from-string "stop here, dude" (lambda () (skip-while '(#\s #\t))))
-  #\o)
+  => #\o)
 
 (define (assert-curr-char expected-chars comment . port)
   (let ((port (optional port (current-input-port))))
@@ -23,9 +23,9 @@
                                    (number->string (char->integer c) 16)) ") "
                                    comment ". " expected-chars " expected")))))
 
-(define-functional-test
+(assert
  (with-input-from-string "foo bar" (lambda () (assert-curr-char '(#\f) "broken")))
- #\f)
+ => #\f)
 
 (define (peek-next-char . port)
   (let ((port (optional port (current-input-port))))
@@ -73,11 +73,11 @@
             (read-char port)             ; move to the next char
             (loop (+ 1 i) (peek-char port)))))))))
 
-(define-functional-test
-  (with-input-from-string
+(assert
+ (with-input-from-string
       "test string."
     (lambda () (next-token '(#\t #\e) '(#\n) "comment")))
-  "st stri")
+ => "st stri")
 
 ;;;; the Oleg code
 ;	Handling of MIME Entities and their parts
@@ -244,16 +244,15 @@
       ))
 
 ;;;; Whole unit testing
-(define-functional-test
-  (call-with-input-string
+(assert
+ (call-with-input-string
    "Host: header
 Content-type: text/html
 
 body"
-   (lambda (port) (MIME:read-headers port)))
-  '((CONTENT-TYPE . "text/html") (HOST . "header")))
+   (lambda (port) (MIME:read-headers port))) =>
+   '((CONTENT-TYPE . "text/html") (HOST . "header"))
 
-(define-functional-tests
-  ((MIME:parse-content-type "text/html") '((=mime-type . "text/html")))
-  ((MIME:parse-content-type "text/html; charset=foo; encoding=bar")
-   '((encoding . "bar") (charset . "foo") (=mime-type . "text/html"))))
+   ((MIME:parse-content-type "text/html") => '((=mime-type . "text/html")))
+   ((MIME:parse-content-type "text/html; charset=foo; encoding=bar") => 
+    '((encoding . "bar") (charset . "foo") (=mime-type . "text/html"))))
