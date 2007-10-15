@@ -28,12 +28,6 @@
          (cdr lst)
          '()))))
 
-(define-syntax if-cadr
-  (syntax-rules ()
-    ((_ rest default)
-     (if-car (if-cdr rest)
-             default))))
-
 (define-syntax let-optionals*
   (syntax-rules ()
     ((_ rest ((name val))

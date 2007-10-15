@@ -8,8 +8,6 @@
 (define-interface util-interface
   (export
    (if-car :syntax)
-   (if-cdr :syntax)
-   (if-cadr :syntax)
    (let-optionals :syntax)
    (let-optionals* :syntax)
    optional

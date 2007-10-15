@@ -33,3 +33,4 @@
 \.cvsignore$
 (^|/)Thumbs\.db$
 (^|/)\._
+^TAGS$
