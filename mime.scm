@@ -52,29 +52,30 @@
   (let ((buffer (make-string 512)))
     (lambda () buffer)))
 
-(define (next-token prefix-skipped-chars break-chars . comment/port)
-  (let ((comment (if-car comment/port ""))
-        (port (if-cadr comment/port (current-input-port))))
-    (let outer ((buffer (input-parse:init-buffer)) (filled-buffer-l '())
-                (c (skip-while prefix-skipped-chars port)))
-      (let ((curr-buf-len (string-length buffer)))
-        (let loop ((i 0) (c c))
-          (cond
-           ((memv c break-chars)
-            (if (null? filled-buffer-l) (substring buffer 0 i)
-                (string-concatenate-reverse filled-buffer-l buffer i)))
-           ((eof-object? c)
-            (if (memq (eof-object) break-chars) ; was EOF expected?
-                (if (null? filled-buffer-l) (substring buffer 0 i)
-                    (string-concatenate-reverse filled-buffer-l buffer i))
-                (parser-error port "EOF while reading a token " comment)))
-           ((>= i curr-buf-len)
-            (outer (make-string curr-buf-len)
-                   (cons buffer filled-buffer-l) c))
-           (else
-            (string-set! buffer i c)
-            (read-char port)             ; move to the next char
-            (loop (+ 1 i) (peek-char port)))))))))
+(define (next-token prefix-skipped-chars break-chars . rest)
+  (let-optionals
+   rest
+   ((comment "") (port (current-input-port)))
+   (let outer ((buffer (input-parse:init-buffer)) (filled-buffer-l '())
+               (c (skip-while prefix-skipped-chars port)))
+     (let ((curr-buf-len (string-length buffer)))
+       (let loop ((i 0) (c c))
+         (cond
+          ((memv c break-chars)
+           (if (null? filled-buffer-l) (substring buffer 0 i)
+               (string-concatenate-reverse filled-buffer-l buffer i)))
+          ((eof-object? c)
+           (if (memq (eof-object) break-chars) ; was EOF expected?
+               (if (null? filled-buffer-l) (substring buffer 0 i)
+                   (string-concatenate-reverse filled-buffer-l buffer i))
+               (parser-error port "EOF while reading a token " comment)))
+          ((>= i curr-buf-len)
+           (outer (make-string curr-buf-len)
+                  (cons buffer filled-buffer-l) c))
+          (else
+           (string-set! buffer i c)
+           (read-char port)             ; move to the next char
+           (loop (+ 1 i) (peek-char port)))))))))
 
 (assert
  (w/s "test string." (next-token '(#\t #\e) '(#\n) "comment")) => "st stri")
