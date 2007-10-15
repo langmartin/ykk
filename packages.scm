@@ -8,7 +8,10 @@
 (define-interface util-interface
   (export
    (if-car :syntax)
+   (if-cdr :syntax)
    (if-cadr :syntax)
+   (let-optionals :syntax)
+   (let-optionals* :syntax)
    optional
    port-dot-rest
    string/port->port
@@ -67,6 +70,17 @@
         util gambit-compat)
   (files mime))
 
-;; (define-structure io-http io-http-interface
-;;   (open scheme define-record-types i/o-internal srfi-1 srfi-13
-;;         util unit-testing urlencoding))
+(define-structure base64
+  (export base64-encode-vector
+          base64-encode-port
+          base64-encode-string
+          base64-decode-string
+          base64-decode-port)
+  (open scheme extended-ports bitwise ascii byte-vectors
+        util)
+  (files base64))
+
+(define-structure io-http
+  (export http-server)
+  (open scheme define-record-types i/o-internal srfi-1 srfi-13 signals
+        util urlencoding mime))
