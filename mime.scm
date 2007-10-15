@@ -10,9 +10,13 @@
         ((not (memv c skip-chars)) c)
       (read-char port))))
 
+(define-syntax w/s
+  (syntax-rules ()
+    ((_ str body ...)
+     (with-input-from-string str (lambda () body ...)))))
+
 (assert
-  (with-input-from-string "stop here, dude" (lambda () (skip-while '(#\s #\t))))
-  => #\o)
+ (w/s "stop here, dude" (skip-while '(#\s #\t))) => #\o)
 
 (define (assert-curr-char expected-chars comment . port)
   (let ((port (optional port (current-input-port))))
@@ -24,8 +28,7 @@
                                    comment ". " expected-chars " expected")))))
 
 (assert
- (with-input-from-string "foo bar" (lambda () (assert-curr-char '(#\f) "broken")))
- => #\f)
+ (w/s "foo bar" (assert-curr-char '(#\f) "broken")) => #\f)
 
 (define (peek-next-char . port)
   (let ((port (optional port (current-input-port))))
@@ -74,10 +77,7 @@
             (loop (+ 1 i) (peek-char port)))))))))
 
 (assert
- (with-input-from-string
-      "test string."
-    (lambda () (next-token '(#\t #\e) '(#\n) "comment")))
- => "st stri")
+ (w/s "test string." (next-token '(#\t #\e) '(#\n) "comment")) => "st stri")
 
 ;;;; the Oleg code
 ;	Handling of MIME Entities and their parts
@@ -246,13 +246,16 @@
 ;;;; Whole unit testing
 (assert
  (call-with-input-string
-   "Host: header
+  "Host: header
 Content-type: text/html
 
 body"
-   (lambda (port) (MIME:read-headers port))) =>
-   '((CONTENT-TYPE . "text/html") (HOST . "header"))
+  (lambda (port) (MIME:read-headers port))) =>
+  `((,(string->symbol "CONTENT-TYPE") . "text/html")
+    (,(string->symbol "HOST") . "header")))
 
-   ((MIME:parse-content-type "text/html") => '((=mime-type . "text/html")))
-   ((MIME:parse-content-type "text/html; charset=foo; encoding=bar") => 
-    '((encoding . "bar") (charset . "foo") (=mime-type . "text/html"))))
+(assert
+ (MIME:parse-content-type "text/html") => '((=mime-type . "text/html"))
+
+ (MIME:parse-content-type "text/html; charset=foo; encoding=bar") => 
+ '((encoding . "bar") (charset . "foo") (=mime-type . "text/html")))
