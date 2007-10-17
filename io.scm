@@ -18,22 +18,34 @@
 (define-record-type http-query
   (make-http-query mime port))
 
-(define (start-server port handler)
-  (let lp ()
-    (let ((result
-           (call-with-values
-               (socket-accept
-                (open-socket port))
-             (lambda (in out)
-               (handler in out)))))
-      (or (server-close-object? result)
-          (lp)))))
 
-(define (http-handler in out)
-  (produce-http-output
-   out
-   (dispatch-path
-    (consume-http-input in))))
+;; (define (handler host path connection query)
+;;   #f)
+
+;; (define (make-connection version method remote-ip browser host)
+;;   (lambda (proc)
+;;     (proc version method remote-ip browser host)))
+
+(define (http-server ip port handler)
+  (let ((handler (make-handler handler)))
+    (let lp ()
+     (let ((result
+            (call-with-values
+                (socket-accept
+                 (open-socket port))
+              handler)))
+       (or (server-close-object? result)
+           (lp))))))
+
+(define (make-handler handler)
+  (lambda (in out)
+    (let ((v/m/p (parse-top in)))
+      (apply handler in out v/m/p))))
+
+(define (parse-top port)
+  (string-split '(#\space) (read-line port) 3))
+
+
 
 (define (consume-http-input in)
   (call-with-values

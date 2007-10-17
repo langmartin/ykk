@@ -210,7 +210,7 @@
 	   ((char-alphabetic? c)  ; beginning of the new header
 	    (let* ((header-name
 		    (string->symbol
-		     (string-upcase
+		     (string-downcase
 		      (next-token '() (list #\: #\space #\tab (eof-object)) ""
 				  http-port))))
 		   (delim (skip-while '(#\space #\tab) http-port))
@@ -244,7 +244,7 @@
 	(read-new-header http-port '()))
       ))
 
-;;;; Whole unit testing
+;;;; Assertions for the big functions
 (assert
  (call-with-input-string
   "Host: header
@@ -252,11 +252,12 @@ Content-type: text/html
 
 body"
   (lambda (port) (MIME:read-headers port))) =>
-  `((,(string->symbol "CONTENT-TYPE") . "text/html")
-    (,(string->symbol "HOST") . "header")))
+  '((content-type . "text/html") (host . "header")))
 
 (assert
  (MIME:parse-content-type "text/html") => '((=mime-type . "text/html"))
 
  (MIME:parse-content-type "text/html; charset=foo; encoding=bar") => 
  '((encoding . "bar") (charset . "foo") (=mime-type . "text/html")))
+
+;;;; Iteration, read and decode properly

@@ -54,10 +54,12 @@
       default
       (car rest)))
 
-(define (port-dot-rest port/data rest default-port)
-  (if (port? port/data)
-      (values port/data rest)
-      (values default-port (cons port/data rest))))
+(define-syntax call/port-rest
+  (syntax-rules ()
+    ((_ rest default receiver)
+     (if (port? (car rest))
+         (receiver (car rest) (cdr rest))
+         (receiver default rest)))))
 
 (define (string/port->port obj)
   (if (port? obj)
@@ -149,3 +151,13 @@
      (for-each (lambda (x)
                  (display x port))
                things))))
+
+(define (list->alist lst)
+  (let lp ((lst lst))
+    (if (null? lst)
+        '()
+        (cons (cons (car lst)
+                    (cadr lst))
+              (lp (cddr lst))))))
+
+(assert (list->alist '(1 2 3 4)) => '((1 . 2) (3 . 4)))
