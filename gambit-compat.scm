@@ -20,3 +20,20 @@
 (define (port? obj)
   (or (input-port? obj)
       (output-port? obj)))
+
+(define (read-line . rest)
+  (let-optionals* rest ((port (current-input-port))
+                        (separator #\newline)
+                        (include-separator? #f))
+    (if separator
+        (next-chunk separator port include-separator?)
+        (next-chunk not-eof-object? port))))
+
+(define (read-all . rest)
+  (let-optionals* rest ((reader read)
+                        (port (current-input-port)))
+    (let lp ()
+      (if (eof-object? (peek-char port))
+          '()
+          (cons (reader port)
+                (lp))))))

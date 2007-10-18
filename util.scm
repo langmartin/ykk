@@ -3,13 +3,14 @@
     ((_ expr => expected)
      (let ((result expr))
        (or (equal? result expected)
-           (error (concat "assertion " expected) result))))
+           (error (concat (concat-write 'expr) " => " expected)
+                  result))))
     ((_ e1 => r1 e2 ...)
      (begin (assert e1 => r1)
             (assert e2 ...)))
     ((_ expr)
      (let ((result expr))
-       (or result (error "assertion" result))))
+       (or result (error (concat-write 'expr) #f))))
     ((_ e1 e2 ...)
      (begin (assert e1)
             (assert e2 ...)))))
@@ -54,12 +55,17 @@
       default
       (car rest)))
 
+(define-syntax call/datum-rest
+  (syntax-rules ()
+    ((_ rest test? default receiver)
+     (if (test? (car rest))
+         (receiver (car rest) (cdr rest))
+         (receiver default rest)))))
+
 (define-syntax call/port-rest
   (syntax-rules ()
     ((_ rest default receiver)
-     (if (port? (car rest))
-         (receiver (car rest) (cdr rest))
-         (receiver default rest)))))
+     (call/datum-rest rest port? default receiver))))
 
 (define (string/port->port obj)
   (if (port? obj)
@@ -118,39 +124,91 @@
          (ELSE
           error "can't use " obj)))
 
-(define (next-chunk delims/proc port)
-  (let* ((proc
-          (if (procedure? delims/proc)
-              delims/proc
-              (let ((p (string-or-chars->predicate delims/proc)))
-                (lambda (c)
-                  (if (eof-object? c)
-                      #f
-                      (not (p c))))))))
-    (call-with-string-output-port
-      (lambda (out)
-        (let lp ()
-          (if (proc (peek-char port))
-              (begin
-                (display (read-char port) out)
-                (lp))))))))
+(define (next-chunk-display delims/proc port output-port . rest)
+  (let-optionals* rest ((output-delimiter-too #f))
+    (let* ((proc
+            (if (procedure? delims/proc)
+                delims/proc
+                (let ((p (string-or-chars->predicate delims/proc)))
+                  (lambda (c)
+                    (if (eof-object? c)
+                        #f
+                        (not (p c))))))))
+      (let lp ()
+        (if (proc (peek-char port))
+            (begin
+              (display (read-char port) output-port)
+              (lp))
+            (if output-delimiter-too
+                (display (read-char port) output-port)))))))
 
-(assert (next-chunk "%+" (make-string-input-port "hello%20there")) => "hello")
+(define (next-chunk delims/proc port . rest)
+  (call-with-string-output-port
+   (lambda (output-port)
+     (next-chunk-display delims/proc port output-port (if-car rest)))))
+
+(let ((mp make-string-input-port))
+  (assert
+   (next-chunk "%+" (mp "hello%20there")) => "hello"
+   (next-chunk " " (mp "foo bar") #t) => "foo "
+   (next-chunk " " (mp "foobar")) => "foobar"))
+
+(define (not-eof-object? obj)
+  (not (eof-object? obj)))
+
+(define (port-slurp port)
+  (next-chunk not-eof-object?
+              port))
+
+(define (disp-primitive writer rest)
+  (call/port-rest rest (current-output-port)
+    (lambda (port rest)
+      (for-each (lambda (x)
+                  (writer x port))
+                rest))))
+
+(define (disp . rest)
+  (disp-primitive display rest))
+
+(define (writ . rest)
+  (disp-primitive write rest))
+
+(define (flattening-output writer lst)
+  (for-each (lambda (x)
+              (if (pair? x)
+                  (flattening-output writer x)
+                  (if (procedure? x)
+                      (x)
+                      (writer x))))))
+
+(define (output-primitive writer rest)
+  (call/port-rest rest (current-output-port)
+    (lambda (port rest)
+      (call-with-current-output-port
+       (lambda ()
+         (flattening-output writer rest))))))
+
+(define (output . rest)
+  (cout-primitive display rest))
 
 (define (crlf? port)
   (define (look ch)
     (and (char-ready? port)
-         (char=? ch(peek-char port))
+         (char=? ch (peek-char port))
          (read-char port)))
   (and (look #\return)
        (look #\newline)))
 
-(define (concat . things)
+(define (concat-primitive writer things)
   (call-with-string-output-port
    (lambda (port)
-     (for-each (lambda (x)
-                 (display x port))
-               things))))
+     (apply writer port things))))
+
+(define (concat . things)
+  (concat-primitive disp things))
+
+(define (concat-write . things)
+  (concat-primitive writ things))
 
 (define (list->alist lst)
   (let lp ((lst lst))

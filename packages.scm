@@ -11,11 +11,12 @@
    (export
     ;; srfi-2
     (and-let* :syntax)
-    ;; all related to optional arguments
+    ;; optional arguments
     (if-car :syntax)
+    optional
     (let-optionals* :syntax)
     (let-optionals :syntax)
-    optional
+    (call/datum-rest :syntax)
     (call/port-rest :syntax)
     string/port->port
     ;; general syntax
@@ -23,10 +24,17 @@
     (unless :syntax)
     (when :syntax)
     ;; utils
+    next-chunk-display
     next-chunk
+    not-eof-object?
+    port-slurp
     string-or-chars->predicate
     crlf?
+    disp
+    writ
+    output
     concat
+    concat-write
     list->alist
     ;; better covered by srfi-78 (check and check-ec)
     (assert :syntax))))
@@ -46,6 +54,8 @@
 ;;;; gambit built-in work alikes
 (define-interface gambit-compat-interface
   (export port?
+          read-line
+          read-all
           with-output-to-string
           call-with-output-string
           with-input-from-string
@@ -70,8 +80,9 @@
           http-token-char?
           MIME:parse-content-type
           MIME:read-headers)
-  (open scheme signals reading i/o-internal unicode-char-maps extended-ports
-        srfi-1 srfi-13
+  (open scheme signals reading i/o-internal extended-ports define-record-types
+        unicode-char-maps text-codecs i/o
+        srfi-13 srfi-40
         util gambit-compat)
   (files mime))
 
@@ -81,7 +92,7 @@
           base64-encode-string
           base64-decode-string
           base64-decode-port)
-  (open scheme extended-ports bitwise ascii byte-vectors srfi-78
+  (open scheme extended-ports bitwise ascii byte-vectors
         util)
   (files base64))
 
@@ -89,3 +100,9 @@
 ;;   (export http-server)
 ;;   (open scheme define-record-types i/o-internal srfi-1 srfi-13 signals
 ;;         util urlencoding mime))
+
+;;;; logging stuff
+(define-structure logging-cons
+  (export map*
+          depth-first)
+  (files zipper logging-cons))

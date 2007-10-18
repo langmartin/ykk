@@ -261,3 +261,144 @@ body"
  '((encoding . "bar") (charset . "foo") (=mime-type . "text/html")))
 
 ;;;; Iteration, read and decode properly
+(define (mime-read port)
+  (stream-delay
+   (let ((obj (read port)))
+     (if (eof-object? obj)
+         stream-null
+         (stream-cons obj
+                      (mime-read port))))))
+
+(define-record-type mime-stream
+  (make-mime-stream port)
+  mime-stream?
+  mime-car
+  mime-cdr
+  mime-skip)
+
+(define (make-get alist)
+  (lambda (sym)
+    (cond ((assoc sym content-type) => cdr)
+          (else #f))))
+
+(define (chunked port)
+  (let ((len (string->number (read-crlf-line port))))
+    (readlen len port)))
+
+(define (readlen len port)
+  (let ((buffer (make-u8vector len)))
+    (read-block buffer len port)
+    buffer))
+
+(define (next-crlf-line port output-port)
+  (next-chunk-display '(#\return) port output-port #t)
+  (if (char=? #\newline (peek-char port))
+      (display (read-char port) output-port)
+      (next-crlf-line port output-port)))
+
+(define (read-crlf-line port)
+  (call-with-string-output-port
+   (lambda (output-port)
+     (next-crlf-line port output-port))))
+
+(define (double-dash port output-port)
+  (let ((dashpos (read-char port)))
+    (if (and (char=? #\- dashpos)
+             (char=? #\- (peek-char port))
+             (read-char port))
+        #t
+        (begin
+          (display dashpos output-port)
+          #f))))
+
+(define (read-bound port output-port . rest)
+  (let-optionals* rest ((boundary #f))
+    (let* ((boundlen (if boundary (string-length boundary) 0))
+           (boundbuf (make-u8vector boundlen))
+           (boundchk (lambda (port output-port)
+                       (let ((chunk (read-block boundbuf boundlen port)))
+                         (if (equal? boundary chunk)
+                             (begin
+                               (double-dash port output-port)
+                               #t)
+                             (cout output-port chunk))))))
+      (if boundary
+          (let lp ()
+            (if (not (and (double-dash port output-port)
+                          (boundchk port output-port)))
+                (begin
+                  (next-crlf-line port output-port)
+                  (lp))))
+          (cout (slurp port))))))
+
+(define (call/parsed-content-type content-type receiver)
+  (define get
+    (make-get content-type))
+  (receiver (get 'mime-type)
+            (get 'encoding)
+            (get 'charset)))
+
+(define (dispatch-cdr headers port)
+  (define get
+    (make-get headers))
+  (let ((content (or (get 'content-type)
+                     '((charset . "utf-8"))))
+        (chunked (get 'transfer-encoding))
+        (length  (get 'content-length)))
+    (let ((reader1
+           (call/parsed-content-type content content-reader))
+          (len (find-length chunked length)))
+      (make-mime-stream
+       headers
+       (make-read-charset
+        charset
+        (if chunked
+            (make-read-chunked port)
+            (if length
+                (make-read-length length port)
+                (make-read-bound boundary port))))
+       
+       (skipper len)))))
+
+(call-with-string-output-port
+ (lambda (out)
+   (set-port-text-codec! out utf-8-codec)
+   (for-each-byte-vector
+    (lambda (x)
+      (display x out))
+    (make-byte-vector 10 33))))
+
+(define (for-each-byte-vector proc vec)
+  (let ((end (byte-vector-length vec)))
+    (let lp ((i 0))
+      (if (not (= i end))
+          (begin
+            (proc (byte-vector-ref vec i))
+            (lp (+ i 1)))))))
+
+(define *sample-message*
+  "Host: coptix.com\r
+Content-type: text/plain;\r
+  encoding=base64; charset=utf-8\r
+Content-Length: 648\r
+\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+")
+
+#;
+(call-with-input-string
+ *sample-message*
+ (lambda (in)
+   (MIME:read-headers in)
+   (call-with-output-file
+    "foo" (lambda (p) (display (slurp in) p)))))
+
+(call-with-input-string *sample-message* mime:read)
