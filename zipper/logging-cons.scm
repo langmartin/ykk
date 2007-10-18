@@ -1,25 +1,43 @@
-(define-record-type logging-cons
-  (make-logging-cons lcar lcdr)
-  logging-cons?
-  logging-cons-id
-  lcar
-  lcdr)
+(define-record-type logging-cons rtd/logging-cons
+  (make-logging-cons id car cdr)
+  lpair?
+  (id logging-cons-id)
+  (car lcar)
+  (cdr lcdr))
+
+(define-record-discloser rtd/logging-cons
+  (lambda (lcons)
+    `(lcons ,(lcar lcons)
+            ,(lcdr lcons))))
+
+(define lnil (list '()))
 
 (define (lnull? lcons)
-  (and (logging-cons? lcons)
-       (null? (lcdr lcons))))
-
-(define (lpair? lcons)
-  (and (logging-cons? lcons)
-       (not (null? (lcdr lcons)))))
+  (eq? lcons lnil))
 
 (define (lcons lcar lcdr)
-  (let ((id (uuidgen)))
-    (make-logging-cons id lcar lcdr)))
+  (let* ((id (uuidgen))
+         (cell (make-logging-cons id lcar lcdr)))
+    (log-logging-cons cell)
+    cell))
 
-(define (llist lcar lcdr)
-  (lcons lcar
-         (lcons lcdr '())))
+(define (llist . args)
+  (fold-right lcons
+              lnil
+              args))
+
+(define (log-logging-cons lcons . port)
+  (let-optionals* port ((port (current-output-port)))
+   (define (show obj)
+     (let ((datum (lpair? obj)))
+       (if datum
+           (display (logging-cons-id obj) port)
+           (write obj port))
+       (display #\: port)))
+   (and (show lcons)
+        (show (lcar lcons))
+        (show (lcdr lcons)))
+   (newline port)))
 
 (define (map* f lst)
   (if (lnull? lst)
@@ -43,3 +61,12 @@
            (if (eq? mapped tree)
                tree
                mapped)))))
+
+;; (define lst1 (llist 4 1 2 3))
+
+;; (define (testing)
+;;   (map* (lambda (x)
+;;           (if (= x 4)
+;;               8
+;;               x))
+;;         lst1))
