@@ -269,12 +269,12 @@ body"
          (stream-cons obj
                       (mime-read port))))))
 
-(define-record-type mime-stream
-  (make-mime-stream port)
+(define-record-type mime-stream rtd/mime-stream
+  (mime-stream-cons car cdr skip)
   mime-stream?
-  mime-car
-  mime-cdr
-  mime-skip)
+  (car mime-car)
+  (cdr mime-cdr)
+  (skip mime-skip))
 
 (define (make-get alist)
   (lambda (sym)
@@ -329,7 +329,7 @@ body"
                 (begin
                   (next-crlf-line port output-port)
                   (lp))))
-          (cout (slurp port))))))
+          (output (port-slurp port))))))
 
 (define (call/parsed-content-type content-type receiver)
   (define get

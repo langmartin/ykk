@@ -24,6 +24,7 @@
     (unless :syntax)
     (when :syntax)
     ;; utils
+    port?
     next-chunk-display
     next-chunk
     not-eof-object?
@@ -41,8 +42,7 @@
 
 (define-structure util util-interface
   (open scheme signals extended-ports i/o-internal
-        srfi-1 srfi-2 srfi-78
-        gambit-compat)
+        srfi-1 srfi-2 srfi-78)
   (files util))
 
 ;;;; UUID gen
@@ -53,16 +53,17 @@
 
 ;;;; gambit built-in work alikes
 (define-interface gambit-compat-interface
-  (export port?
-          read-line
-          read-all
-          with-output-to-string
-          call-with-output-string
-          with-input-from-string
-          call-with-input-string))
+  (export
+   read-line
+   read-all
+   with-output-to-string
+   call-with-output-string
+   with-input-from-string
+   call-with-input-string))
 
 (define-structure gambit-compat gambit-compat-interface
-  (open scheme i/o-internal extended-ports)
+  (open scheme i/o-internal extended-ports
+        util)
   (files gambit-compat))
 
 ;;;; I/O to support http
@@ -81,7 +82,7 @@
           MIME:parse-content-type
           MIME:read-headers)
   (open scheme signals reading i/o-internal extended-ports define-record-types
-        unicode-char-maps text-codecs i/o
+        unicode-char-maps text-codecs i/o byte-vectors
         srfi-13 srfi-40
         util gambit-compat)
   (files mime))
@@ -102,8 +103,21 @@
 ;;         util urlencoding mime))
 
 ;;;; logging stuff
-(define-structure logging-cons
-  (export initialize-log
-          map*
-          depth-first)
-  (files zipper logging-cons))
+(define-interface logging-cons-interface
+  (export
+   initialize-log
+   lnil
+   lcons
+   lcar
+   lcdr
+   lnull?
+   lpair?
+   llist?
+   map*
+   depth-first))
+
+(define-structure logging-cons logging-cons-interface
+  (open scheme define-record-types tables i/o
+        srfi-1
+        util uuid)
+  (files zipper/logging-cons))

@@ -1,11 +1,10 @@
-;; ,open define-record-types srfi-1 tables util uuid i/o
-
 (define-record-type logging-cons rtd/logging-cons
-  (rec-cons id car cdr)
+  (rec-cons id cdr-tag car cdr)
   lpair?
   (id rec-id)
+  (cdr-tag rec-cdr-tag)
   (car rec-car)
-  (cdr rec-cdr))
+  (cdr rec-cdr set-rec-cdr!))
 
 (define-record-discloser rtd/logging-cons
   (lambda (lcons)
@@ -21,16 +20,33 @@
 
 (define *lcdr* (make-table))
 
-(define lnil (rec-cons 'nil 'nil '()))
-(table-set! *lcdr* 'nil lnil)
+(define (exhume tag)
+  (table-ref *lcdr* tag))
+
+(define (entomb cell)
+  (table-set! *lcdr* (rec-id cell) cell))
+
+(define (log-logging-cons cell . port)
+  (let-optionals* port ((port (*log*)))
+    (write (list (rec-id cell)
+                 (rec-car cell)
+                 (or (rec-cdr-tag cell)
+                     (rec-cdr cell)))
+           port)
+    (newline port)))
+
+;;;; Inteface definitions
+(define lnil (rec-cons 'nil #f 'nil '()))
+(entomb lnil)
 
 (define (lcons lcar lcdr)
-  (let* ((id (uuidgen))
-         (cdr-loc (if (lpair? lcdr)
-                      (rec-id lcdr)
-                      lcdr))
-         (cell (rec-cons id lcar cdr-loc)))
-    (table-set! *lcdr* id cell)
+  (let* ((cdr-loc (and (lpair? lcdr)
+                       (rec-id lcdr)))
+         (cell (rec-cons (uuidgen)
+                         cdr-loc
+                         lcar
+                         lcdr)))
+    (entomb cell)
     (log-logging-cons cell)
     cell))
 
@@ -41,11 +57,13 @@
 
 (define (lcdr obj)
   (if (lpair? obj)
-      (let ((cdr-loc (rec-cdr obj)))
-        (if (pair? cdr-loc)
-            cdr-loc
-            (table-ref *lcdr* (rec-cdr obj))))
+      (or (rec-cdr obj)
+          (let ((val (exhume (rec-cdr-tag obj))))
+            (set-rec-cdr! obj val)
+            val))
       (cdr obj)))
+
+;; lpair? defined in the record
 
 (define (lnull? obj)
   (or (null? obj)
@@ -54,17 +72,6 @@
 (define (llist? obj)
   (or (lnull? obj)
       (lpair? obj)))
-
-(define (llist . args)
-  (fold-right lcons lnil args))
-
-(define (log-logging-cons cell . port)
-  (let-optionals* port ((port (*log*)))
-    (write (list (rec-id cell)
-                 (rec-car cell)
-                 (rec-cdr cell))
-           port)
-    (newline port)))
 
 (define (map* f lst)
   (if (lnull? lst)
@@ -98,4 +105,4 @@
                      lst1)))
     (eq? (map* (lambda (x) x) lst2) lst2)))
 
-(assert (testing))
+;; (assert (testing))

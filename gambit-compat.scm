@@ -17,10 +17,6 @@
 (define (call-with-input-string string receiver)
   (receiver (make-string-input-port string)))
 
-(define (port? obj)
-  (or (input-port? obj)
-      (output-port? obj)))
-
 (define (read-line . rest)
   (let-optionals* rest ((port (current-input-port))
                         (separator #\newline)

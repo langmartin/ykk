@@ -109,6 +109,10 @@
                (and-let* (claw2 ...)
                          body ...)))))
 
+(define (port? obj)
+  (or (input-port? obj)
+      (output-port? obj)))
+
 (define (string-or-chars->predicate obj)
    (cond ((PROCEDURE? obj)
           obj)
