@@ -103,6 +103,7 @@
 
 ;;;; logging stuff
 (define-structure logging-cons
-  (export map*
+  (export initialize-log
+          map*
           depth-first)
   (files zipper logging-cons))

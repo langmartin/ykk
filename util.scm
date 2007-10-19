@@ -145,7 +145,7 @@
 (define (next-chunk delims/proc port . rest)
   (call-with-string-output-port
    (lambda (output-port)
-     (next-chunk-display delims/proc port output-port (if-car rest)))))
+     (next-chunk-display delims/proc port output-port (if-car rest #f)))))
 
 (let ((mp make-string-input-port))
   (assert
@@ -185,11 +185,12 @@
   (call/port-rest rest (current-output-port)
     (lambda (port rest)
       (call-with-current-output-port
+       port
        (lambda ()
          (flattening-output writer rest))))))
 
 (define (output . rest)
-  (cout-primitive display rest))
+  (output-primitive display rest))
 
 (define (crlf? port)
   (define (look ch)
