@@ -75,16 +75,30 @@
         util)
   (files urlencoding))
 
+(define-interface duct-interface
+  (export make-duct
+          duct?
+          port->duct
+          duct->port
+          (define-duct :syntax)
+          (duct-tape :syntax)))
+
+(define-structure duct duct-interface
+  (open scheme define-record-types i/o tables)
+  (files duct))
+
 (define-structure mime
   (export next-token
           skip-while
           http-token-char?
           MIME:parse-content-type
-          MIME:read-headers)
+          MIME:read-headers
+          set-content-parser!)
   (open scheme signals reading i/o-internal extended-ports define-record-types
-        unicode-char-maps text-codecs i/o byte-vectors
+        unicode-char-maps text-codecs i/o byte-vectors tables
         srfi-13 srfi-40
-        util gambit-compat)
+        posix
+        base64 util gambit-compat)
   (files mime))
 
 (define-structure base64
@@ -104,17 +118,16 @@
 
 ;;;; logging stuff
 (define-interface logging-cons-interface
-  (export
-   initialize-log
-   lnil
-   lcons
-   lcar
-   lcdr
-   lnull?
-   lpair?
-   llist?
-   map*
-   depth-first))
+  (export initialize-log
+          lnil
+          lcons
+          lcar
+          lcdr
+          lnull?
+          lpair?
+          llist?
+          map*
+          depth-first))
 
 (define-structure logging-cons logging-cons-interface
   (open scheme define-record-types tables i/o
