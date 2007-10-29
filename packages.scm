@@ -84,7 +84,7 @@
           (duct-tape :syntax)))
 
 (define-structure duct duct-interface
-  (open scheme define-record-types i/o tables)
+  (open scheme define-record-types i/o tables ascii byte-vectors)
   (files duct))
 
 (define-structure mime

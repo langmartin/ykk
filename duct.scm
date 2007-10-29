@@ -1,99 +1,97 @@
 (define-record-type duct rtd/duct
-  (make-duct-rec port parent attr)
+  (make-duct-rec parent attr)
   duct?
-  (port duct-port)
+  (parent duct-parent)
   (attr duct-attr duct-set-attr!))
 
 (define (port->duct port . attr)
   (let ((attr (list->alist attr)))
-    (make-duct-rec port #f
-                  (update-force-alist
-                   alist
-                   `((read . ,read-char)
-                     (write . ,write-char))))))
+    (set-port-text-codec! port us-ascii-codec)
+    (make-duct-rec
+     port
+     (update-force-alist
+      alist
+      (cons (cons 'read-fn (lambda ()
+                          (read-byte port)))
+            (cons 'write-fn (lambda (b)
+                           (write-byte b port))))))))
 
-(define (duct-use duct tag)
+(define (duct-get-property duct tag)
   (cond ((assv tag (duct-attr duct)) => cdr)
         (else #f)))
 
-(define (duct-extend! duct tag value)
+(define (read-proc duct)
+  (duct-get-property duct 'read-fn))
+
+(define (write-proc duct)
+  (duct-get-property duct 'write-fn))
+
+(define (duct-set-property! duct tag value)
   (duct-set-attr!
    (update-force-alist
     (duct-attr duct)
-    `((,tag . ,(make-extended-attr
-                tag
-                (duct-use duct tag)
-                value))))))
+    (list (cons tag value)))))
 
-(define (make-extended-attr tag old new)
-  (case tag
-    ((READ)
-     (lambda ()
-       (new old)))
-    ((WRITE)
-     (lambda (x)
-       (new x old)))
-    (ELSE
-     (error "unimplemented property"))))
+(define (duct-extend* duct property-list)
+  (make-duct-rec duct property-list))
 
-(define (duct-extend-read! duct proc)
-  (duct-extend! duct 'read proc))
+(define-syntax duct-extend
+  (syntax-rules ()
+    ((_ duct (tag val) ...)
+     (duct-extend* duct
+                   (cons (cons 'tag val)
+                         ...)))))
 
-(define (duct-extend-write! duct proc)
-  (duct-extend! duct 'write proc))
+(define (e-unimplemented . args)
+  (error "duct: unimplemented" args))
 
+(define (e-illegal-parent . args)
+  (error "duct: illegal parent duct" args))
+
+;;;; standard duct definitions for use by duct-tape
 (define *ducts* (make-table))
 
+(define (duct-define* name proc)
+  (table-set! *ducts* name proc))
+
+(define (duct-fetch* name)
+  (table-ref *ducts* name))
+
 (define-syntax define-duct
-  (syntax-rules ()
-    ((_ (name arg ...) body ...)
-     (table-set!
-      *ducts* 'name
-      (lambda (arg ...)
-        (duct-body body ...))))
-    ((_ name body ...)
-     (table-set!
-      *ducts* 'name
-      (duct-body body ...)))))
+  (let-syntax ((def
+                (syntax-rules ()
+                  ((_ name (extra ...) body ...)
+                   (duct-define*
+                    'name
+                    (lambda (parent extra ...)
+                      (duct-extend parent body ...)))))))
+    (syntax-rules ()
+      ((_ (name arg ...) body ...)
+       (def name (arg ...) body ...))
+      ((_ (name) body ...)
+       (def name () body ...))
+      ((_ name body ...)
+       (def name () body ...)))))
 
-(define-syntax duct-body
-  (syntax-rules ()
-    ((_ (tag val) ...)
-     (cons (cons 'tag val)
-           ...))))
+(define (require-port-parent duct thunk)
+  (let ((port (duct-parent prev)))
+    (if (not (port? port))
+        (e-illegal-parent prev)
+        (thunk))))
 
-(define (make-byte-len len)
-  (let ((buf (make-byte-vector len 0)) (idx -1))
-    (lambda (prev)
-      (and (< idx 0)
-           (read-block buf 0 len (duct-port prev))
-           (set! idx 0))
-      (if (= idx len)
-          (eof-object)
-          (begin
-            (byte-vector-ref buf idx)
-            (set! idx (+ idx 1)))))))
+;; (duct-internal foo () (read 4))
+;; (duct-internal foo (len) (read len))
 
 (define-duct (byte-len len)
-  (read (make-byte-len len))
-  (write duct-error))
+  (read (make-byte-len-reader len))
+  (write e-unimplemented))
 
 (define-duct base64
-  (read base64-encode-internal)
-  (write duct-error))
-
-(define (duct-tape-read port . reads)
-  (let ((duct (port->duct port)))
-    (for-each (lambda (r)
-                (duct-extend! duct 'read r))
-              reads)
-    (duct->port duct)))
-
-(duct-tape-read
- port
- (read:byte-len 786)
- (read:base64))
-
+  (read (lambda (prev)
+          (base64-decode-char (read-proc prev))))
+  (write e-unimplemented))
+
+;;;; external interface
 (duct-tape
  ((utf8)
   ((base64)
@@ -102,11 +100,24 @@
 
 (define-syntax duct-tape
   (syntax-rules ()
-    ((_ ((type ...) exp ...))
-     (let ((prev (duct-tape exp ...)))
-       (duct-extend-by-props! prev type ...)))
-    ((_  port)
-     (port->duct port))))
+    ((_ ((type) exp ...))
+     (duct->port 'type (duct-tape-ducts exp ...)))))
+
+(define-syntax duct-tape-ducts
+  (let-syntax ((extend
+                (syntax-rules ()
+                  ((_ type (arg ...) body ...)
+                   (let ((prev (duct-tape body ...)))
+                     (duct-extend*
+                      prev
+                      ((defined-duct type) arg ...)))))))
+    (syntax-rules ()
+      ((_ ((type arg ...) body ...))
+       (extend type (arg ...) body ...))
+      ((_ ((type) body ...))
+       (extend type () body ...))
+      ((_  port)
+       (port->duct port)))))
 
 ;;;; discard
 ;; (define (duct-open port . attr)
@@ -150,7 +161,7 @@
 
 ;; (define (duct->port duct)
 ;;   #t)
-
+
 ;;;; utilities
 (define-syntax begin1
   (syntax-rules ()
@@ -181,3 +192,18 @@
         (cons (cons tag val)
               alist)
         upd)))
+
+(define (make-byte-len-reader len)
+  (require-port-parent
+   duct
+   (lambda ()
+     (let ((buf (make-byte-vector len 0)) (idx -1))
+       (lambda (prev)
+         (and (< idx 0)
+              (read-block buf 0 len port) ; can't use (read-proc prev) now
+              (set! idx 0))
+         (if (= idx len)
+             (eof-object)
+             (begin1
+              (byte-vector-ref buf idx)
+              (set! idx (+ idx 1)))))))))
