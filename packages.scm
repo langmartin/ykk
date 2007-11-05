@@ -31,12 +31,25 @@
     port-slurp
     string-or-chars->predicate
     crlf?
+    disp-for-each
     disp
     writ
+    output-for-each
     output
+    concat-for-each
     concat
     concat-write
+    ;; zipper
+    map*
+    depth-first
+    ;; duct-work
+    with-string-ports
+    (begin1 :syntax)
     list->alist
+    find-first
+    update-alist
+    update-force-alist
+    close-port
     ;; better covered by srfi-78 (check and check-ec)
     (assert :syntax))))
 
@@ -76,15 +89,20 @@
   (files urlencoding))
 
 (define-interface duct-interface
-  (export make-duct
-          duct?
+  (export duct?
           port->duct
-          duct->port
-          (define-duct :syntax)
-          (duct-tape :syntax)))
+          duct->input-port
+          (duct-extend :syntax)
+          d/byte-len-leave-open
+          d/base64))
 
 (define-structure duct duct-interface
-  (open scheme define-record-types i/o tables ascii byte-vectors)
+  (open scheme signals
+        srfi-1
+        define-record-types byte-vectors ports
+        i/o i/o-internal text-codecs proposals
+        bitwise ascii
+        util)
   (files duct))
 
 (define-structure mime
@@ -94,7 +112,8 @@
           MIME:parse-content-type
           MIME:read-headers
           set-content-parser!)
-  (open scheme signals reading i/o-internal extended-ports define-record-types
+  (open scheme signals
+        reading i/o-internal extended-ports define-record-types
         unicode-char-maps text-codecs i/o byte-vectors tables
         srfi-13 srfi-40
         posix

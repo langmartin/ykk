@@ -109,6 +109,8 @@
                (and-let* (claw2 ...)
                          body ...)))))
 
+
+;;;; String & port things
 (define (port? obj)
   (or (input-port? obj)
       (output-port? obj)))
@@ -164,7 +166,9 @@
   (next-chunk not-eof-object?
               port))
 
-(define (disp-primitive writer rest)
+
+;;;; This is all the lazy output stuff from the io-out days
+(define (disp-for-each writer rest)
   (call/port-rest rest (current-output-port)
     (lambda (port rest)
       (for-each (lambda (x)
@@ -172,10 +176,10 @@
                 rest))))
 
 (define (disp . rest)
-  (disp-primitive display rest))
+  (disp-for-each display rest))
 
 (define (writ . rest)
-  (disp-primitive write rest))
+  (disp-for-each write rest))
 
 (define (flattening-output writer lst)
   (for-each (lambda (x)
@@ -185,7 +189,7 @@
                       (x)
                       (writer x))))))
 
-(define (output-primitive writer rest)
+(define (output-for-each writer rest)
   (call/port-rest rest (current-output-port)
     (lambda (port rest)
       (call-with-current-output-port
@@ -194,7 +198,7 @@
          (flattening-output writer rest))))))
 
 (define (output . rest)
-  (output-primitive display rest))
+  (output-for-each display rest))
 
 (define (crlf? port)
   (define (look ch)
@@ -204,16 +208,62 @@
   (and (look #\return)
        (look #\newline)))
 
-(define (concat-primitive writer things)
+(define (concat-for-each writer things)
   (call-with-string-output-port
    (lambda (port)
      (apply writer port things))))
 
 (define (concat . things)
-  (concat-primitive disp things))
+  (concat-for-each disp things))
 
 (define (concat-write . things)
-  (concat-primitive writ things))
+  (concat-for-each writ things))
+
+;;;; The fancy iterators from Oleg's zipper
+(define (map* proc lst)
+  (if (null? lst)
+      lst
+      (let ((head (car lst)) (tail (cdr lst)))
+        (let ((head1 (proc head))
+              (tail1 (map* proc tail)))
+          (if (and (eq? head1 head) (eq? tail1 tail))
+              lst
+              (cons head1 tail1))))))
+
+(define (depth-first handle tree)
+  (cond ((null? tree) tree)
+        ((handle tree) =>
+         (lambda (new-tree) new-tree))
+        ((not (pair? tree)) tree)
+        (else
+         (let ((mapped (map* (lambda (kid)
+                               (depth-first handle kid))
+                             tree)))
+           (if (eq? mapped tree)
+               tree
+               mapped)))))
+
+
+;;;; bits that came up doing ducts. alists, bits for testing
+(define (with-string-ports input-string thunk)
+  (call-with-string-output-port
+   (lambda (output)
+     (call-with-current-output-port
+      output
+      (lambda ()
+        ((lambda (input)
+           (call-with-current-input-port
+            input
+            thunk))
+         (make-string-input-port
+          input-string)))))))
+
+(define-syntax begin1
+  (syntax-rules ()
+    ((_ e1 e2 ...)
+     (let ((result e1))
+       e2 ...
+       result))))
 
 (define (list->alist lst)
   (let lp ((lst lst))
@@ -224,3 +274,40 @@
               (lp (cddr lst))))))
 
 (assert (list->alist '(1 2 3 4)) => '((1 . 2) (3 . 4)))
+
+(define (find-first proc lst)
+  (let lp ((lst lst))
+    (if (null? lst)
+        '()
+        (or (proc (car lst))
+            (lp (cdr lst))))))
+
+(assert (find-first (lambda (x) (and (= x 4) x)) '(1 3 5 4 6)) => 4)
+
+(define (update-alist orig update)
+  (map (lambda (old)
+         (or (assq (car old) update)
+             old))
+       orig))
+
+(assert
+ (update-alist '((a . 1) (b . 2) (c . 3)) '((b . 42) (d . 3))) =>
+ '((a . 1) (b . 42) (c . 3)))
+
+(define (update-force-alist orig update)
+  (fold (lambda (x acc)
+          (if (assq (car x) acc)
+              acc
+              (cons x acc)))
+        '()
+        (append (reverse update)
+                (reverse orig))))
+
+(assert
+ (update-force-alist
+  '((a . 1) (b . 2) (c . 3)) '((b . 42) (d . 3))) =>
+  '((a . 1) (c . 3) (b . 42) (d . 3)))
+
+(define (close-port port)
+  (and (input-port? port) (close-input-port port))
+  (and (output-port? port) (close-output-port port)))
