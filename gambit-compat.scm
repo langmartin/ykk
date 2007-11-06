@@ -29,7 +29,8 @@
   (let-optionals* rest ((reader read)
                         (port (current-input-port)))
     (let lp ()
-      (if (eof-object? (peek-char port))
-          '()
-          (cons (reader port)
-                (lp))))))
+      (let ((current (reader port)))
+        (if (eof-object? current)
+            '()
+            (cons current
+                  (lp)))))))

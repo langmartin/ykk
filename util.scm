@@ -319,3 +319,32 @@
 (define (close-port port)
   (and (input-port? port) (close-input-port port))
   (and (output-port? port) (close-output-port port)))
+
+(define (call-while test? thunk)
+  (let lp ()
+    (if (test? (thunk))
+        (lp)
+        #f)))
+
+(define-syntax while
+  (syntax-rules ()
+    ((while test? expr)
+     (call-while test?
+                 (lambda ()
+                   expr)))))
+
+(define-syntax until
+  (syntax-rules ()
+    ((while test? expr)
+     (call-while (lambda (x)
+                   (not (test? x)))
+                 (lambda ()
+                   expr)))))
+
+(define-syntax or-eof
+  (syntax-rules ()
+    ((_ var expr body ...)
+     (let ((var expr))
+       (if (eof-object? var)
+           var
+           (or body ...))))))

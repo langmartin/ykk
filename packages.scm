@@ -51,6 +51,10 @@
     update-alist
     update-force-alist
     close-port
+    call-while
+    (while :syntax)
+    (until :syntax)
+    (or-eof :syntax)
     ;; better covered by srfi-78 (check and check-ec)
     (assert :syntax))))
 
@@ -91,12 +95,19 @@
 
 (define-interface duct-interface
   (export duct?
+          duct-parent
           port->duct
           duct->input-port
           (duct-extend :syntax)
+          duct-read-all
+          duct-read
+          duct-write
+          duct-close
           d/byte-len
           d/leave-open
-          d/base64))
+          d/base64
+          d/ascii
+          d/unicode))
 
 (define-structure duct duct-interface
   (open scheme signals
@@ -120,25 +131,11 @@
         unicode-char-maps text-codecs i/o byte-vectors tables
         srfi-13 srfi-40
         posix
-        base64 util gambit-compat)
+        util gambit-compat
+        duct)
   (files mime))
-
-(define-structure base64
-  (export base64-encode-vector
-          base64-encode-port
-          base64-encode-string
-          base64-decode-string
-          base64-decode-port)
-  (open scheme extended-ports bitwise ascii byte-vectors
-        util)
-  (files base64))
-
-;; (define-structure io-http
-;;   (export http-server)
-;;   (open scheme define-record-types i/o-internal srfi-1 srfi-13 signals
-;;         util urlencoding mime))
 
-;;;; logging stuff
+;;;; logging cons
 (define-interface logging-cons-interface
   (export initialize-log
           lnil

@@ -281,6 +281,18 @@ body"
                                 (pipe-block headers
                                             port))))))
 
+(define (mime-parse port)
+  (and-let* ((headers (MIME:read-headers port))
+             (ct (assq 'content-type headers))
+             (ct (cdr ct))
+             (content (MIME:parse-content-type ct)))
+    (duct-read-all
+     ((d/unicode)
+      ((d/base64)
+       ((d/byte-len length)
+        ((d/leave-open)
+         (port->duct port))))))))
+
 (define (pipe-block headers port)
   (let ((copy (make-block-reader headers)))
     (call-with-values
@@ -451,14 +463,6 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
 ")
-
-#;
-(call-with-input-string
- *sample-message*
- (lambda (in)
-   (MIME:read-headers in)
-   (call-with-output-file
-    "foo" (lambda (p) (display (slurp in) p)))))
 
 (call-with-input-string *sample-message* mime:read)
 

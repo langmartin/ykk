@@ -1,9 +1,6 @@
 (define (e-unimplemented . args)
   (error "duct: unimplemented" args))
 
-(define (e-illegal-parent . args)
-  (error "duct: illegal parent duct" args))
-
 (define-record-type duct rtd/duct
   (make-duct-rec parent attr)
   duct?
@@ -88,53 +85,12 @@
    0
    4096))
 
-(define (call-while test? thunk)
+(define (duct-read-all duct)
   (let lp ()
-    (if (test? (thunk))
-        (lp)
-        #f)))
-
-(define-syntax while
-  (syntax-rules ()
-    ((while test? expr)
-     (call-while test?
-                 (lambda ()
-                   expr)))))
-
-(define-syntax until
-  (syntax-rules ()
-    ((while test? expr)
-     (call-while (lambda (x)
-                   (not (test? x)))
-                 (lambda ()
-                   expr)))))
-
-(define (duct-slurp duct)
-  (while not-eof-object?
-         (duct-read duct)))
-
-(define (test-base64)
-  (with-string-ports
-   "Zm9vYmFyYmF6"
-   (lambda ()
-     (let ((out
-            ((d/unicode)
-             ((d/base64)
-              ((d/ascii)
-               ((d/byte-len 6)
-                ((d/leave-open)
-                 (port->duct (current-input-port)))))))))
-       (display (port-slurp out))
-       (newline)
-       (display (peek-char))))))
-
-(define (test-duct)
-  ((d/ascii)
-   ((d/base64)
-    ((d/ascii)
-     ((d/leave-open)
-      ((d/byte-len 4)
-       (port->duct (make-string-input-port "foobar"))))))))
+    (let ((datum (duct-read duct)))
+      (if (eof-object? datum)
+          '()
+          (cons datum (lp))))))
 
 ;;;; Specific ducts
 (define (d/leave-open)
@@ -173,10 +129,10 @@
     (duct-extend
      parent
      (reader (lambda ()
-               (let ((ch (duct-read parent)))
-                 (if (scalar-value? ch)
-                     (scalar-value->char ch)
-                     ch)))))))
+               (or-eof ch (duct-read parent)
+                       (if (scalar-value? ch)
+                           (scalar-value->char ch)
+                           ch)))))))
 
 ;;;; generic support procs
 (define (make-byte-len-reader len port)
@@ -216,7 +172,8 @@
   (ash x (- n)))
 
 (define (make-base64-reader next-char)
-  (let ((bits 0) (bits-count 0))
+  (let ((padding (char->ascii padding-char))
+        (bits 0) (bits-count 0))
     (define (set b bc)
       (set! bits b)
       (set! bits-count bc))
@@ -226,9 +183,9 @@
     (define (body)
       (let ((ch (next-char)))
         (or (and (or (eof-object? ch)
-                     (char=? ch padding-char))
+                     (= ch padding))
                  (eof-object))
-            (let ((six (vector-ref decoding-vector (char->ascii ch))))
+            (let ((six (vector-ref decoding-vector ch)))
               (if (not six)
                   (skip bits bits-count)
                   (let ((full-bits (bitwise-ior (ash bits 6) six))
@@ -242,33 +199,22 @@
                           byte))))))))
     body))
 
-(define-syntax or-eof
-  (syntax-rules ()
-    ((aif sym val body ...)
-     (let ((sym val))
-       (if (eof-object? val)
-           val
-           (begin
-             body ...))))))
-
-(define (test-base64 . which)
-  (let-optionals* which ((proc make-base64-reader))
-    (let ((port (make-string-input-port "Zm9vYmFy")))
-      (proc
-       (lambda ()
-         (or-eof ch (read-char port)
-                 (char->ascii ch)))))))
-
-#;
 (assert
  (with-string-ports
   "Zm9vYmFy"
-  (let lp ((next (make-base64-reader
-                  (lambda ()
-                    (or-eof ch (read-char)
-                            ch)))))
+  (let lp ((next (make-base64-reader read-byte)))
     (let ((ch (next)))
-      (if (eof-object? ch)
-          ch
-          (begin (display ch)
+      (if (not (eof-object? ch))
+          (begin (display (ascii->char ch))
                  (lp next)))))) => "foobar")
+
+(assert
+ (with-string-ports
+  "Zm9vYmFyYmF6"
+  (let ((out
+         ((d/unicode)
+          ((d/base64)
+           ((d/byte-len 7)
+            ((d/leave-open)
+             (port->duct (current-input-port))))))))
+    (for-each display (duct-slurp out)))) => "fooba")
