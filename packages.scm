@@ -43,7 +43,8 @@
     map*
     depth-first
     ;; duct-work
-    with-string-ports
+    call-with-string-ports
+    (with-string-ports :syntax)
     (begin1 :syntax)
     list->alist
     find-first
@@ -93,15 +94,17 @@
           port->duct
           duct->input-port
           (duct-extend :syntax)
-          d/byte-len-leave-open
+          d/byte-len
+          d/leave-open
           d/base64))
 
 (define-structure duct duct-interface
   (open scheme signals
         srfi-1
-        define-record-types byte-vectors ports
-        i/o i/o-internal text-codecs proposals
-        bitwise ascii
+        define-record-types byte-vectors
+        ports extended-ports
+        i/o i/o-internal proposals
+        bitwise ascii unicode text-codecs
         util)
   (files duct))
 

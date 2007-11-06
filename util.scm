@@ -245,7 +245,7 @@
 
 
 ;;;; bits that came up doing ducts. alists, bits for testing
-(define (with-string-ports input-string thunk)
+(define (call-with-string-ports input-string thunk)
   (call-with-string-output-port
    (lambda (output)
      (call-with-current-output-port
@@ -257,6 +257,14 @@
             thunk))
          (make-string-input-port
           input-string)))))))
+
+(define-syntax with-string-ports
+  (syntax-rules ()
+    ((_ input body ...)
+     (call-with-string-ports
+      input
+      (lambda ()
+        body ...)))))
 
 (define-syntax begin1
   (syntax-rules ()
