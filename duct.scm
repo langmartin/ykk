@@ -11,9 +11,9 @@
   (attr duct-attr duct-set-attr!))
 
 (define (port-duct-default-attr port)
-  `((read . ,(lambda () (read-byte port)))
-    (write . ,(lambda (b) (write-byte b port)))
-    (close . ,(lambda () (close-port port)))))
+  `((reader . ,(lambda () (read-byte port)))
+    (writer . ,(lambda (b) (write-byte b port)))
+    (closer . ,(lambda () (close-port port)))))
 
 (define (port->duct port . attr)
   (let ((attr (list->alist attr)))
@@ -28,23 +28,38 @@
   (cond ((assv tag (duct-attr duct)) => cdr)
         (else #f)))
 
+(define (duct-get-first-prop duct tag)
+  (if (not (duct? duct))
+      (e-unimplemented tag)
+      (or (duct-get-property duct tag)
+          (duct-get-first-prop (duct-parent duct) tag))))
+
 (define (duct-set-property! duct tag value)
   (duct-set-attr!
    (update-force-alist
     (duct-attr duct)
     (list (cons tag value)))))
 
+(define (find-port-parent duct)
+  (let ((p (duct-parent duct)))
+    (if (port? p)
+        p
+        (find-port-parent p))))
+
 (define (read-proc duct)
-  (duct-get-property duct 'read))
+  (duct-get-first-prop duct 'reader))
+
+(define (duct-read duct)
+  ((read-proc duct)))
 
 (define (write-proc duct)
-  (duct-get-property duct 'write))
+  (duct-get-first-prop duct 'writer))
+
+(define (duct-write duct)
+  ((write-proc duct)))
 
 (define (duct-close duct)
-  ((duct-get-property duct 'close))
-  (and-let* ((rent (duct-parent duct))
-             ((duct? rent)))
-    (duct-close rent)))
+  ((duct-get-first-prop duct 'closer)))
 
 (define (duct-extend* duct property-list)
   (make-duct-rec duct property-list))
@@ -60,11 +75,11 @@
   (make-buffered-input-port
    (make-buffered-input-port-handler
     (lambda (duct)
-      `(duct-input-port ,duct))         ; discloser
+      `(input-port ,duct))              ; discloser
     (lambda (duct)
       (duct-close duct))                ; closer
     (lambda (port wait?)
-      ((read-proc (port-data port)))
+      (duct-read (port-data port))
       (maybe-commit))                   ; buffer-filler
     e-unimplemented                     ; ready?
     )
@@ -72,25 +87,98 @@
    (make-byte-vector 4096 0)
    0
    4096))
+
+(define (call-while test? thunk)
+  (let lp ()
+    (if (test? (thunk))
+        (lp)
+        #f)))
+
+(define-syntax while
+  (syntax-rules ()
+    ((while test? expr)
+     (call-while test?
+                 (lambda ()
+                   expr)))))
+
+(define-syntax until
+  (syntax-rules ()
+    ((while test? expr)
+     (call-while (lambda (x)
+                   (not (test? x)))
+                 (lambda ()
+                   expr)))))
+
+(define (duct-slurp duct)
+  (while not-eof-object?
+         (duct-read duct)))
+
+(define (test-base64)
+  (with-string-ports
+   "Zm9vYmFyYmF6"
+   (lambda ()
+     (let ((out
+            ((d/unicode)
+             ((d/base64)
+              ((d/ascii)
+               ((d/byte-len 6)
+                ((d/leave-open)
+                 (port->duct (current-input-port)))))))))
+       (display (port-slurp out))
+       (newline)
+       (display (peek-char))))))
+
+(define (test-duct)
+  ((d/ascii)
+   ((d/base64)
+    ((d/ascii)
+     ((d/leave-open)
+      ((d/byte-len 4)
+       (port->duct (make-string-input-port "foobar"))))))))
 
 ;;;; Specific ducts
-(define (d/byte-len-leave-open parent len)
-  (let ((port (duct-parent parent)))
-    (if (not (port? port))
-        (e-illegal-parent parent)
-        (duct-extend
-         parent
-         (read (make-byte-len-reader len ))
-         (close (lambda () #t))
-         (write e-unimplemented)))))
+(define (d/leave-open)
+  (lambda (parent)
+    (duct-extend
+     parent
+     (closer (lambda () #t)))))
 
-(define (d/base64 parent)
-  (duct-extend
-   parent
-   (read (lambda (prev)
-           (make-base64-reader (read-proc prev))))
-   (write e-unimplemented)))
+(define (d/byte-len len)
+  (lambda (parent)
+    (duct-extend
+     parent
+     (reader (make-byte-len-reader len (find-port-parent parent))))))
 
+(define (d/ascii)
+  (lambda (parent)
+    (duct-extend
+     parent
+     (reader (lambda ()
+               (let ((ch (duct-read parent)))
+                 (if (eof-object? ch)
+                     ch
+                     (ascii->char ch)))))
+     (writer (lambda (ch)
+               (duct-write parent (char->ascii ch)))))))
+
+(define (d/base64)
+  (lambda (parent)
+    (duct-extend
+     parent
+     (reader (make-base64-reader (read-proc parent)))
+     (writer e-unimplemented))))
+
+(define (d/unicode)
+  (lambda (parent)
+    (duct-extend
+     parent
+     (reader (lambda ()
+               (let ((ch (duct-read parent)))
+                 (if (scalar-value? ch)
+                     (scalar-value->char ch)
+                     ch)))))))
+
+;;;; generic support procs
 (define (make-byte-len-reader len port)
   (let ((buf (make-byte-vector len 0)) (idx -1))
     (lambda ()
@@ -154,13 +242,33 @@
                           byte))))))))
     body))
 
+(define-syntax or-eof
+  (syntax-rules ()
+    ((aif sym val body ...)
+     (let ((sym val))
+       (if (eof-object? val)
+           val
+           (begin
+             body ...))))))
+
+(define (test-base64 . which)
+  (let-optionals* which ((proc make-base64-reader))
+    (let ((port (make-string-input-port "Zm9vYmFy")))
+      (proc
+       (lambda ()
+         (or-eof ch (read-char port)
+                 (char->ascii ch)))))))
+
+#;
 (assert
  (with-string-ports
   "Zm9vYmFy"
-  (lambda ()
-    (let lp ((next (make-base64-reader read-char)))
-      (let ((ch (next)))
-        (if (eof-object? ch)
-            ch
-            (begin (display (ascii->char ch))
-                   (lp next))))))) => "foobar")
+  (let lp ((next (make-base64-reader
+                  (lambda ()
+                    (or-eof ch (read-char)
+                            ch)))))
+    (let ((ch (next)))
+      (if (eof-object? ch)
+          ch
+          (begin (display ch)
+                 (lp next)))))) => "foobar")
