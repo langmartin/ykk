@@ -2,7 +2,7 @@
 (define-structure octothorpe-extensions
   (export define-reader-ctor)
   (open scheme primitives reading extended-ports)
-  (files octothorpe-extensions))
+  (files utility/octothorpe-extensions))
 
 ;;;; smallish set of core utils that I keep wanting
 (define-interface util-interface
@@ -61,7 +61,7 @@
 (define-structure util util-interface
   (open scheme signals extended-ports i/o-internal
         srfi-1 srfi-2 srfi-78)
-  (files util))
+  (files utility/util))
 
 ;;;; UUID gen
 (define-structure uuid
@@ -83,7 +83,7 @@
 (define-structure gambit-compat gambit-compat-interface
   (open scheme i/o-internal extended-ports
         util)
-  (files gambit-compat))
+  (files util/gambit-compat))
 
 ;;;; I/O to support http
 (define-interface duct-interface

@@ -1,4 +1,4 @@
-,config ,load s48-interfaces.scm
+,config ,load utility/s48-interfaces.scm
 ,config ,load packages.scm
 ,open octothorpe-extensions
 ,open define-record-types signals threads extended-ports
