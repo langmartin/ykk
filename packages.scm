@@ -119,17 +119,19 @@
         util)
   (files duct))
 
-(define-structure mime
+(define-interface mime-interface
   (export next-token
           skip-while
-          http-token-char?
           MIME:parse-content-type
           MIME:read-headers
-          set-content-parser!)
+          mime-document
+          ))
+
+(define-structure mime mime-interface
   (open scheme signals
         reading i/o-internal extended-ports define-record-types
-        unicode-char-maps text-codecs i/o byte-vectors tables
-        srfi-13 srfi-40
+        unicode-char-maps text-codecs i/o byte-vectors
+        srfi-1 srfi-13
         posix
         util gambit-compat
         duct)

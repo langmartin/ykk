@@ -7,10 +7,15 @@
   (parent duct-parent)
   (attr duct-attr duct-set-attr!))
 
+(define-record-discloser rtd/duct
+  (lambda (duct)
+    `(duct ,(duct-get-property duct 'name))))
+
 (define (port-duct-default-attr port)
   `((reader . ,(lambda () (read-byte port)))
     (writer . ,(lambda (b) (write-byte b port)))
-    (closer . ,(lambda () (close-port port)))))
+    (closer . ,(lambda () (close-port port)))
+    (name . "port/fundamental")))
 
 (define (port->duct port . attr)
   (let ((attr (list->alist attr)))
@@ -97,18 +102,21 @@
   (lambda (parent)
     (duct-extend
      parent
+     (name "leave-open")
      (closer (lambda () #t)))))
 
 (define (d/byte-len len)
   (lambda (parent)
     (duct-extend
      parent
+     (name "byte-len")
      (reader (make-byte-len-reader len (find-port-parent parent))))))
 
 (define (d/ascii)
   (lambda (parent)
     (duct-extend
      parent
+     (name "ascii")
      (reader (lambda ()
                (let ((ch (duct-read parent)))
                  (if (eof-object? ch)
@@ -121,6 +129,7 @@
   (lambda (parent)
     (duct-extend
      parent
+     (name "base64")
      (reader (make-base64-reader (read-proc parent)))
      (writer e-unimplemented))))
 
@@ -128,6 +137,7 @@
   (lambda (parent)
     (duct-extend
      parent
+     (name "unicode")
      (reader (lambda ()
                (or-eof ch (duct-read parent)
                        (if (scalar-value? ch)
@@ -217,4 +227,4 @@
            ((d/byte-len 7)
             ((d/leave-open)
              (port->duct (current-input-port))))))))
-    (for-each display (duct-slurp out)))) => "fooba")
+    (for-each display (duct-read-all out)))) => "fooba")

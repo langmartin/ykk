@@ -261,74 +261,98 @@ body"
  '((encoding . "bar") (charset . "foo") (=mime-type . "text/html")))
 
 ;;;; Iteration, read and decode properly
-(define *mime-parsers* (make-table))
+(define (e-unimplemented . args)
+  (apply error "mime unimplemented" args))
 
-(define (set-content-parser! content-type procedure)
-  (table-set! *mime-parsers* content-type procedure))
+(define (header tag headers)
+  (and-let* ((header (assq tag headers))
+             (header (cdr header)))
+    header))
 
-(define (mime-parse port)
-  (let* ((headers (MIME:read-headers port))
-         (port (run-block headers port))
-         (port (run-encoding headers port)))
-    (set-mime-codec! headers port)
-    (read-all port)))
-
-(define (mime-parse port)
+(define (mime:headers port)
   (let ((headers (MIME:read-headers port)))
-    (read-all
-     (pipe-codec headers
-                 (pipe-encoding headers
-                                (pipe-block headers
-                                            port))))))
+    (values (filter (lambda (x)
+                      (not (eq? (car x)
+                                'content-type)))
+                    headers)
+            (MIME:parse-content-type
+             (header 'content-type headers)))))
 
-(define (mime-parse port)
-  (and-let* ((headers (MIME:read-headers port))
-             (ct (assq 'content-type headers))
-             (ct (cdr ct))
-             (content (MIME:parse-content-type ct)))
-    (duct-read-all
-     ((d/unicode)
-      ((d/base64)
-       ((d/byte-len length)
-        ((d/leave-open)
-         (port->duct port))))))))
+(define (mime-next-part port)
+  (call-with-values
+      (lambda () (mime:headers port))
+    (lambda (headers content-type)
+      (list headers
+            content-type
+            (read-section
+             (charset content-type
+                      (encoding content-type
+                                (bytelen headers
+                                         port))))))))
 
-(define (pipe-block headers port)
-  (let ((copy (make-block-reader headers)))
-    (call-with-values
-        (make-pipe)
-      (lambda (in out)
-        ))
-    
-    ))
+(define (mime-document port)
+  (if (and (char-ready? port)
+           (eof-object? (peek-char port)))
+      '()
+      (cons (mime-next-part port)
+            (mime-document port))))
 
-(define (make-block-reader headers)
-  (or (and-let* ((xfer (assoc 'transfer-encoding headers))
-                 (xfer (cdr xfer))
-                 ((string=? "chunked" (string-downcase xfer))))
-        copy-chunk)
-      (and-let* ((len (assoc 'content-length headers))
-                 (len (cdr len))
-                 (len (string->number len)))
-        (lambda (port)
-          (copy-bytes len)))
-      (config-copy-mime headers)))
+(define (bytelen headers port)
+  (let ((duct ((d/leave-open)
+               (port->duct port))))
+    (cond ((chunked? headers)
+           ((d/byte-len (string->number
+                         (read-crlf-line port)))
+            duct))
+          ((content-len headers) =>
+           (lambda (len)
+             ((d/byte-len len) duct)))
+          (else
+           (e-unimplemented "no boundary reading yet")))))
 
-(define (copy-chunk port output-port)
-  (let ((len (string->number (read-crlf-line port))))
-    (length-reader len port output-port)))
+(define (chunked? headers)
+  (and-let* ((xf (header 'transfer-encoding headers))
+             (xf (string-downcase xf)))
+    (string=? "chunked" xf)))
 
-(define copy-bytes
-  (let ((buffer-size 1024))
-    (lambda (port output-port)
-      (let ((buffer (make-byte-vector buffer-size)))
-        (let lp ((ii len))
-          (if (not (= ii 0))
-              (let (len (if (< ii buffer-size) len buffer-size))
-                (read-block buffer len port)
-                (write-block buffer len output-port)
-                (lp (- ii len)))))))))
+(define (content-len headers)
+  (and-let* ((len (header 'content-length headers)))
+    (string->number len)))
 
+(define-syntax case-equal
+  (syntax-rules (else)
+    ((_ key (else body ...))
+     (begin body ...))
+    ((_ key ((datum ...) body ...))
+     (and (member key '(datum ...))
+          (begin body ...)))
+    ((_ key clause1 clause2 ...)
+     (or (case-equal key clause1)
+         (case-equal key clause2 ...)))))
+
+(define (encoding content-type duct)
+  (or (and-let* ((enc (header 'encoding content-type))
+                 (enc (string-downcase enc)))
+        (case-equal enc
+          (("base64")
+           ((d/base64) duct))
+          (else
+           (e-unimplemented "no encoding for" enc))))
+      duct))
+
+(define (charset content-type duct)
+  (or (and-let* ((set (header 'character-set content-type))
+                 (set (string-downcase set)))
+        (case-equal set
+          (("us-ascii")
+           ((d/ascii) duct))
+          (("utf-8")
+           ((d/unicode) duct))
+          (else
+           (e-unimplemented "no charset for" set))))
+      duct))
+
+;;;; Utilities
 (define (read-crlf-line port)
   (call-with-string-output-port
    (lambda (output-port)
@@ -339,43 +363,22 @@ body"
          (begin
            (display #\return output-port)
            (display (read-crlf-line port) output-port))))))
-
-;;;; encoding
-(define *encodings* (make-table))
-
-(define (set-encoding-parser! encoding proc)
-  (table-set! *encodings* encoding proc))
-
-(define (lookup-encoding encoding)
-  (table-ref *encodings* encoding))
-
-(define (null-encoding port output-port)
-  (copy-port port output-port))
-
-(set-encoding-parser!
- 'base64
- (lambda (port output-port)
-   ))
-
-(define (encoding headers block port)
-  (or (and-let* ((c-t (assoc 'content-type headers))
-                 (c-t (MIME:parse-content-type c-t))
-                 (enc (cdr enc))
-                 (handler (lookup-encoding enc)))
-        (handler block port))
-      (null-encoding block port)))
-
-
-
-
-
-
 
 (define (next-crlf-line port output-port)
   (next-chunk-display '(#\return) port output-port #t)
   (if (char=? #\newline (peek-char port))
       (display (read-char port) output-port)
       (next-crlf-line port output-port)))
+
+(define (read-section duct)
+  (call-with-string-output-port
+   (lambda (acc)
+     (let lp ()
+       (let ((ch (duct-read duct)))
+         (if (not (eof-object? ch))
+             (begin
+               (display ch acc)
+               (lp))))))))
 
 (define (double-dash port output-port)
   (let ((dashpos (read-char port)))
@@ -390,14 +393,14 @@ body"
 (define (boundary-reader port output-port . rest)
   (let-optionals* rest ((boundary #f))
     (let* ((boundlen (if boundary (string-length boundary) 0))
-           (boundbuf (make-u8vector boundlen))
+           (boundbuf (make-byte-vector boundlen 0))
            (boundchk (lambda (port output-port)
                        (let ((chunk (read-block boundbuf boundlen port)))
                          (if (equal? boundary chunk)
                              (begin
                                (double-dash port output-port)
                                #t)
-                             (cout output-port chunk))))))
+                             (output output-port chunk))))))
       (if boundary
           (let lp ()
             (if (not (and (double-dash port output-port)
@@ -406,38 +409,6 @@ body"
                   (next-crlf-line port output-port)
                   (lp))))
           (output (port-slurp port))))))
-
-
-
-(define (dispatch-cdr headers port)
-  (define get
-    (make-get headers))
-  (let ((content (or (get 'content-type)
-                     '((charset . "utf-8"))))
-        (chunked (get 'transfer-encoding))
-        (length  (get 'content-length)))
-    (let ((reader1
-           (call/parsed-content-type content content-reader))
-          (len (find-length chunked length)))
-      (make-mime-stream
-       headers
-       (make-read-charset
-        charset
-        (if chunked
-            (make-read-chunked port)
-            (if length
-                (make-read-length length port)
-                (make-read-bound boundary port))))
-       
-       (skipper len)))))
-
-(call-with-string-output-port
- (lambda (out)
-   (set-port-text-codec! out utf-8-codec)
-   (for-each-byte-vector
-    (lambda (x)
-      (display x out))
-    (make-byte-vector 10 33))))
 
 (define (for-each-byte-vector proc vec)
   (let ((end (byte-vector-length vec)))
@@ -449,28 +420,10 @@ body"
 
 (define *sample-message*
   "Host: coptix.com\r
-Content-type: text/plain;\r
-  encoding=base64; charset=utf-8\r
-Content-Length: 648\r
+Content-type: text/plain; encoding=base64; charset=utf-8\r
+Content-Length: 31\r
 \r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r
+aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
 ")
 
-(call-with-input-string *sample-message* mime:read)
-
-(call-with-input-string
- "abcdef"
- (lambda (p)
-   (call-with-input-string
-    (base64-encode-port p)
-    (lambda (p)
-      (set-port-text-codec! p us-ascii-codec)
-      (base64-decode-port p)))))
+(mime-document (make-string-input-port *sample-message*))
