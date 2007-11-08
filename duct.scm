@@ -139,10 +139,10 @@
      parent
      (name "unicode")
      (reader (lambda ()
-               (or-eof ch (duct-read parent)
-                       (if (scalar-value? ch)
-                           (scalar-value->char ch)
-                           ch)))))))
+               (let ((ch (duct-read parent)))
+                 (or (and (eof-object? ch) ch)
+                     (and (scalar-value? ch) (scalar-value->char ch))
+                     ch)))))))
 
 ;;;; generic support procs
 (define (make-byte-len-reader len port)

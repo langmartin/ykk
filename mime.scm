@@ -319,17 +319,6 @@ body"
   (and-let* ((len (header 'content-length headers)))
     (string->number len)))
 
-(define-syntax case-equal
-  (syntax-rules (else)
-    ((_ key (else body ...))
-     (begin body ...))
-    ((_ key ((datum ...) body ...))
-     (and (member key '(datum ...))
-          (begin body ...)))
-    ((_ key clause1 clause2 ...)
-     (or (case-equal key clause1)
-         (case-equal key clause2 ...)))))
-
 (define (encoding content-type duct)
   (or (and-let* ((enc (header 'encoding content-type))
                  (enc (string-downcase enc)))
@@ -364,12 +353,6 @@ body"
            (display #\return output-port)
            (display (read-crlf-line port) output-port))))))
 
-(define (next-crlf-line port output-port)
-  (next-chunk-display '(#\return) port output-port #t)
-  (if (char=? #\newline (peek-char port))
-      (display (read-char port) output-port)
-      (next-crlf-line port output-port)))
-
 (define (read-section duct)
   (call-with-string-output-port
    (lambda (acc)
@@ -380,44 +363,6 @@ body"
                (display ch acc)
                (lp))))))))
 
-(define (double-dash port output-port)
-  (let ((dashpos (read-char port)))
-    (if (and (char=? #\- dashpos)
-             (char=? #\- (peek-char port))
-             (read-char port))
-        #t
-        (begin
-          (display dashpos output-port)
-          #f))))
-
-(define (boundary-reader port output-port . rest)
-  (let-optionals* rest ((boundary #f))
-    (let* ((boundlen (if boundary (string-length boundary) 0))
-           (boundbuf (make-byte-vector boundlen 0))
-           (boundchk (lambda (port output-port)
-                       (let ((chunk (read-block boundbuf boundlen port)))
-                         (if (equal? boundary chunk)
-                             (begin
-                               (double-dash port output-port)
-                               #t)
-                             (output output-port chunk))))))
-      (if boundary
-          (let lp ()
-            (if (not (and (double-dash port output-port)
-                          (boundchk port output-port)))
-                (begin
-                  (next-crlf-line port output-port)
-                  (lp))))
-          (output (port-slurp port))))))
-
-(define (for-each-byte-vector proc vec)
-  (let ((end (byte-vector-length vec)))
-    (let lp ((i 0))
-      (if (not (= i end))
-          (begin
-            (proc (byte-vector-ref vec i))
-            (lp (+ i 1)))))))
-
 (define *sample-message*
   "Host: coptix.com\r
 Content-type: text/plain; encoding=base64; charset=utf-8\r
@@ -426,4 +371,8 @@ Content-Length: 31\r
 aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
 ")
 
-(mime-document (make-string-input-port *sample-message*))
+(assert
+ (mime-document (make-string-input-port *sample-message*)) =>
+ '((((content-length . "31") (host . "coptix.com"))
+    ((charset . "utf-8") (encoding . "base64") (=mime-type . "text/plain"))
+    "hello there, foobar")))

@@ -341,10 +341,13 @@
                  (lambda ()
                    expr)))))
 
-(define-syntax or-eof
-  (syntax-rules ()
-    ((_ var expr body ...)
-     (let ((var expr))
-       (if (eof-object? var)
-           var
-           (or body ...))))))
+(define-syntax case-equal
+  (syntax-rules (else)
+    ((_ key (else body ...))
+     (begin body ...))
+    ((_ key ((datum ...) body ...))
+     (and (member key '(datum ...))
+          (begin body ...)))
+    ((_ key clause1 clause2 ...)
+     (or (case-equal key clause1)
+         (case-equal key clause2 ...)))))

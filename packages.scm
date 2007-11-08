@@ -54,7 +54,7 @@
     call-while
     (while :syntax)
     (until :syntax)
-    (or-eof :syntax)
+    (case-equal :syntax)
     ;; better covered by srfi-78 (check and check-ec)
     (assert :syntax))))
 
