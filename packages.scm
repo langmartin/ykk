@@ -83,7 +83,7 @@
 (define-structure gambit-compat gambit-compat-interface
   (open scheme i/o-internal extended-ports
         util)
-  (files util/gambit-compat))
+  (files utility/gambit-compat))
 
 ;;;; I/O to support http
 (define-interface duct-interface
@@ -136,8 +136,6 @@
 
 (define-interface mime-interface
   (export
-   next-token
-   skip-while
    MIME:parse-content-type
    MIME:read-headers
    mime-document
@@ -150,7 +148,7 @@
         srfi-1 srfi-13
         posix
         util gambit-compat
-        duct)
+        ducts)
   (files mime))
 
 ;;;; logging cons
@@ -173,3 +171,5 @@
         srfi-1
         util uuid)
   (files zipper/logging-cons))
+
+;;;; http server

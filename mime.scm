@@ -340,6 +340,14 @@ body"
           (else
            (e-unimplemented "no charset for" set))))
       duct))
+
+(define (mimetype content-type duct)
+  (or (and-let* ((type (header '=mime-type content-type))
+                 (type (string-downcase set)))
+        (case-equal type
+          (("application/x-form-urlencoded")
+           ((d/urlencode) duct))))
+      duct))
 
 ;;;; Utilities
 (define (read-crlf-line port)
