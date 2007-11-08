@@ -77,7 +77,8 @@
    with-output-to-string
    call-with-output-string
    with-input-from-string
-   call-with-input-string))
+   call-with-input-string
+   ))
 
 (define-structure gambit-compat gambit-compat-interface
   (open scheme i/o-internal extended-ports
@@ -85,47 +86,62 @@
   (files gambit-compat))
 
 ;;;; I/O to support http
-(define-structure urlencoding
-  (export urlencode-display
-          urlencode
-          urldecode)
-  (open scheme srfi-13 ascii bitwise extended-ports
-        util)
-  (files urlencoding))
-
 (define-interface duct-interface
-  (export duct?
-          duct-parent
-          port->duct
-          duct->input-port
-          (duct-extend :syntax)
-          duct-read-all
-          duct-read
-          duct-write
-          duct-close
-          d/byte-len
-          d/leave-open
-          d/base64
-          d/ascii
-          d/unicode))
+  (export
+   duct?
+   duct-parent
+   port->duct
+   duct->input-port
+   (duct-extend :syntax)
+   duct-get-property
+   duct-get-this-property
+   duct-set-property!
+   duct-read-all
+   duct-read
+   duct-write
+   duct-close
+   ))
 
 (define-structure duct duct-interface
   (open scheme signals
-        srfi-1
-        define-record-types byte-vectors
+        define-record-types
         ports extended-ports
-        i/o i/o-internal proposals
-        bitwise ascii unicode text-codecs
+        ascii
+        text-codecs
+        i/o i/o-internal
+        byte-vectors
+        proposals
         util)
   (files duct))
 
+(define-interface ducts-interface
+  (compound-interface
+   duct-interface
+   (export
+    d/byte-len
+    d/leave-open
+    d/base64
+    d/ascii
+    d/unicode
+    )))
+
+(define-structure ducts ducts-interface
+  (open scheme signals
+        i/o i/o-internal extended-ports
+        byte-vectors bitwise ascii unicode
+        text-codecs
+        util
+        duct)
+  (files ducts))
+
 (define-interface mime-interface
-  (export next-token
-          skip-while
-          MIME:parse-content-type
-          MIME:read-headers
-          mime-document
-          ))
+  (export
+   next-token
+   skip-while
+   MIME:parse-content-type
+   MIME:read-headers
+   mime-document
+   ))
 
 (define-structure mime mime-interface
   (open scheme signals
@@ -139,16 +155,18 @@
 
 ;;;; logging cons
 (define-interface logging-cons-interface
-  (export initialize-log
-          lnil
-          lcons
-          lcar
-          lcdr
-          lnull?
-          lpair?
-          llist?
-          map*
-          depth-first))
+  (export
+   initialize-log
+   lnil
+   lcons
+   lcar
+   lcdr
+   lnull?
+   lpair?
+   llist?
+   map*
+   depth-first
+   ))
 
 (define-structure logging-cons logging-cons-interface
   (open scheme define-record-types tables i/o
