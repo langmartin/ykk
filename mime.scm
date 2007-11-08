@@ -341,7 +341,7 @@ body"
       duct))
 
 (define (charset content-type duct)
-  (or (and-let* ((set (header 'character-set content-type))
+  (or (and-let* ((set (header 'charset content-type))
                  (set (string-downcase set)))
         (case-equal set
           (("us-ascii")
