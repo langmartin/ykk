@@ -131,27 +131,24 @@
           error "can't use " obj)))
 
 (define (next-chunk-display delims/proc port output-port . rest)
-  (let-optionals* rest ((output-delimiter-too #f))
-    (let* ((proc
-            (if (procedure? delims/proc)
-                delims/proc
-                (let ((p (string-or-chars->predicate delims/proc)))
-                  (lambda (c)
-                    (if (eof-object? c)
-                        #f
-                        (not (p c))))))))
+  (let-optionals* rest ((keep-delimiter #f))
+    (let* ((proc (string-or-chars->predicate delims/proc)))
       (let lp ()
-        (if (proc (peek-char port))
-            (begin
-              (display (read-char port) output-port)
-              (lp))
-            (if output-delimiter-too
-                (display (read-char port) output-port)))))))
+        (let ((current (peek-char port)))
+          (or (eof-object? current)
+              (if (proc current)
+                  (if keep-delimiter
+                      (display (read-char port) output-port))
+                  (begin
+                    (display (read-char port) output-port)
+                    (lp)))))))))
 
-(define (next-chunk delims/proc port . rest)
-  (call-with-string-output-port
-   (lambda (output-port)
-     (next-chunk-display delims/proc port output-port (if-car rest #f)))))
+(define (next-chunk delims/proc . rest)
+  (let-optionals* rest ((port (current-input-port))
+                        (keep-delimiter #f))
+    (call-with-string-output-port
+     (lambda (output-port)
+       (next-chunk-display delims/proc port output-port keep-delimiter)))))
 
 (let ((mp make-string-input-port))
   (assert
