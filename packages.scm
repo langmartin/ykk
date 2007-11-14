@@ -172,4 +172,23 @@
         util uuid)
   (files zipper/logging-cons))
 
-;;;; http server
+;;;; http
+(define-structure http
+  (export
+   http:respond
+   http:start-server
+   http:get
+   http:post
+   http:put
+   http:delete
+   current-response
+   )
+  
+  (open scheme signals
+        fluids
+        extended-ports
+        threads
+        util
+        gambit-compat)
+  
+  (files http-server))
