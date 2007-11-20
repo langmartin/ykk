@@ -23,7 +23,7 @@
 (define (exhume tag)
   (table-ref *lcdr* tag))
 
-(define (entomb cell)
+(define (bury cell)
   (table-set! *lcdr* (rec-id cell) cell))
 
 (define (log-logging-cons cell . port)
@@ -37,7 +37,7 @@
 
 ;;;; Inteface definitions
 (define lnil (rec-cons 'nil #f 'nil '()))
-(entomb lnil)
+(bury lnil)
 
 (define (lcons lcar lcdr)
   (let* ((cdr-loc (and (lpair? lcdr)
@@ -46,7 +46,7 @@
                          cdr-loc
                          lcar
                          lcdr)))
-    (entomb cell)
+    (bury cell)
     (log-logging-cons cell)
     cell))
 
