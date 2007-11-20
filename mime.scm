@@ -1,5 +1,9 @@
 ;;;; compatibilty
-(define next-token-of next-chunk)
+(define (next-token-of pred port)
+  (let* ((pred (string-or-chars->predicate pred))
+         (pred (lambda (c)
+                 (not (pred c)))))
+    (next-chunk pred port)))
 
 (define (parser-error port message . text)
   (apply error "parser: " port " " message " " text))
@@ -32,7 +36,7 @@
 
 (define (peek-next-char . port)
   (let ((port (optional port (current-input-port))))
-    (read-char port) 
+    (read-char port)
     (peek-char port)))
 
 (define (read-text-line . port)
@@ -143,7 +147,7 @@
 	res)))
   (call-with-input-string ctype-str
     (lambda (port)
-      (let loop ((attrs 
+      (let loop ((attrs
 		  (list (cons '=mime-type
 			  (non-empty-token-of
 			    (lambda (c)
@@ -161,7 +165,7 @@
 	      ;   quoted-string  = ( <"> *(qdtext | quoted-pair ) <"> )
 	      ;   qdtext         = <any TEXT except <">>
 	      ;   quoted-pair    = "\" CHAR
-	      (cond 
+	      (cond
 	       ((eqv? #\" (peek-char port))	; we're reading a quoted-string
 		(read-char port)		; skip the opening quote
 		(let qsloop ((old-fragments '()))
@@ -257,45 +261,94 @@ body"
 (assert
  (MIME:parse-content-type "text/html") => '((=mime-type . "text/html"))
 
- (MIME:parse-content-type "text/html; charset=foo; encoding=bar") => 
+ (MIME:parse-content-type "text/html; charset=foo; encoding=bar") =>
  '((encoding . "bar") (charset . "foo") (=mime-type . "text/html")))
 
 ;;;; Iteration, read and decode properly
 (define (e-unimplemented . args)
   (apply error "mime unimplemented" args))
 
+(define-record-type mime rtd/mime
+  (make-mime head content-type port duct body)
+  mime?
+  (head mime-headers)
+  (content-type mime-content-type)
+  (port mime-port)
+  (duct mime-duct)
+  (body mime-body mime-set-body!))
+
+(define-record-discloser rtd/mime
+  (lambda (mime)
+    `(mime ,(mime-content-type mime))))
+
 (define (header tag headers)
   (and-let* ((header (assq tag headers))
              (header (cdr header)))
     header))
 
-(define (mime:headers port)
+(define (filter-headers tags headers)
+  (filter (lambda (x)
+            (not (memq (car x) tags)))
+          headers))
+
+(define (headers port)
   (let ((headers (MIME:read-headers port)))
-    (values (filter (lambda (x)
-                      (not (eq? (car x)
-                                'content-type)))
-                    headers)
+    (values (filter-headers '(content-type) headers)
             (MIME:parse-content-type
              (header 'content-type headers)))))
 
-(define (mime-next-part port)
-  (call-with-values
-      (lambda () (mime:headers port))
-    (lambda (headers content-type)
-      (list headers
-            content-type
-            (read-section
-             (charset content-type
-                      (encoding content-type
-                                (bytelen headers
-                                         port))))))))
+(define cons-header cons)
 
-(define (mime-document port)
+(define (content-type->header ct)
+  (call-with-values
+      (split-headers '(=mime-type)
+                     ct)
+    (lambda (mt rest)
+      (cons 'content-type
+            (concat
+             (cdar mt)
+             "; "
+             (header->string rest))))))
+
+(define (split-headers tags headers)
+  (values (map (lambda (tag)
+                 (or (assq tag headers)
+                     (cons tag #f)))
+               tags)
+          (filter-headers tags headers)))
+
+(define (next-part port)
+  (call-with-values
+      (lambda () (headers port))
+    (lambda (headers content-type)
+      (make-mime
+       headers
+       content-type
+       port
+       (charset content-type
+                (encoding content-type
+                          (bytelen headers
+                                   port)))
+       #f))))
+
+(define (mime-stream port)
+  (delay
+    (if (and (char-ready? port)
+            (eof-object? (peek-char port)))
+       '()
+       (cons (next-part port)
+             (mime-stream port)))))
+
+(define (mime-read-all port)
   (if (and (char-ready? port)
            (eof-object? (peek-char port)))
       '()
-      (cons (mime-next-part port)
-            (mime-document port))))
+      (let ((next (next-part port)))
+        (mime-set-body! next
+                        (duct-read-all
+                         (mime-duct next)))
+        (cons next
+              (mime-read-all port)))))
 
 (define (bytelen headers port)
   (let ((duct ((d/leave-open)
@@ -341,6 +394,7 @@ body"
            (e-unimplemented "no charset for" set))))
       duct))
 
+#;
 (define (mimetype content-type duct)
   (or (and-let* ((type (header '=mime-type content-type))
                  (type (string-downcase set)))
@@ -380,7 +434,7 @@ aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
 ")
 
 (assert
- (mime-document (make-string-input-port *sample-message*)) =>
- '((((content-length . "31") (host . "coptix.com"))
-    ((charset . "utf-8") (encoding . "base64") (=mime-type . "text/plain"))
-    "hello there, foobar")))
+ (list->string
+  (mime-body
+   (car (mime-read-all (make-string-input-port *sample-message*)))))
+ => "hello there, foobar")

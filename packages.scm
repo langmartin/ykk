@@ -138,7 +138,12 @@
   (export
    MIME:parse-content-type
    MIME:read-headers
-   mime-document
+   mime-read-all
+   mime-stream
+   cons-header
+   filter-headers
+   content-type->header
+   split-header
    ))
 
 (define-structure mime mime-interface
