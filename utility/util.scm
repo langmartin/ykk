@@ -156,6 +156,8 @@
    (next-chunk " " (mp "foo bar") #t) => "foo "
    (next-chunk " " (mp "foobar")) => "foobar"))
 
+(next-chunk "q" (make-string-input-port ""))
+
 (define (not-eof-object? obj)
   (not (eof-object? obj)))
 

@@ -52,6 +52,17 @@
   (lambda ()
     (this)
     (by)))
+
+(define (for-each-pair proc lst)
+  (for-each (lambda (pair)
+              (proc (car pair)
+                    (cdr pair)))
+            lst))
+
+(define (crlf . port)
+  (apply disp
+         (append port
+                 '(#\return #\newline))))
 
 ;;;; server
 (define (server-close-object) server-close-object)
@@ -74,69 +85,60 @@
         (or (server-close-object? result)
             (lp))))))
 
-(make-fluid current-response)
-
 (define (handle-handler handler)
   (lambda (port output-port)
     (let-list ((version method path) (string-split (read-line port)))
-      (let-list ((status head body)
-                 (handler port method path null-response))
-        (output-response output-port
-                         version
-                         status
-                         head
-                         body)))))
+      (call-with-values
+          (handler port method path)
+        (lambda (status head body)
+          (output-response output-port
+                           version
+                           status
+                           head
+                           body))))))
 
 (define (output-response output-port version status header body)
-  (let ((body (delay (body))))
-    (if (or #t (string-ci=? version "HTTP/1.0")) ; no difference for now
-        (let ((head 
-               (merge-headers
-                (headers
-                 (content-length body)
-                 '(connection . close))
-                (header))))
-          (with-current-output-port
-           output-port
-           (output-status status version)
-           (output-head head)
-           (output-body body))))))
+  (if (or #t (string-ci=? version "HTTP/1.0")) ; no difference for now
+      (let* ((body (body->byte-vector body))
+             (head 
+              (merge-headers
+               (headers
+                (content-length body)
+                '(connection . close))
+               (header))))
+        (with-current-output-port
+         output-port
+         (output version " " status)
+         (crlf)
+         (output-head head)
+         (display body)))))
 
-(define (http:respond status head body)
-  (let-list ((status1 head1 body1) (current-response))
-    (set-fluid!
-     current-response
-     (list (or status status1)
-           (or (and head (extend head1 head)) head1)
-           (or (and body (extend body1 body)) body1)))))
 
-(define (noop) noop)
+;; (define (noop) noop)
 
-(define null-response (list stat noop))
-
-(define (output-status status version)
-  (disp status " " version)
-  (crlf))
+;; (define null-response (list stat noop))
 
 (define (output-head head)
   (for-each-pair (lambda (key val)
-                   (disp (->string key)
-                         ": "
-                         (->string val))
-                   (crlf))
-                 head))
+                   (disp key ": " val #\return #\newline))
+                 head)
+  (crlf))
+
+(assert
+ (with-string-ports
+  "" (output-head '((host . coptix.com) (content-length . 456)))) =>
+  "host: coptix.com\r\ncontent-length: 456\r\n\r\n")
 
 (define (body->byte-vector body)
   (with-byte-output-port
-   (output (force body))))
+   (output body)))
 
-(define merge-headers update-force-alist)
+(define merge-headers update-alist)
 
 (define headers list)
 
 (define (content-length body)
-  (let ((size (size-in-bytes (force body))))
-    `(content-length . ,size)))
+  `(content-length . ,(byte-vector-length body)))
 
 ;;;;
 (define (consume-http-input in)

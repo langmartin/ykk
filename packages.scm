@@ -178,7 +178,7 @@
   (files zipper/logging-cons))
 
 ;;;; http
-(define-structure http
+(define-interface http-interface
   (export
    http:respond
    http:start-server
@@ -186,14 +186,18 @@
    http:post
    http:put
    http:delete
-   current-response
-   )
-  
+   ))
+
+(define-structure http http-interface
   (open scheme signals
         fluids
         extended-ports
+        i/o-internal
+        sockets
+        define-record-types
+        byte-vectors
         threads
-        util
-        gambit-compat)
-  
+        util gambit-compat
+        mime
+        )
   (files http-server))
