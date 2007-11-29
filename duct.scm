@@ -98,3 +98,21 @@
       (if (eof-object? datum)
           '()
           (cons datum (lp))))))
+
+(define (duct-display duct . port)
+  (let ((datum (duct-read duct)))
+    (or (eof-object? datum)
+        (begin
+          (apply
+           display datum port)
+          (apply
+           duct-display duct port)))))
+
+(define (duct->string duct)
+  (call-with-string-output-port
+   (lambda (port)
+     (duct-display duct port))))
+
+(assert
+ (duct->string
+  (port->duct (make-string-input-port "test"))) => "116101115116")

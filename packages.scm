@@ -55,6 +55,9 @@
     (while :syntax)
     (until :syntax)
     (case-equal :syntax)
+    ;; from mime
+    make-not
+    intersperse
     ;; better covered by srfi-78 (check and check-ec)
     (assert :syntax))))
 
@@ -100,6 +103,8 @@
    duct-read
    duct-write
    duct-close
+   duct-display
+   duct->string
    ))
 
 (define-structure duct duct-interface
@@ -143,7 +148,7 @@
    cons-header
    filter-headers
    content-type->header
-   split-header
+   split-headers
    ))
 
 (define-structure mime mime-interface

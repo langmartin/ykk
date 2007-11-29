@@ -1,9 +1,27 @@
-;;;; compatibilty
+;;;; Utility
+(define (read-crlf-line port)
+  (call-with-string-output-port
+   (lambda (output-port)
+     (next-chunk-display '(#\return) port output-port)
+     (read-char port)
+     (if (char=? #\newline (peek-char port))
+         (read-char port)
+         (begin
+           (display #\return output-port)
+           (display (read-crlf-line port) output-port))))))
+
+(define (call-with-string-current-output-port thunk)
+  (call-with-string-output-port
+   (lambda (port)
+     (call-with-current-output-port
+      port
+      thunk))))
+
+;;;; Compatibility
 (define (next-token-of pred port)
-  (let* ((pred (string-or-chars->predicate pred))
-         (pred (lambda (c)
-                 (not (pred c)))))
-    (next-chunk pred port)))
+  (next-chunk
+   (make-not (string-or-chars->predicate pred))
+   port))
 
 (define (parser-error port message . text)
   (apply error "parser: " port " " message " " text))
@@ -84,7 +102,7 @@
 (assert
  (w/s "test string." (next-token '(#\t #\e) '(#\n) "comment")) => "st stri")
 
-;;;; the Oleg code
+;;;; Oleg's Code
 ;	Handling of MIME Entities and their parts
 ;
 ; According to RFC 2045, "Multipurpose Internet Mail Extensions (MIME)
@@ -247,8 +265,8 @@
       (lambda (http-port)
 	(read-new-header http-port '()))
       ))
-
-;;;; Assertions for the big functions
+
+;;;; Assertions for Oleg's code
 (assert
  (call-with-input-string
   "Host: header
@@ -264,7 +282,7 @@ body"
  (MIME:parse-content-type "text/html; charset=foo; encoding=bar") =>
  '((encoding . "bar") (charset . "foo") (=mime-type . "text/html")))
 
-;;;; Iteration, read and decode properly
+;;;; Data Definitions
 (define (e-unimplemented . args)
   (apply error "mime unimplemented" args))
 
@@ -273,7 +291,7 @@ body"
   mime?
   (head mime-headers)
   (content-type mime-content-type)
-  (port mime-port)
+  (Port mime-port)
   (duct mime-duct)
   (body mime-body mime-set-body!))
 
@@ -299,16 +317,27 @@ body"
 
 (define cons-header cons)
 
+(define (semi-colon-separate . lst)
+  (for-each display
+            (intersperse "; " lst)))
+
+(define (header->string pair)
+  (concat (car pair)
+          ": "
+          (cdr pair)))
+
 (define (content-type->header ct)
+  (define mimetype cdar)
   (call-with-values
-      (split-headers '(=mime-type)
-                     ct)
+      (split-headers '(=mime-type) ct)
     (lambda (mt rest)
       (cons 'content-type
-            (concat
-             (cdar mt)
-             "; "
-             (header->string rest))))))
+            (call-with-string-current-output-port
+             (lambda ()
+               (apply
+                semi-colon-separate
+                (mimetype mt)
+                (map header->string rest))))))))
 
 (define (split-headers tags headers)
   (values (map (lambda (tag)
@@ -316,7 +345,8 @@ body"
                      (cons tag #f)))
                tags)
           (filter-headers tags headers)))
-
+
+;;;; Interface
 (define (next-part port)
   (call-with-values
       (lambda () (headers port))
@@ -345,7 +375,7 @@ body"
       '()
       (let ((next (next-part port)))
         (mime-set-body! next
-                        (duct-read-all
+                        (duct->string
                          (mime-duct next)))
         (cons next
               (mime-read-all port)))))
@@ -402,28 +432,8 @@ body"
           (("application/x-form-urlencoded")
            ((d/urlencode) duct))))
       duct))
-
-;;;; Utilities
-(define (read-crlf-line port)
-  (call-with-string-output-port
-   (lambda (output-port)
-     (next-chunk-display '(#\return) port output-port)
-     (read-char port)
-     (if (char=? #\newline (peek-char port))
-         (read-char port)
-         (begin
-           (display #\return output-port)
-           (display (read-crlf-line port) output-port))))))
 
-(define (read-section duct)
-  (call-with-string-output-port
-   (lambda (acc)
-     (let lp ()
-       (let ((ch (duct-read duct)))
-         (if (not (eof-object? ch))
-             (begin
-               (display ch acc)
-               (lp))))))))
+(define read-section duct->string)
 
 (define *sample-message*
   "Host: coptix.com\r
@@ -434,7 +444,6 @@ aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
 ")
 
 (assert
- (list->string
-  (mime-body
-   (car (mime-read-all (make-string-input-port *sample-message*)))))
+ (mime-body
+  (car (mime-read-all (make-string-input-port *sample-message*))))
  => "hello there, foobar")

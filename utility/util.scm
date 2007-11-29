@@ -154,9 +154,8 @@
   (assert
    (next-chunk "%+" (mp "hello%20there")) => "hello"
    (next-chunk " " (mp "foo bar") #t) => "foo "
-   (next-chunk " " (mp "foobar")) => "foobar"))
-
-(next-chunk "q" (make-string-input-port ""))
+   (next-chunk " " (mp "foobar")) => "foobar"
+   (next-chunk "q" (mp "")) => ""))
 
 (define (not-eof-object? obj)
   (not (eof-object? obj)))
@@ -327,14 +326,14 @@
 
 (define-syntax while
   (syntax-rules ()
-    ((while test? expr)
+    ((_ test? expr)
      (call-while test?
                  (lambda ()
                    expr)))))
 
 (define-syntax until
   (syntax-rules ()
-    ((while test? expr)
+    ((_ test? expr)
      (call-while (lambda (x)
                    (not (test? x)))
                  (lambda ()
@@ -350,3 +349,17 @@
     ((_ key clause1 clause2 ...)
      (or (case-equal key clause1)
          (case-equal key clause2 ...)))))
+
+(define (make-not proc)
+  (lambda x (not (apply proc x))))
+
+(define (intersperse obj lst)
+  (cons (car lst)
+        (fold-right (lambda (x acc)
+                      (cons obj
+                            (cons x
+                                  acc)))
+                    '()
+                    (cdr lst))))
+
+(assert (intersperse #\a '(1 2 3)) => '(1 #\a 2 #\a 3))
