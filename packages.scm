@@ -185,12 +185,10 @@
 ;;;; http
 (define-interface http-interface
   (export
-   http:respond
-   http:start-server
-   http:get
-   http:post
-   http:put
-   http:delete
+   http-start-server
+   http-client
+   call-with-http-reply
+   proxy-handler
    ))
 
 (define-structure http http-interface

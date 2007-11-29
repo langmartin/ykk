@@ -1,3 +1,4 @@
+;;;; Utility
 (define (string-split string . pred+max)
   (let-optionals* pred+max ((pred whitespace?)
                             (max #f))
@@ -46,7 +47,8 @@
   (syntax-rules ()
     ((_ port body ...)
      (call-with-current-output-port
-      port (lambda () body ...)))))
+      port
+      (lambda () body ...)))))
 
 (define (extend this by)
   (lambda ()
@@ -64,7 +66,7 @@
          (append port
                  '(#\return #\newline))))
 
-;;;; server
+;;;; Server
 (define (server-close-object) server-close-object)
 (define (server-close-object? obj) (eq? obj server-close-object))
 
@@ -140,17 +142,22 @@
 (define (content-length body)
   `(content-length . ,(byte-vector-length body)))
 
-;;;;
-(define (consume-http-input in)
-  (call-with-values
-      (read-http-version in)
-    (lambda (version method path)
-      (let ((mime (read-mime-headers in)))
-        (make-http-request
-         version
-         method
-         (http-path-parse path)
-         (mime-header "host" mime)
-         (http-extract-query (mime-header "content-type" mime)))))))
+;;;; Proxy
+(define (passthrough port)
+  (let ((input (mime-read-all port)))
+    (values status
+            (cons-header (content-type->header
+                          (mime-content-type input))
+                         (filter-headers '(content-length transfer-encoding)
+                                         (mime-headers (car input))))
+            (mime-body input))))
 
-
+(define (proxy-handler port method path)
+  (let ((page (http-get method path port)))
+    (call-with-http-reply
+     (lambda (version code text)
+       (let ((headers (MIME:read-headers page)))
+         (values
+          (code text)
+          headers
+          (passthrough page)))))))
