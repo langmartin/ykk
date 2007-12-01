@@ -92,45 +92,6 @@
                  (lp next)))))) => "foobar")
 
 ;;;; urlencode
-(define (return x) x)
-
-(define (hex . chars)
-  (read
-   (make-string-input-port
-    (list->string
-     (cons #\#
-           (cons #\x
-                 chars))))))
-
-(define (urldecode producer)
-  (let ((buffer #f))
-    (define (push ch return)
-      (set! buffer ch)
-      return)
-    (define (pop)
-      (if (not buffer)
-          #f
-          (let ((ch buffer))
-            (set! buffer #f)
-            ch)))
-    (define (read1)
-      (let ((ch (producer)))
-        (and (not (eof-object? ch)) ch)))
-    (define (found-esc esc)
-      (let* ((one (read1)) (two (read1)))
-        (if (not one)
-            esc
-            (if (not two)
-                (push one esc)
-                (hex one two)))))
-    (cond ((pop) => return)
-          (else
-           (let ((ch (producer)))
-             (or (and (eof-object? ch) ch)
-                 (case ch
-                   ((#\+) #\space)
-                   ((#\%) (found-esc ch))
-                   (else ch))))))))
 
 ;;;; definitions
 (define (d/leave-open)

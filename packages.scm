@@ -147,8 +147,8 @@
   (open scheme signals
         byte-vectors bitwise ascii unicode
         text-codecs
-        util
-        io-util
+        util io-util
+        url
         duct)
   (files ducts))
 
