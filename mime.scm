@@ -1,15 +1,4 @@
 ;;;; Utility
-(define (read-crlf-line port)
-  (call-with-string-output-port
-   (lambda (output-port)
-     (next-chunk-display '(#\return) port output-port)
-     (read-char port)
-     (if (char=? #\newline (peek-char port))
-         (read-char port)
-         (begin
-           (display #\return output-port)
-           (display (read-crlf-line port) output-port))))))
-
 (define (call-with-string-current-output-port thunk)
   (call-with-string-output-port
    (lambda (port)
