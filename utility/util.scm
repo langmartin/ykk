@@ -192,6 +192,15 @@
   '((a . 1) (b . 2) (c . 3)) '((b . 42) (d . 3))) =>
   '((a . 1) (c . 3) (b . 42) (d . 3)))
 
+(define (fold-two proc nil lst)
+  (let lp ((lst lst) (acc nil))
+    (if (null? lst)
+        acc
+        (lp (cddr lst)
+            (proc (car lst)
+                  (cadr lst)
+                  acc)))))
+
 (define (call-while test? thunk)
   (let lp ()
     (if (test? (thunk))
