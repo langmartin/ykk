@@ -4,7 +4,7 @@
   (open scheme primitives reading extended-ports)
   (files utility/octothorpe-extensions))
 
-;;;; smallish set of core utils that I keep wanting
+;;;; Core Utilites
 (define-interface util-interface
   (compound-interface
    srfi-78-interface
@@ -17,76 +17,90 @@
     (let-optionals* :syntax)
     (let-optionals :syntax)
     (call/datum-rest :syntax)
-    (call/port-rest :syntax)
-    string/port->port
     ;; general syntax
     wind-fluid
     (unless :syntax)
     (when :syntax)
-    ;; utils
+    (begin1 :syntax)
+    make-not
+    call-while
+    (while :syntax)
+    (until :syntax)
+    (case-equal :syntax)
+    ;; lists
+    map*
+    depth-first
+    intersperse
+    list->alist
+    find-first
+    update-alist
+    update-force-alist
+    ;; assertion
+    concat-for-each
+    concat
+    concat-write
+    (assert :syntax))))
+
+(define-structure util util-interface
+  (open scheme signals
+        srfi-1 srfi-2 srfi-78
+        extended-ports
+        i/o-internal)
+  (files utility/util))
+
+;;;; Core I/O Utilities
+(define-interface io-util-interface
+  (compound-interface
+   extended-ports-interface
+   i/o-interface
+   i/o-internal-interface
+   (export
+    (call/port-rest :syntax)
+    string/port->port
     port?
+    call-with-string-ports
+    (with-string-ports :syntax)
+    close-port
+
+    ;; parsing
     next-chunk-display
     next-chunk
     not-eof-object?
     port-slurp
     string-or-chars->predicate
     crlf?
+    read-crlf-line
+    string-split
+    whitespace?
+    consume-chars
+
+    ;; output
     disp-for-each
     disp
     writ
     output-for-each
     output
-    concat-for-each
-    concat
-    concat-write
-    ;; zipper
-    map*
-    depth-first
-    ;; duct-work
-    call-with-string-ports
-    (with-string-ports :syntax)
-    (begin1 :syntax)
-    list->alist
-    find-first
-    update-alist
-    update-force-alist
-    close-port
-    call-while
-    (while :syntax)
-    (until :syntax)
-    (case-equal :syntax)
-    ;; from mime
-    make-not
-    intersperse
-    ;; better covered by srfi-78 (check and check-ec)
-    (assert :syntax))))
 
-(define-structure util util-interface
-  (open scheme signals extended-ports i/o-internal
-        srfi-1 srfi-2 srfi-78)
-  (files utility/util))
+    ;; gambit like
+    read-line
+    read-all
+    with-output-to-string
+    call-with-output-string
+    with-input-from-string
+    call-with-input-string
+    )))
+
+(define-structure io-util io-util-interface
+  (open scheme signals
+        i/o i/o-internal extended-ports
+        util)
+  (files utility/io-util))
 
 ;;;; UUID gen
 (define-structure uuid
   (export uuidgen)
   (open scheme srfi-27 bitwise)
   (files uuid))
-
-;;;; gambit built-in work alikes
-(define-interface gambit-compat-interface
-  (export
-   read-line
-   read-all
-   with-output-to-string
-   call-with-output-string
-   with-input-from-string
-   call-with-input-string
-   ))
-
-(define-structure gambit-compat gambit-compat-interface
-  (open scheme i/o-internal extended-ports
-        util)
-  (files utility/gambit-compat))
 
 ;;;; I/O to support http
 (define-interface duct-interface
@@ -108,15 +122,14 @@
    ))
 
 (define-structure duct duct-interface
-  (open scheme signals
-        define-record-types
-        ports extended-ports
+  (open scheme signals define-record-types
         ascii
         text-codecs
-        i/o i/o-internal
         byte-vectors
         proposals
-        util)
+        ports
+        util
+        io-util)
   (files duct))
 
 (define-interface ducts-interface
@@ -132,17 +145,20 @@
 
 (define-structure ducts ducts-interface
   (open scheme signals
-        i/o i/o-internal extended-ports
         byte-vectors bitwise ascii unicode
         text-codecs
         util
+        io-util
         duct)
   (files ducts))
 
 (define-interface mime-interface
   (export
-   MIME:parse-content-type
-   MIME:read-headers
+   ;; record-type
+   mime-content-type
+   mime-headers
+   mime-body
+   ;; procs
    mime-read-all
    mime-stream
    cons-header
@@ -152,14 +168,35 @@
    ))
 
 (define-structure mime mime-interface
-  (open scheme signals
-        reading i/o-internal extended-ports define-record-types
-        unicode-char-maps text-codecs i/o byte-vectors
+  (open scheme signals define-record-types
+        reading
+        unicode-char-maps text-codecs byte-vectors
         srfi-1 srfi-13
         posix
-        util gambit-compat
+        util io-util
         ducts)
   (files mime))
+
+(define-interface url-interface
+  (export
+   make-url
+   url?
+   url-protocol
+   url-host
+   url-port
+   url-path
+   url-parameters
+   parse-url
+   urldecode
+   urlencode
+   ))
+
+(define-structure url url-interface
+  (open scheme
+        define-record-types
+        srfi-13
+        util io-util
+        ))
 
 ;;;; logging cons
 (define-interface logging-cons-interface
@@ -200,7 +237,7 @@
         define-record-types
         byte-vectors
         threads
-        util gambit-compat
-        mime
+        util io-util
+        url
         )
   (files http-server))

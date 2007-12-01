@@ -62,16 +62,6 @@
          (receiver (car rest) (cdr rest))
          (receiver default rest)))))
 
-(define-syntax call/port-rest
-  (syntax-rules ()
-    ((_ rest default receiver)
-     (call/datum-rest rest port? default receiver))))
-
-(define (string/port->port obj)
-  (if (port? obj)
-      obj
-      (make-string-input-port obj)))
-
 (define (wind-fluid getter setter value thunk)
   (let ((previous (getter)))
     (dynamic-wind
@@ -93,7 +83,23 @@
     ((_ test body ...)
      (unless (not test)
              body ...))))
+
+;;;; some IO stuff I need in here too
+(define (concat-for-each writer things)
+  (call-with-string-output-port
+   (lambda (port)
+     (call-with-current-output-port
+      port
+      (lambda ()
+        (for-each writer things))))))
 
+(define (concat . things)
+  (concat-for-each display things))
+
+(define (concat-write . things)
+  (concat-for-each write things))
+
+;;;; my SRFI-2
 #;
 (define-syntax and-let*
   (syntax-rules ()
@@ -109,113 +115,6 @@
                (and-let* (claw2 ...)
                          body ...)))))
 
-
-;;;; String & port things
-(define (port? obj)
-  (or (input-port? obj)
-      (output-port? obj)))
-
-(define (string-or-chars->predicate obj)
-   (cond ((PROCEDURE? obj)
-          obj)
-         ((LIST? obj)
-          (lambda (c)
-            (memq c obj)))
-         ((STRING? obj)
-          (string-or-chars->predicate
-           (string->list obj)))
-         ((CHAR? obj)
-          (lambda (c)
-            (char=? c obj)))
-         (ELSE
-          error "can't use " obj)))
-
-(define (next-chunk-display delims/proc port output-port . rest)
-  (let-optionals* rest ((keep-delimiter #f))
-    (let* ((proc (string-or-chars->predicate delims/proc)))
-      (let lp ()
-        (let ((current (peek-char port)))
-          (or (eof-object? current)
-              (if (proc current)
-                  (if keep-delimiter
-                      (display (read-char port) output-port))
-                  (begin
-                    (display (read-char port) output-port)
-                    (lp)))))))))
-
-(define (next-chunk delims/proc . rest)
-  (let-optionals* rest ((port (current-input-port))
-                        (keep-delimiter #f))
-    (call-with-string-output-port
-     (lambda (output-port)
-       (next-chunk-display delims/proc port output-port keep-delimiter)))))
-
-(let ((mp make-string-input-port))
-  (assert
-   (next-chunk "%+" (mp "hello%20there")) => "hello"
-   (next-chunk " " (mp "foo bar") #t) => "foo "
-   (next-chunk " " (mp "foobar")) => "foobar"
-   (next-chunk "q" (mp "")) => ""))
-
-(define (not-eof-object? obj)
-  (not (eof-object? obj)))
-
-(define (port-slurp port)
-  (next-chunk not-eof-object?
-              port))
-
-
-;;;; This is all the lazy output stuff from the io-out days
-(define (disp-for-each writer rest)
-  (call/port-rest rest (current-output-port)
-    (lambda (port rest)
-      (for-each (lambda (x)
-                  (writer x port))
-                rest))))
-
-(define (disp . rest)
-  (disp-for-each display rest))
-
-(define (writ . rest)
-  (disp-for-each write rest))
-
-(define (flattening-output writer lst)
-  (for-each (lambda (x)
-              (if (pair? x)
-                  (flattening-output writer x)
-                  (if (procedure? x)
-                      (x)
-                      (writer x))))))
-
-(define (output-for-each writer rest)
-  (call/port-rest rest (current-output-port)
-    (lambda (port rest)
-      (call-with-current-output-port
-       port
-       (lambda ()
-         (flattening-output writer rest))))))
-
-(define (output . rest)
-  (output-for-each display rest))
-
-(define (crlf? port)
-  (define (look ch)
-    (and (char-ready? port)
-         (char=? ch (peek-char port))
-         (read-char port)))
-  (and (look #\return)
-       (look #\newline)))
-
-(define (concat-for-each writer things)
-  (call-with-string-output-port
-   (lambda (port)
-     (apply writer port things))))
-
-(define (concat . things)
-  (concat-for-each disp things))
-
-(define (concat-write . things)
-  (concat-for-each writ things))
 
 ;;;; The fancy iterators from Oleg's zipper
 (define (map* proc lst)
@@ -242,27 +141,6 @@
                mapped)))))
 
 
-;;;; bits that came up doing ducts. alists, bits for testing
-(define (call-with-string-ports input-string thunk)
-  (call-with-string-output-port
-   (lambda (output)
-     (call-with-current-output-port
-      output
-      (lambda ()
-        ((lambda (input)
-           (call-with-current-input-port
-            input
-            thunk))
-         (make-string-input-port
-          input-string)))))))
-
-(define-syntax with-string-ports
-  (syntax-rules ()
-    ((_ input body ...)
-     (call-with-string-ports
-      input
-      (lambda ()
-        body ...)))))
 
 (define-syntax begin1
   (syntax-rules ()
@@ -313,10 +191,6 @@
  (update-force-alist
   '((a . 1) (b . 2) (c . 3)) '((b . 42) (d . 3))) =>
   '((a . 1) (c . 3) (b . 42) (d . 3)))
-
-(define (close-port port)
-  (and (input-port? port) (close-input-port port))
-  (and (output-port? port) (close-output-port port)))
 
 (define (call-while test? thunk)
   (let lp ()
