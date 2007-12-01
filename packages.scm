@@ -188,7 +188,7 @@
    url-parameters
    parse-url
    urldecode
-   urlencode
+   urldecode-string
    ))
 
 (define-structure url url-interface
@@ -196,7 +196,8 @@
         define-record-types
         srfi-13
         util io-util
-        ))
+        )
+  (files url))
 
 ;;;; logging cons
 (define-interface logging-cons-interface
