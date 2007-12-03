@@ -187,6 +187,7 @@
    url-path
    url-parameters
    parse-url
+   url=?
    urldecode
    urldecode-string
    ))
@@ -194,6 +195,7 @@
 (define-structure url url-interface
   (open scheme
         define-record-types
+        srfi-1
         srfi-13
         util io-util
         )

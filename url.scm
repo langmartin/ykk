@@ -1,12 +1,13 @@
 (define (return x) x)
 
 (define (hex . chars)
-  (read
-   (make-string-input-port
-    (list->string
-     (cons #\#
-           (cons #\x
-                 chars))))))
+  (ascii->char
+   (read
+    (make-string-input-port
+     (list->string
+      (cons #\#
+            (cons #\x
+                  chars)))))))
 
 (define (urldecode producer)
   (let ((buffer #f))
@@ -39,6 +40,16 @@
                      ((#\%) (found-esc ch))
                      (else ch)))))))))
 
+(define (urldecode-string string)
+  (with-string-ports
+   string
+   (let ((proc (urldecode read-char)))
+     (let lp ()
+       (if (not (eof-object? (peek-char)))
+           (begin
+             (display (proc))
+             (lp)))))))
+
 (define-record-type url rtd/url
   (make-url proto host port path parameters)
   url?
@@ -47,6 +58,14 @@
   (port url-port)
   (path url-path)
   (parameters url-parameters))
+
+(define-record-discloser rtd/url
+  (lambda (url)
+    `(url ,(url-protocol url)
+          ,(url-host url)
+          ,(url-port url)
+          ,(url-path url)
+          ,(url-parameters url))))
 
 (define (parse-url-port param-proc nil port)
   (call-with-current-input-port
@@ -62,11 +81,12 @@
                      (default-port protocol)))
            (path (next-chunk "?"))
            (parameters (maybe-parameters param-proc nil)))
-      (list protocol
-            host
-            port
-            path
-            parameters)))))
+      (make-url
+       protocol
+       host
+       port
+       path
+       parameters)))))
 
 (define (parse-url-string param-proc nil url-string)
   (parse-url-port param-proc nil (make-string-input-port url-string)))
@@ -102,14 +122,14 @@
         nil
         (begin
           (read-char)
-          (url-parameters param-proc
+          (url-foldr-parameters param-proc
                           nil
                           (current-input-port))))))
 
 (define (empty-string? string)
   (string=? "" string))
 
-(define (url-parameters param-proc nil port)
+(define (url-foldr-parameters param-proc nil port)
   (let ((key (urldecode-string
               (next-chunk "=" port))))
     (read-char)
@@ -118,20 +138,28 @@
         (let ((val (urldecode-string (next-chunk "&;" port))))
           (read-char)
           (param-proc key val
-                      (url-parameters param-proc nil port))))))
+                      (url-foldr-parameters param-proc nil port))))))
 
-(define (urldecode-string string)
-  (with-string-ports
-   string
-   (let ((proc (urldecode read-char)))
-     (let lp ()
-       (if (not (eof-object? (peek-char)))
-           (begin
-             (display (proc))
-             (lp)))))))
+(define (two-ary-url=? url1 url0)
+  (if (and (and (url? url0) (url? url1))
+           (eq? (url-protocol url0) (url-protocol url1))
+           (equal? (url-host url0) (url-host url1))
+           (eq? (url-port url0) (url-port url1))
+           (equal? (url-path url0) (url-path url1))
+           (equal? (url-parameters url0) (url-parameters url1)))
+      url0
+      #f))
+
+(define (url=? . urls)
+  (url?
+   (fold two-ary-url=?
+         (car urls)
+         (cdr urls))))
 
 (assert
- (parse-url "http://coptix.com/foo/page.php")
- => '(http "coptix.com" 80 "/foo/page.php" ())
- (parse-url "http://coptix.com:81/foo/page.php?foo=bar+baz")
- => '(http "coptix.com" 81 "/foo/page.php" (("foo" . "bar baz"))))
+ (url=? (parse-url "http://coptix.com/foo/page.php")
+        (make-url 'http "coptix.com" 80 "/foo/page.php" '())))
+
+(assert
+ (url=? (parse-url "http://coptix.com:81/foo/page.php?foo=bar%20baz")
+        (make-url 'http "coptix.com" 81 "/foo/page.php" '(("foo" . "bar baz")))))
