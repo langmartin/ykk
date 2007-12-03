@@ -113,10 +113,10 @@
    duct-get-property
    duct-get-this-property
    duct-set-property!
-   duct-read-all
    duct-read
    duct-write
    duct-close
+   duct-foldr
    duct-display
    duct->string
    ))

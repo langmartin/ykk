@@ -99,6 +99,13 @@
           '()
           (cons datum (lp))))))
 
+(define (duct-foldr proc nil duct)
+  (let lp ()
+    (let ((datum (duct-read duct)))
+      (if (eof-object? datum)
+          nil
+          (proc datum (lp))))))
+
 (define (duct-display duct . port)
   (let ((datum (duct-read duct)))
     (or (eof-object? datum)
