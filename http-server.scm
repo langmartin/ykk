@@ -1,38 +1,4 @@
 ;;;; Utility
-(define (string-split string . pred+max)
-  (let-optionals* pred+max ((pred whitespace?)
-                            (max #f))
-    (let ((proc (string-or-chars->predicate pred)))
-      (with-input-from-string
-          string
-        (lambda ()
-          (let lp ((max (or max -1)))
-            (if (or (eof-object? (peek-char)) (= max 0))
-                '()
-                (let ((section (next-chunk proc)))
-                  (consume-chars proc)
-                  (cons section
-                        (lp (- max 1)))))))))))
-
-(define (whitespace? ch)
-  (or (char=? ch #\space)
-      (and (char>=? ch #\tab)
-           (char<=? ch #\return))))
-
-(define (consume-chars pred . port)
-  (let-optionals* port ((port (current-input-port)))
-    (let ((current (peek-char port)))
-      (or (eof-object? current)
-          (and (pred current)
-               (begin
-                 (read-char)
-                 (consume-chars pred port)))))))
-
-(assert
- (string-split "foo   bar" whitespace? 3) => '("foo" "bar")
- (string-split "foo bar" whitespace? 1) => '("foo")
- (string-split "foo   bar") => '("foo" "bar"))
-
 (define-syntax let-list
   (syntax-rules ()
     ((_ (bindings expr) body ...)
@@ -42,13 +8,6 @@
   (syntax-rules ()
     ((_ body ...)
      (lambda () body ...))))
-
-(define-syntax with-current-output-port
-  (syntax-rules ()
-    ((_ port body ...)
-     (call-with-current-output-port
-      port
-      (lambda () body ...)))))
 
 (define (extend this by)
   (lambda ()
@@ -99,30 +58,45 @@
                            head
                            body))))))
 
+(define (http-client method url)
+  (let* ((url (if (url? url)
+                  url
+                  (parse-url url)))
+         (port (socket-client (url-host url)
+                              (url-port url))))
+    (for-each (lambda (x)
+                (display x port))
+              (list method
+                    " "
+                    (url-path url)
+                    "?"
+                    (url-parameter-string url)))
+    (crlf port)
+    port))
+
 (define (output-response output-port version status header body)
   (if (or #t (string-ci=? version "HTTP/1.0")) ; no difference for now
       (let* ((body (body->byte-vector body))
-             (head 
+             (head
               (merge-headers
                (headers
                 (content-length body)
                 '(connection . close))
-               (header))))
-        (with-current-output-port
-         output-port
-         (output version " " status)
-         (crlf)
-         (output-head head)
-         (display body)))))
-
-
-;; (define (noop) noop)
-
-;; (define null-response (list stat noop))
+               header)))
+        (let-current-output-port
+            output-port
+          (output version " " status)
+          (crlf)
+          (output-head head)
+          (display body)))))
 
 (define (output-head head)
   (for-each-pair (lambda (key val)
-                   (disp key ": " val #\return #\newline))
+                   (disp key ": ")
+                   (if (procedure? val)
+                       (val)
+                       (display val))
+                   (crlf))
                  head)
   (crlf))
 
@@ -141,23 +115,47 @@
 
 (define (content-length body)
   `(content-length . ,(byte-vector-length body)))
+
+(define (call/http-version port proc/3)
+  (apply proc/3
+         (string-split
+          (read-crlf-line port))))
+
+(define (http-status code text)
+  (concat code " " text))
 
 ;;;; Proxy
-(define (passthrough port)
-  (let ((input (mime-read-all port)))
-    (values status
-            (cons-header (content-type->header
-                          (mime-content-type input))
-                         (filter-headers '(content-length transfer-encoding)
-                                         (mime-headers (car input))))
-            (mime-body input))))
+(define (fcar lst)
+  (car (force lst)))
 
 (define (proxy-handler port method path)
-  (let ((page (http-get method path port)))
-    (call-with-http-reply
+  (let ((port (http-client method path)))
+    (call/http-version
+     port
      (lambda (version code text)
-       (let ((headers (MIME:read-headers page)))
+       (let* ((mime (fcar (mime-stream port)))
+              (duct (make-bytelen-duct (mime-headers mime)
+                                       (mime-port mime))))
          (values
-          (code text)
+          (http-status code text)
           headers
-          (passthrough page)))))))
+          (lambda ()
+            (duct-for-each display #f duct))))))))
+
+(define *request* "Host: foo.com\r
+Content-type: text/plain\r
+content-length: 34\r
+\r
+dddddddddddddddddddddddddddddddd\r\n")
+
+(let-string-ports
+    *request*
+ (call-with-values
+     (proxy-handler (current-input-port) "GET" "/foo/bar")
+   (lambda (status headers body)
+     (output-response
+      (current-output-port)
+      "HTTP/1.1"
+      status
+      header
+      body))))

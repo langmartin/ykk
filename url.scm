@@ -41,14 +41,14 @@
                      (else ch)))))))))
 
 (define (urldecode-string string)
-  (with-string-ports
-   string
-   (let ((proc (urldecode read-char)))
-     (let lp ()
-       (if (not (eof-object? (peek-char)))
-           (begin
-             (display (proc))
-             (lp)))))))
+  (let-string-ports
+      string
+    (let ((proc (urldecode read-char)))
+      (let lp ()
+        (if (not (eof-object? (peek-char)))
+            (begin
+              (display (proc))
+              (lp)))))))
 
 (define-record-type url rtd/url
   (make-url proto host port path parameters)
@@ -67,10 +67,9 @@
           ,(url-path url)
           ,(url-parameters url))))
 
-(define (parse-url-port param-proc nil port)
-  (call-with-current-input-port
-   port
-   (lambda ()
+(define (parse-url-port param-proc nil . port)
+  (let-maybe-current-input-port
+      port
     (let* ((pred (string-or-chars->predicate "://"))
            (protocol (string->symbol
                       (string-downcase
@@ -86,7 +85,7 @@
        host
        port
        path
-       parameters)))))
+       parameters))))
 
 (define (parse-url-string param-proc nil url-string)
   (parse-url-port param-proc nil (make-string-input-port url-string)))
@@ -122,23 +121,25 @@
         nil
         (begin
           (read-char)
-          (url-foldr-parameters param-proc
-                          nil
-                          (current-input-port))))))
+          (url-foldr-parameters param-proc nil)))))
 
 (define (empty-string? string)
   (string=? "" string))
 
-(define (url-foldr-parameters param-proc nil port)
-  (let ((key (urldecode-string
-              (next-chunk "=" port))))
-    (read-char)
-    (if (empty-string? key)
-        nil
-        (let ((val (urldecode-string (next-chunk "&;" port))))
-          (read-char)
-          (param-proc key val
-                      (url-foldr-parameters param-proc nil port))))))
+(define (url-foldr-parameters-lp param-proc nil)
+  (let ((lp (lambda () (url-foldr-parameters-lp param-proc nil)))
+        (key (urldecode-string (next-chunk "="))))
+      (read-char)
+      (if (empty-string? key)
+          nil
+          (let ((val (urldecode-string (next-chunk "&;"))))
+            (read-char)
+            (param-proc key val (lp))))))
+
+(define (url-foldr-parameters proc nil . port)
+  (let-maybe-current-input-port
+      port
+    (url-foldr-parameters-lp proc nil)))
 
 (define (two-ary-url=? url1 url0)
   (if (and (and (url? url0) (url? url1))

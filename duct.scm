@@ -21,6 +21,7 @@
 
 (define (port-duct-default-attr port)
   `((reader . ,(lambda () (read-byte port)))
+    (peeker . ,(lambda () (peek-byte port)))
     (writer . ,(lambda (b) (write-byte b port)))
     (closer . ,(lambda () (close-port port)))
     (name . "port/fundamental")))
@@ -56,6 +57,12 @@
 (define (duct-read duct)
   ((read-proc duct)))
 
+(define (peek-proc duct)
+  (duct-get-property duct 'peeker))
+
+(define (duct-peek duct)
+  ((peek-proc duct)))
+
 (define (write-proc duct)
   (duct-get-property duct 'writer))
 
@@ -75,6 +82,7 @@
                    (list (cons 'tag val)
                          ...)))))
 
+#;
 (define (duct->input-port duct)
   (make-buffered-input-port
    (make-buffered-input-port-handler
@@ -106,20 +114,42 @@
           nil
           (proc datum (lp))))))
 
-(define (duct-display duct . port)
+(define (duct-for-each proc duct)
   (let ((datum (duct-read duct)))
     (or (eof-object? datum)
         (begin
-          (apply
-           display datum port)
-          (apply
-           duct-display duct port)))))
+          (proc datum)
+          (duct-for-each proc duct)))))
 
 (define (duct->string duct)
-  (call-with-string-output-port
-   (lambda (port)
-     (duct-display duct port))))
+  (with-string-output-port
+   (lambda ()
+     (duct-for-each display duct))))
 
 (assert
  (duct->string
   (port->duct (make-string-input-port "test"))) => "116101115116")
+
+;;; this should use duct-peek, and work symetrically to next-chunk
+(define (duct-next-chunk-for-each pred? display duct keep-delimiter)
+  (next-chunk-primitive
+   (lambda () (duct-peek duct))
+   (lambda () (duct-read duct))
+   pred?
+   display
+   keep-delimiter))
+
+(define (duct-next-chunk delims/proc duct . keep-delimiter)
+  (let-optionals* keep-delimiter ((keep-delimiter #f))
+    (let-string-output-port
+     (duct-next-chunk-for-each
+      (string-or-chars->predicate delims/proc)
+      display
+      duct
+      keep-delimiter))))
+
+(define (match ch) (= ch 115))
+
+(assert
+ (duct-next-chunk match (port->duct (make-string-input-port "test")))
+ => "116101")

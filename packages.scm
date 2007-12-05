@@ -55,15 +55,31 @@
    i/o-interface
    i/o-internal-interface
    (export
+    ;; ports
     (call/port-rest :syntax)
     string/port->port
     port?
-    call-with-string-ports
-    (with-string-ports :syntax)
     close-port
+    call-with-current-output-port
+    with-current-output-port
+    (let-current-output-port :syntax)
+    with-current-input-port
+    (let-current-input-port :syntax)
+    maybe-current-input-port
+    (let-maybe-current-input-port :syntax)
+    call-with-string-output-port
+    with-string-output-port
+    (let-string-output-port :syntax)
+    with-string-input-port
+    call-with-u8-output-port
+    with-u8-output-port
+    (let-u8-output-port :syntax)
+    with-string-ports
+    (let-string-ports :syntax)
 
     ;; parsing
-    next-chunk-display
+    next-chunk-primitive
+    next-chunk-for-each
     next-chunk
     not-eof-object?
     port-slurp
@@ -102,13 +118,34 @@
   (open scheme srfi-27 bitwise)
   (files uuid))
 
+;;;; logging cons
+(define-interface logging-cons-interface
+  (export
+   initialize-log
+   lnil
+   lcons
+   lcar
+   lcdr
+   lnull?
+   lpair?
+   llist?
+   map*
+   depth-first
+   ))
+
+(define-structure logging-cons logging-cons-interface
+  (open scheme define-record-types tables i/o
+        srfi-1
+        util uuid)
+  (files zipper/logging-cons))
+
 ;;;; I/O to support http
 (define-interface duct-interface
   (export
    duct?
    duct-parent
    port->duct
-   duct->input-port
+   ;; duct->input-port
    (duct-extend :syntax)
    duct-get-property
    duct-get-this-property
@@ -117,8 +154,10 @@
    duct-write
    duct-close
    duct-foldr
-   duct-display
+   duct-for-each
    duct->string
+   duct-next-chunk-for-each
+   duct-next-chunk
    ))
 
 (define-structure duct duct-interface
@@ -126,7 +165,6 @@
         ascii
         text-codecs
         byte-vectors
-        proposals
         ports
         util
         io-util)
@@ -161,6 +199,7 @@
    ;; procs
    mime-read-all
    mime-stream
+   make-bytelen-duct
    cons-header
    filter-headers
    content-type->header
@@ -195,32 +234,11 @@
 (define-structure url url-interface
   (open scheme
         define-record-types
-        srfi-1
-        srfi-13
+        ascii
+        srfi-1 srfi-13
         util io-util
         )
   (files url))
-
-;;;; logging cons
-(define-interface logging-cons-interface
-  (export
-   initialize-log
-   lnil
-   lcons
-   lcar
-   lcdr
-   lnull?
-   lpair?
-   llist?
-   map*
-   depth-first
-   ))
-
-(define-structure logging-cons logging-cons-interface
-  (open scheme define-record-types tables i/o
-        srfi-1
-        util uuid)
-  (files zipper/logging-cons))
 
 ;;;; http
 (define-interface http-interface
@@ -241,6 +259,7 @@
         byte-vectors
         threads
         util io-util
+        mime
         url
         )
   (files http-server))

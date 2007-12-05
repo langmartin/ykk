@@ -1,11 +1,3 @@
-;;;; Utility
-(define (call-with-string-current-output-port thunk)
-  (call-with-string-output-port
-   (lambda (port)
-     (call-with-current-output-port
-      port
-      thunk))))
-
 ;;;; Compatibility
 (define (next-token-of pred port)
   (next-chunk
@@ -275,19 +267,6 @@ body"
 (define (e-unimplemented . args)
   (apply error "mime unimplemented" args))
 
-(define-record-type mime rtd/mime
-  (make-mime head content-type port duct body)
-  mime?
-  (head mime-headers)
-  (content-type mime-content-type)
-  (Port mime-port)
-  (duct mime-duct)
-  (body mime-body mime-set-body!))
-
-(define-record-discloser rtd/mime
-  (lambda (mime)
-    `(mime ,(mime-content-type mime))))
-
 (define (header tag headers)
   (and-let* ((header (assq tag headers))
              (header (cdr header)))
@@ -321,7 +300,7 @@ body"
       (split-headers '(=mime-type) ct)
     (lambda (mt rest)
       (cons 'content-type
-            (call-with-string-current-output-port
+            (with-string-output-port
              (lambda ()
                (apply
                 semi-colon-separate
@@ -336,6 +315,19 @@ body"
           (filter-headers tags headers)))
 
 ;;;; Interface
+(define-record-type mime rtd/mime
+  (make-mime head content-type port duct body)
+  mime?
+  (head mime-headers)
+  (content-type mime-content-type)
+  (port mime-port)
+  (duct mime-duct)
+  (body mime-body mime-set-body!))
+
+(define-record-discloser rtd/mime
+  (lambda (mime)
+    `(mime ,(mime-content-type mime))))
+
 (define (next-part port)
   (call-with-values
       (lambda () (headers port))
@@ -346,8 +338,8 @@ body"
        port
        (charset content-type
                 (encoding content-type
-                          (bytelen headers
-                                   port)))
+                          (make-bytelen-duct headers
+                                             port)))
        #f))))
 
 (define (mime-stream port)
@@ -369,7 +361,7 @@ body"
         (cons next
               (mime-read-all port)))))
 
-(define (bytelen headers port)
+(define (make-bytelen-duct headers port)
   (let ((duct ((d/leave-open)
                (port->duct port))))
     (cond ((chunked? headers)

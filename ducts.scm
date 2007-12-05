@@ -83,15 +83,13 @@
     body))
 
 (assert
- (with-string-ports
+ (let-string-ports
   "Zm9vYmFy"
   (let lp ((next (make-base64-reader read-byte)))
     (let ((ch (next)))
       (if (not (eof-object? ch))
           (begin (display (ascii->char ch))
                  (lp next)))))) => "foobar")
-
-;;;; urlencode
 
 ;;;; definitions
 (define (d/leave-open)
@@ -146,12 +144,12 @@
      (reader (urldecode (read-proc parent))))))
 
 (assert
- (with-string-ports
-  "Zm9vYmFyYmF6"
-  (let ((out
-         ((d/unicode)
-          ((d/base64)
-           ((d/byte-len 7)
-            ((d/leave-open)
-             (port->duct (current-input-port))))))))
-    (for-each display (duct-read-all out)))) => "fooba")
+ (let-string-ports
+     "Zm9vYmFyYmF6"
+   (let ((out
+          ((d/ascii)
+           ((d/base64)
+            ((d/byte-len 7)
+             ((d/leave-open)
+              (port->duct (current-input-port))))))))
+     (duct-for-each display out))) => "fooba")
