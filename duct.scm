@@ -10,7 +10,7 @@
   (apply write-char (ascii->char b) maybe-out))
 
 (define-record-type duct rtd/duct
-  (make-duct-rec parent attr)
+  (make-duct parent attr)
   duct?
   (parent duct-parent)
   (attr duct-attr duct-set-attr!))
@@ -23,26 +23,26 @@
   `((reader . ,(lambda () (read-byte port)))
     (peeker . ,(lambda () (peek-byte port)))
     (writer . ,(lambda (b) (write-byte b port)))
-    (closer . ,(lambda () (close-port port)))
+    (closer . ,(lambda () #t))          ; leave the port open by default
     (name . "port/fundamental")))
 
 (define (port->duct port . attr)
   (let ((attr (list->alist attr)))
     (set-port-text-codec! port us-ascii-codec)
-    (make-duct-rec
+    (make-duct
      port
      (update-force-alist
       attr
       (port-duct-default-attr port)))))
 
-(define (duct-get-this-property duct tag)
+(define (duct-get-local-property duct tag)
   (cond ((assv tag (duct-attr duct)) => cdr)
         (else #f)))
 
 (define (duct-get-property duct tag)
   (if (not (duct? duct))
       (e-unimplemented tag)
-      (or (duct-get-this-property duct tag)
+      (or (duct-get-local-property duct tag)
           (duct-get-property (duct-parent duct) tag))))
 
 (define (duct-set-property! duct tag value)
@@ -72,15 +72,23 @@
 (define (duct-close duct)
   ((duct-get-property duct 'closer)))
 
-(define (duct-extend* duct property-list)
-  (make-duct-rec duct property-list))
-
-(define-syntax duct-extend
+(define-syntax duct-extend*
   (syntax-rules ()
-    ((_ duct (tag val) ...)
-     (duct-extend* duct
-                   (list (cons 'tag val)
-                         ...)))))
+    ((_ parent (tag val) ...)
+     (make-duct parent
+                (let-foldr* cons-alist '() (tag val) ...)))))
+
+(define (cons-alist key val nil)
+  (cons (cons key val) nil))
+
+(define-syntax let-foldr*
+  (syntax-rules ()
+    ((_ cons nil (tag val))
+     (cons 'tag val nil))
+    ((_ cons nil (tag val) (tag1 val1) ...)
+     (letrec ((tag val))
+       (cons 'tag tag
+             (let-foldr* cons nil (tag1 val1) ...))))))
 
 #;
 (define (duct->input-port duct)

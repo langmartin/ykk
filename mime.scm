@@ -362,8 +362,7 @@ body"
               (mime-read-all port)))))
 
 (define (make-bytelen-duct headers port)
-  (let ((duct ((d/leave-open)
-               (port->duct port))))
+  (let ((duct (port->duct port)))
     (cond ((chunked? headers)
            ((d/byte-len (string->number
                          (read-crlf-line port)))

@@ -71,6 +71,7 @@
     with-string-output-port
     (let-string-output-port :syntax)
     with-string-input-port
+    (let-string-input-port :syntax)
     call-with-u8-output-port
     with-u8-output-port
     (let-u8-output-port :syntax)
@@ -146,11 +147,12 @@
    duct-parent
    port->duct
    ;; duct->input-port
-   (duct-extend :syntax)
+   (duct-extend* :syntax)
    duct-get-property
-   duct-get-this-property
+   duct-get-local-property
    duct-set-property!
    duct-read
+   duct-peek
    duct-write
    duct-close
    duct-foldr
@@ -175,7 +177,7 @@
    duct-interface
    (export
     d/byte-len
-    d/leave-open
+    d/peek
     d/base64
     d/ascii
     d/unicode
@@ -193,12 +195,14 @@
 (define-interface mime-interface
   (export
    ;; record-type
-   mime-content-type
    mime-headers
+   mime-content-type
+   mime-port
+   mime-duct
    mime-body
    ;; procs
-   mime-read-all
    mime-stream
+   mime-read-all
    make-bytelen-duct
    cons-header
    filter-headers
@@ -227,14 +231,18 @@
    url-parameters
    parse-url
    url=?
+   url-parameter-string
    urldecode
    urldecode-string
+   urlencode
+   urlencode-string
    ))
 
 (define-structure url url-interface
   (open scheme
         define-record-types
-        ascii
+        ascii unicode
+        bitwise
         srfi-1 srfi-13
         util io-util
         )
@@ -259,7 +267,6 @@
         byte-vectors
         threads
         util io-util
-        mime
-        url
+        mime ducts url
         )
   (files http-server))

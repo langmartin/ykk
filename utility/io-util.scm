@@ -59,6 +59,11 @@
    (make-string-input-port string)
    thunk))
 
+(define-syntax let-string-input-port
+  (syntax-rules ()
+    ((_ string body ...)
+     (with-string-input-port string (lambda () body ...)))))
+
 (define (call-with-u8-output-port receiver)
   (receiver (make-byte-vector-output-port))
   (byte-vector-output-port-output (current-output-port)))

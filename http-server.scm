@@ -101,12 +101,12 @@
   (crlf))
 
 (assert
- (with-string-ports
+ (let-string-ports
   "" (output-head '((host . coptix.com) (content-length . 456)))) =>
   "host: coptix.com\r\ncontent-length: 456\r\n\r\n")
 
 (define (body->byte-vector body)
-  (with-byte-output-port
+  (let-u8-output-port
    (output body)))
 
 (define merge-headers update-alist)
@@ -148,6 +148,7 @@ content-length: 34\r
 \r
 dddddddddddddddddddddddddddddddd\r\n")
 
+#;
 (let-string-ports
     *request*
  (call-with-values

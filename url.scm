@@ -1,3 +1,15 @@
+(define (for-each-display producer)
+  (let ((ch (producer)))
+    (or (eof-object? ch)
+        (begin
+          (display ch)
+          (for-each-display producer)))))
+
+(assert
+ (let-string-ports
+     "hello"
+   (for-each-display read-char)) => "hello")
+
 (define (return x) x)
 
 (define (hex . chars)
@@ -43,13 +55,56 @@
 (define (urldecode-string string)
   (let-string-ports
       string
-    (let ((proc (urldecode read-char)))
-      (let lp ()
-        (if (not (eof-object? (peek-char)))
-            (begin
-              (display (proc))
-              (lp)))))))
+    (for-each-display (urldecode read-char))))
 
+(assert (urldecode-string "foo+bar") => "foo bar") 
+
+(define hex-values "0123456789ABCDEF")
+
+(define (alphanumeric? ch)
+  (or (and (char>=? ch #\a) (char<=? ch #\z))
+      (and (char>=? ch #\A) (char<=? ch #\Z))
+      (and (char>=? ch #\0) (char<=? ch #\9))))
+
+(define (urlencode producer)
+  (define buffer '())
+  (define (write-nibble n)
+    (set! buffer (cons (string-ref hex-values n) buffer)))
+  (define (pop!)
+    (if (null? buffer)
+        #f
+        (let ((c (car buffer)))
+          (set! buffer (cdr buffer))
+          c)))
+  (lambda ()
+    (or (pop!)
+        (let ((ch (producer)))
+          (cond ((eof-object? ch)
+                 ch)
+                ((alphanumeric? ch)
+                 ch)
+                ((char=? #\space ch)
+                 #\+)
+                (else
+                 (let ((n (char->scalar-value ch)))
+                   (write-nibble
+                    (bitwise-and (arithmetic-shift n -4) 15))
+                   (write-nibble (bitwise-and n 15))
+                   #\%)))))))
+
+(define (urlencode-string string)
+  (let-string-ports
+      string
+    (for-each-display (urlencode read-char))))
+
+(assert (urlencode-string "foo bar baz!") => "foo+bar+baz%12")
+
+(define (urlencode-display string)
+  (let-string-input-port
+   string
+   (for-each-display (urlencode read-char))))
+
+;;;; Data type, Interface
 (define-record-type url rtd/url
   (make-url proto host port path parameters)
   url?
@@ -164,3 +219,20 @@
 (assert
  (url=? (parse-url "http://coptix.com:81/foo/page.php?foo=bar%20baz")
         (make-url 'http "coptix.com" 81 "/foo/page.php" '(("foo" . "bar baz")))))
+
+(define (url-parameter-string url)
+  (define (show key val)
+    (urlencode-display key)
+    (display #\=)
+    (urlencode-display val))
+  (let-string-output-port
+   (for-each (lambda (x)
+               (if (pair? x)
+                   (show (car x) (cdr x))
+                   (display x)))
+             (intersperse #\& (url-parameters url)))))
+
+(assert
+ (url-parameter-string
+  (make-url 1 2 3 4 '(("foo" . "bar!") ("baz" . "quux, biatch!"))))
+ => "foo=bar%12&baz=quux%C2+biatch%12")

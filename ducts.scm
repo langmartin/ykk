@@ -91,24 +91,36 @@
           (begin (display (ascii->char ch))
                  (lp next)))))) => "foobar")
 
-;;;; definitions
-(define (d/leave-open)
+;;;; Definitions
+(define (d/peek)
   (lambda (parent)
-    (duct-extend
+    (duct-extend*
      parent
-     (name "leave-open")
-     (closer (lambda () #t)))))
+     (name "peek")
+     (buffer #f)
+     (reader (lambda ()
+               (let ((b buffer))
+                 (set! buffer (duct-read parent))
+                 (or b (reader)))))
+     (peeker (lambda ()
+               (or buffer (reader)))))))
 
 (define (d/byte-len len)
   (lambda (parent)
-    (duct-extend
+    (duct-extend*
      parent
      (name "byte-len")
-     (reader (make-byte-len-reader len (find-port-parent parent))))))
+     (reader (make-byte-len-reader len (find-port-parent parent)))
+     (buffer #f)
+     (write-port (make-byte-vector-output-port))
+     (writer (lambda (b) (display b write-port)))
+     (closer (lambda ()
+               (set! buffer
+                     (byte-vector-output-port-output write-port)))))))
 
 (define (d/char name0 byte->char char->byte)
   (lambda (parent)
-    (duct-extend
+    (duct-extend*
      parent
      (name name0)
      (reader (lambda ()
@@ -130,7 +142,7 @@
 
 (define (d/base64)
   (lambda (parent)
-    (duct-extend
+    (duct-extend*
      parent
      (name "base64")
      (reader (make-base64-reader (read-proc parent)))
@@ -138,7 +150,7 @@
 
 (define (d/urlencode)
   (lambda (parent)
-    (duct-extend
+    (duct-extend*
      parent
      (name "urlencode")
      (reader (urldecode (read-proc parent))))))
@@ -147,9 +159,9 @@
  (let-string-ports
      "Zm9vYmFyYmF6"
    (let ((out
-          ((d/ascii)
-           ((d/base64)
-            ((d/byte-len 7)
-             ((d/leave-open)
+          ((d/peek)
+           ((d/ascii)
+            ((d/base64)
+             ((d/byte-len 7)
               (port->duct (current-input-port))))))))
      (duct-for-each display out))) => "fooba")
