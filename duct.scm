@@ -78,18 +78,6 @@
      (make-duct parent
                 (let-foldr* cons-alist '() (tag val) ...)))))
 
-(define (cons-alist key val nil)
-  (cons (cons key val) nil))
-
-(define-syntax let-foldr*
-  (syntax-rules ()
-    ((_ cons nil (tag val))
-     (cons 'tag val nil))
-    ((_ cons nil (tag val) (tag1 val1) ...)
-     (letrec ((tag val))
-       (cons 'tag tag
-             (let-foldr* cons nil (tag1 val1) ...))))))
-
 #;
 (define (duct->input-port duct)
   (make-buffered-input-port

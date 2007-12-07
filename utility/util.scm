@@ -246,3 +246,15 @@
                     (cdr lst))))
 
 (assert (intersperse #\a '(1 2 3)) => '(1 #\a 2 #\a 3))
+
+(define (cons-alist key val nil)
+  (cons (cons key val) nil))
+
+(define-syntax let-foldr*
+  (syntax-rules ()
+    ((_ cons nil (tag val))
+     (cons 'tag val nil))
+    ((_ cons nil (tag val) (tag1 val1) ...)
+     (letrec ((tag val))
+       (cons 'tag tag
+             (let-foldr* cons nil (tag1 val1) ...))))))

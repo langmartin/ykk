@@ -35,13 +35,12 @@
   (head r/head)
   (body r/body))
 
-(define (http:start-server ip port handler)
+(define (http-server ip port handler)
   (let ((handler (handle-handler handler)))
     (let lp ()
       (let ((result
              (call-with-values
-                 (socket-accept
-                  (open-socket port))
+                 (lambda () (socket-accept (open-socket port)))
                handler)))
         (or (server-close-object? result)
             (lp))))))
@@ -50,7 +49,7 @@
   (lambda (port output-port)
     (let-list ((version method path) (string-split (read-line port)))
       (call-with-values
-          (handler port method path)
+          (lambda () (handler port method path))
         (lambda (status head body)
           (output-response output-port
                            version
@@ -58,21 +57,25 @@
                            head
                            body))))))
 
-(define (http-client method url)
-  (let* ((url (if (url? url)
-                  url
-                  (parse-url url)))
-         (port (socket-client (url-host url)
-                              (url-port url))))
-    (for-each (lambda (x)
-                (display x port))
-              (list method
-                    " "
-                    (url-path url)
-                    "?"
-                    (url-parameter-string url)))
-    (crlf port)
-    port))
+(define-syntax http-send-headers
+  (syntax-rules ()
+    ((_ (tag val) ...)
+     (begin
+       (output-head
+        (let-foldr* cons-alist '() (tag val) ...))))))
+
+
+(define (output-content-length body-vector)
+  (let ((len (byte-vector-length body-vector)))
+      (output 'content-length ": " ))
+  (crlf)
+  (crlf)
+  (write-block ))
+
+(let ((port (http-client "GET" (make-url 'http "coptix.com" 80 "/index.php" '()))))
+  (let ((r (read-line port #f)))
+    (close-input-port port)
+    r))
 
 (define (output-response output-port version status header body)
   (if (or #t (string-ci=? version "HTTP/1.0")) ; no difference for now
@@ -152,7 +155,7 @@ dddddddddddddddddddddddddddddddd\r\n")
 (let-string-ports
     *request*
  (call-with-values
-     (proxy-handler (current-input-port) "GET" "/foo/bar")
+     (lambda () (proxy-handler (current-input-port) "GET" "/foo/bar"))
    (lambda (status headers body)
      (output-response
       (current-output-port)
@@ -160,3 +163,74 @@ dddddddddddddddddddddddddddddddd\r\n")
       status
       header
       body))))
+
+
+
+
+(define-syntax letrec-alist*
+  (syntax-rules ()
+    ((_ (key val) ...)
+     (let-foldr* cons-alist '() (key val) ...))))
+
+(define-syntax http-message
+  (syntax-rules (let-status let-headers let-content-length)
+    ((_ one rest ...)
+     (list
+      (http-message one)
+      (http-message rest ...)))
+    ((_ (let-status (code message) body ...))
+     (list (list code " " message crlf)
+           (http-message body ...)))
+    ((_ (let-headers ((key val) ...) body ...))
+     (letrec ((key val) ...)
+       (list (http-message "headers" (key val) ...)
+             (http-message body ...))))
+    ((_ "headers" (key val))
+     (cons (cons 'key val) '()))
+    ((_ "headers" (key val) (key1 val1) ...)
+     (cons (cons 'key val)
+           (http-message "headers" (key1 val1) ...)))
+    ((_ (let-content-length body ...))
+     (lambda ()
+       (output-content-length
+        (body-vector body ...))))))
+
+(define (http-client method url . version)
+  (define (get? method)
+    (string=? "GET" method))
+  (let-optionals* version ((version "HTTP/1.0"))
+   (let ((url (if (url? url) url (parse-url url))))
+     (call-with-values
+         (lambda () (socket-client (url-host url) (url-port url)))
+       (lambda (input-port output-port)
+         (let-current-output-port
+             output-port
+           (let* ((params (url-parameters url))
+                  (params (and (not (null? params))
+                               (url-parameter-string url))))
+             (output method " "
+                     (url-path url)
+                     (and (get? method)
+                          params
+                          (list "?" params))
+                     " "
+                     version
+                     crlf)
+
+             (http-message
+              (let-headers
+               ((user-agent "scheme48") (host (url-host url)))
+               (if (not (get? method))
+                   (let-headers
+                    (content-type "text/x-url-form-encoded")
+                    (let-content-length
+                     params)))
+               ))
+             
+             (let ((body (and (not (get? method))
+                              params)))
+               (if body
+                   )
+               (force-output (current-output-port))
+               (close-output-port (current-output-port))
+               input-port))))))))

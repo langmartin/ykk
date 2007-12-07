@@ -225,12 +225,14 @@
     (urlencode-display key)
     (display #\=)
     (urlencode-display val))
-  (let-string-output-port
-   (for-each (lambda (x)
-               (if (pair? x)
-                   (show (car x) (cdr x))
-                   (display x)))
-             (intersperse #\& (url-parameters url)))))
+  (let ((param (url-parameters url)))
+    (let-string-output-port
+     (if (not (null? param))
+         (for-each (lambda (x)
+                     (if (pair? x)
+                         (show (car x) (cdr x))
+                         (display x)))
+                   (intersperse #\& param))))))
 
 (assert
  (url-parameter-string

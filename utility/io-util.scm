@@ -1,7 +1,12 @@
-(define-syntax call/port-rest
+(define-syntax let-port-rest
   (syntax-rules ()
-    ((_ rest default receiver)
-     (call/datum-rest rest port? default receiver))))
+    ((_ rest (port default) body ...)
+     (call/datum-rest
+      rest
+      port?
+      default
+      (lambda (port rest)
+        body ...)))))
 
 (define (string/port->port obj)
   (if (port? obj)
@@ -18,10 +23,34 @@
 
 (define with-current-output-port call-with-current-output-port)
 
+(define-syntax define-let-variation
+  (syntax-rules ()
+    ((_ name proc arg ...)
+     (define-syntax name
+       (syntax-rules ()
+         ((_ arg ... . body)
+          (proc arg ... (define-let-variation body))))))
+    ((_ (body ...))
+     (lambda () body ...))))
+
+(define-let-variation let-foo foo thing)
+
 (define-syntax let-current-output-port
   (syntax-rules ()
     ((_ port body ...)
      (with-current-output-port port (lambda () body ...)))))
+
+(define (maybe-current-output-port port thunk)
+  (if (null? port)
+      (thunk)
+      (with-current-output-port
+          (if (pair? port) (car port) port)
+        thunk)))
+
+(define-syntax let-maybe-current-output-port
+  (syntax-rules ()
+    ((_ port body ...)
+     (maybe-current-output-port port (lambda () body ...)))))
 
 (define with-current-input-port call-with-current-input-port)
 
@@ -146,11 +175,10 @@
 
 ;;;; This is all the lazy output stuff from the io-out days
 (define (disp-for-each writer rest)
-  (call/port-rest rest (current-output-port)
-    (lambda (port rest)
-      (for-each (lambda (x)
-                  (writer x port))
-                rest))))
+  (let-port-rest rest (port (current-output-port))
+    (for-each (lambda (x)
+                (writer x port))
+              rest)))
 
 (define (disp . rest)
   (disp-for-each display rest))
@@ -158,24 +186,29 @@
 (define (writ . rest)
   (disp-for-each write rest))
 
-(define (flattening-output writer lst)
-  (for-each (lambda (x)
-              (if (pair? x)
-                  (flattening-output writer x)
-                  (if (procedure? x)
-                      (x)
-                      (writer x))))))
-
-(define (output-for-each writer rest)
-  (call/port-rest rest (current-output-port)
-    (lambda (port rest)
-      (with-current-output-port
-          port
-        (lambda ()
-          (flattening-output writer rest))))))
+(define (output-for-each writer lst)
+  (define (atom x)
+    (cond ((list? x)
+           (output-for-each writer x))
+          ((pair? x)
+           (atom (car x)) (atom (cdr x)))
+          ((procedure? x)
+           (x))
+          ((or (null? x) (boolean? x) #f))
+          (else
+           (writer x))))
+  (for-each atom lst))
 
 (define (output . rest)
-  (output-for-each display rest))
+  (let-port-rest rest (port '())
+    (let-maybe-current-output-port
+        port
+      (output-for-each display rest))))
+
+(assert
+ (call-with-string-output-port
+  (lambda (p)
+    (output p 1 2 3 '(2 3) 5 6))) => "1232356")
 
 (define (crlf? port)
   (define (look ch)

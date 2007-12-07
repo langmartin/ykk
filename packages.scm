@@ -35,6 +35,8 @@
     find-first
     update-alist
     update-force-alist
+    cons-alist
+    (let-foldr* :syntax)
     ;; assertion
     concat-for-each
     concat
@@ -251,10 +253,8 @@
 ;;;; http
 (define-interface http-interface
   (export
-   http-start-server
    http-client
-   call-with-http-reply
-   proxy-handler
+   http-server
    ))
 
 (define-structure http http-interface
@@ -269,4 +269,4 @@
         util io-util
         mime ducts url
         )
-  (files http-server))
+  (files http))
