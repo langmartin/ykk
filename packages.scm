@@ -50,6 +50,12 @@
         i/o-internal)
   (files utility/util))
 
+;;;; Red/Black Trees
+(define-structures ((red/black red/black-interface)
+                    (red/black-inspection red/black-inspection-interface))
+   (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)   
+   (files (utility red-black)))
+
 ;;;; Core I/O Utilities
 (define-interface io-util-interface
   (compound-interface
