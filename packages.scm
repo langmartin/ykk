@@ -276,3 +276,46 @@
         mime ducts url
         )
   (files http))
+
+;;;; Fluids
+(define-structure extended-fluids extended-fluids-interface
+  (for-syntax (open scheme fluids))
+  (open scheme fluids)
+  (files fluids))
+
+;;;; Primitive
+(define (s48 structure)
+  (modify structure (prefix s48-)))
+
+(define-structures ((ykk/bindings ykk/bindings-interface)
+                    (ykk/bindings-internal ykk/bindings-internal-interface))
+  (open scheme define-record-types meta-types locations
+        methods ; FIXME: for :value, :symbol, etc.  Change to ykk/methods later
+        (s48 bindings) (s48 packages))
+  (files (prim binding)))
+
+(define-structures ((ykk/names ykk/names-interface)
+                   (ykk/names-inspection ykk/names-inspection-interface))
+  (open scheme red/black red/black-inspection)
+  (files (prim names)))
+
+(define-structures ((ykk/environments ykk/environments-interface)
+                    (ykk/environments-internal ykk/environments-internal-interface))
+  
+  (open scheme uuid define-record-types srfi-1 extended-fluids conditions primitives
+        big-util ; for IDENTITY (is this worth the open?)
+        methods ; FIXME: for :symbol, change to ykk/methods later
+        ykk/names-inspection ; LIST-NAMES for record discloser (FIXME: remove when done with initial development)
+        ykk/names
+        ykk/bindings)
+  (files (prim environments)))
+
+(define-structures ((ykk/evaluation ykk/evaluation-interface)
+                    (ykk/evaluation-internal ykk/evaluation-internal-interface))
+  
+  (open scheme compiler-envs package-commands-internal define-record-types primitives
+        methods ; for :symbol, FIXME: remove later
+        (s48 bindings) (s48 evaluation) (s48 environments) (s48 packages) (s48 packages-internal) (s48 names)
+        ykk/bindings ykk/bindings-internal ykk/environments ykk/environments-internal)
+  (files (prim evaluation)))
+
