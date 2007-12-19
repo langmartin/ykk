@@ -24,6 +24,14 @@
   (apply disp
          (append port
                  '(#\return #\newline))))
+
+(define-syntax if-not
+  (syntax-rules ()
+    ((_ (test? thing) else)
+     (let ((tmp thing))
+       (if (test? tmp)
+           tmp
+           else)))))
 
 ;;;; Server
 (define (server-close-object) server-close-object)
@@ -48,69 +56,35 @@
 (define (handle-handler handler)
   (lambda (port output-port)
     (let-list ((version method path) (string-split (read-line port)))
-      (call-with-values
-          (lambda () (handler port method path))
-        (lambda (status head body)
-          (output-response output-port
-                           version
-                           status
-                           head
-                           body))))))
+      (let ((response
+             (lambda () (handler version method path port))))
+        (if-not (server-close-object? response)
+                (output-response output-port version response))))))
 
-(define-syntax http-send-headers
-  (syntax-rules ()
-    ((_ (tag val) ...)
-     (begin
-       (output-head
-        (let-foldr* cons-alist '() (tag val) ...))))))
+(define (output-response output-port version reponse)
+  (let-current-output-port
+      output-port
+    (if (or #t (string-ci=? version "HTTP/1.0")) ; no difference for now
+        (output version
+                " "
+                response)
+        (force-output output-port))))
 
+;; (define (output-head head)
+;;   (for-each-pair (lambda (key val)
+;;                    (disp key ": ")
+;;                    (if (procedure? val)
+;;                        (val)
+;;                        (display val))
+;;                    (crlf))
+;;                  head)
+;;   (crlf))
 
-(define (output-content-length body-vector)
-  (let ((len (byte-vector-length body-vector)))
-      (output 'content-length ": " ))
-  (crlf)
-  (crlf)
-  (write-block ))
+;; (assert
+;;  (let-string-ports
+;;   "" (output-head '((host . coptix.com) (content-length . 456)))) =>
+;;   "host: coptix.com\r\ncontent-length: 456\r\n\r\n")
 
-(let ((port (http-client "GET" (make-url 'http "coptix.com" 80 "/index.php" '()))))
-  (let ((r (read-line port #f)))
-    (close-input-port port)
-    r))
-
-(define (output-response output-port version status header body)
-  (if (or #t (string-ci=? version "HTTP/1.0")) ; no difference for now
-      (let* ((body (body->byte-vector body))
-             (head
-              (merge-headers
-               (headers
-                (content-length body)
-                '(connection . close))
-               header)))
-        (let-current-output-port
-            output-port
-          (output version " " status)
-          (crlf)
-          (output-head head)
-          (display body)))))
-
-(define (output-head head)
-  (for-each-pair (lambda (key val)
-                   (disp key ": ")
-                   (if (procedure? val)
-                       (val)
-                       (display val))
-                   (crlf))
-                 head)
-  (crlf))
-
-(assert
- (let-string-ports
-  "" (output-head '((host . coptix.com) (content-length . 456)))) =>
-  "host: coptix.com\r\ncontent-length: 456\r\n\r\n")
-
-(define (body->byte-vector body)
-  (let-u8-output-port
-   (output body)))
 
 (define merge-headers update-alist)
 
@@ -126,6 +100,108 @@
 
 (define (http-status code text)
   (concat code " " text))
+
+;;;; HTTP Client
+(define (body->byte-vector body)
+  (let-u8-output-port
+   (output body)))
+
+(define (output-content-length . body)
+  (let* ((vec (body->byte-vector body))
+         (len (byte-vector-length vec)))
+    (output 'content-length ": " len crlf crlf)
+    (write-block vec 0 len (current-output-port))))
+
+(assert
+ (let-string-output-port (output-content-length "some stuff" "goes here")) =>
+ "content-length: 19\r\n\r\nsome stuffgoes here")
+
+(define-syntax let-http-response
+  (syntax-rules ()
+    ((_ (code message) body ...)
+     (list
+      (list code " " message crlf)
+      body ...))))
+
+(define-syntax let-http-request
+  (syntax-rules ()
+    ((_ (get ...) body ...)
+     (list
+      (list get ...)
+      body ...))))
+
+(define-syntax let-headers
+  (syntax-rules ()
+    ((_ ((key val) ...) body ...)
+     (letrec ((key val) ...)
+       (list
+        (list (let-headers "headers" (key val) ...))
+        body ...)))
+    ((_ "headers" (key val))
+     (cons (list 'key ": " val crlf)
+           '()))
+    ((_ "headers" (key val) (key1 val1) ...)
+     (cons (list 'key ": " val crlf)
+           (let-headers "headers" (key1 val1) ...)))))
+
+(define-syntax let-content-length
+  (syntax-rules ()
+    ((_ body ...)
+     (lambda ()
+       (output-content-length body ...)))))
+
+(assert
+ (let-string-output-port
+  (output
+   (let-http-response
+    (200 "Ok")
+    (let-headers
+     ((user-agent "scheme48")
+      (host "coptix.com"))
+     (let-headers
+      ((content-type "text/plain"))
+      (let-content-length
+       "Some text goes here.")))))) =>
+        "200 Ok\r
+user-agent: scheme48\r
+host: coptix.com\r
+content-type: text/plain\r
+content-length: 20\r
+\r
+Some text goes here.")
+
+(define (http-client method url . version)
+  (define (get? method)
+    (string=? "GET" method))
+  (let-optionals* version ((version "HTTP/1.0"))
+    (let ((url (if-not (url? url) (parse-url url))))
+      (call-with-values
+          (lambda () (socket-client (url-host url) (url-port url)))
+        (lambda (input-port output-port)
+          (let-current-output-port
+              output-port
+            (let* ((params (url-parameters url))
+                   (params (and (not (null? params))
+                                (url-parameter-string url)))
+                   (urlreq (and (get? method)
+                                params
+                                (list "?" params))))
+              (let-http-request
+               (method " " (url-path url) urlreq " " version crlf)
+               (let-headers
+                ((user-agent "scheme48") (host (url-host url)))
+                (or (get? method)
+                    (let-headers
+                     ((content-type "text/x-url-form-encoded"))
+                     (let-content-length params)))))
+              (force-output (current-output-port))
+              (close-output-port (current-output-port))
+              input-port)))))))
+
+(let ((port (http-client "GET" (make-url 'http "coptix.com" 80 "/index.php" '()))))
+  (let ((r (read-line port #f)))
+    (close-input-port port)
+    r))
 
 ;;;; Proxy
 (define (fcar lst)
@@ -163,74 +239,3 @@ dddddddddddddddddddddddddddddddd\r\n")
       status
       header
       body))))
-
-
-
-
-(define-syntax letrec-alist*
-  (syntax-rules ()
-    ((_ (key val) ...)
-     (let-foldr* cons-alist '() (key val) ...))))
-
-(define-syntax http-message
-  (syntax-rules (let-status let-headers let-content-length)
-    ((_ one rest ...)
-     (list
-      (http-message one)
-      (http-message rest ...)))
-    ((_ (let-status (code message) body ...))
-     (list (list code " " message crlf)
-           (http-message body ...)))
-    ((_ (let-headers ((key val) ...) body ...))
-     (letrec ((key val) ...)
-       (list (http-message "headers" (key val) ...)
-             (http-message body ...))))
-    ((_ "headers" (key val))
-     (cons (cons 'key val) '()))
-    ((_ "headers" (key val) (key1 val1) ...)
-     (cons (cons 'key val)
-           (http-message "headers" (key1 val1) ...)))
-    ((_ (let-content-length body ...))
-     (lambda ()
-       (output-content-length
-        (body-vector body ...))))))
-
-(define (http-client method url . version)
-  (define (get? method)
-    (string=? "GET" method))
-  (let-optionals* version ((version "HTTP/1.0"))
-   (let ((url (if (url? url) url (parse-url url))))
-     (call-with-values
-         (lambda () (socket-client (url-host url) (url-port url)))
-       (lambda (input-port output-port)
-         (let-current-output-port
-             output-port
-           (let* ((params (url-parameters url))
-                  (params (and (not (null? params))
-                               (url-parameter-string url))))
-             (output method " "
-                     (url-path url)
-                     (and (get? method)
-                          params
-                          (list "?" params))
-                     " "
-                     version
-                     crlf)
-
-             (http-message
-              (let-headers
-               ((user-agent "scheme48") (host (url-host url)))
-               (if (not (get? method))
-                   (let-headers
-                    (content-type "text/x-url-form-encoded")
-                    (let-content-length
-                     params)))
-               ))
-             
-             (let ((body (and (not (get? method))
-                              params)))
-               (if body
-                   )
-               (force-output (current-output-port))
-               (close-output-port (current-output-port))
-               input-port))))))))
