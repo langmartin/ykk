@@ -94,8 +94,9 @@
      (with-string-input-port string (lambda () body ...)))))
 
 (define (call-with-u8-output-port receiver)
-  (receiver (make-byte-vector-output-port))
-  (byte-vector-output-port-output (current-output-port)))
+  (let ((port (make-byte-vector-output-port)))
+    (receiver port)
+    (byte-vector-output-port-output port)))
 
 (define (with-u8-output-port thunk)
   (call-with-u8-output-port
@@ -194,7 +195,9 @@
            (atom (car x)) (atom (cdr x)))
           ((procedure? x)
            (x))
-          ((or (null? x) (boolean? x) #f))
+          ((boolean? x) #f)
+          ((null? x) #f)
+          ((eq? x (if #f #f)))
           (else
            (writer x))))
   (for-each atom lst))

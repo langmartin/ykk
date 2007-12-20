@@ -64,7 +64,7 @@
    i/o-internal-interface
    (export
     ;; ports
-    (call/port-rest :syntax)
+    (let-port-rest :syntax)
     string/port->port
     port?
     close-port
@@ -261,6 +261,12 @@
   (export
    http-client
    http-server
+   (let-http-response :syntax)
+   (let-http-request :syntax)
+   (let-headers :syntax)
+   (let-content-length :syntax)
+   (let-header-data :syntax)
+   reduce-headers
    ))
 
 (define-structure http http-interface
