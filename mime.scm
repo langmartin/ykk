@@ -267,23 +267,23 @@ body"
 (define (e-unimplemented . args)
   (apply error "mime unimplemented" args))
 
-(define (header tag headers)
+(define (header-assoc tag headers)
   (and-let* ((header (assq tag headers))
              (header (cdr header)))
     header))
 
-(define (filter-headers tags headers)
+(define (header-filter tags headers)
   (filter (lambda (x)
             (not (memq (car x) tags)))
           headers))
 
 (define (headers port)
   (let ((headers (MIME:read-headers port)))
-    (values (filter-headers '(content-type) headers)
+    (values (header-filter '(content-type) headers)
             (MIME:parse-content-type
-             (header 'content-type headers)))))
+             (header-assoc 'content-type headers)))))
 
-(define cons-header cons)
+(define header-cons cons)
 
 (define (semi-colon-separate . lst)
   (for-each display
@@ -297,7 +297,8 @@ body"
 (define (content-type->header ct)
   (define mimetype cdar)
   (call-with-values
-      (split-headers '(=mime-type) ct)
+      (lambda ()
+        (header-split '(=mime-type) ct))
     (lambda (mt rest)
       (cons 'content-type
             (with-string-output-port
@@ -307,12 +308,12 @@ body"
                 (mimetype mt)
                 (map header->string rest))))))))
 
-(define (split-headers tags headers)
+(define (header-split tags headers)
   (values (map (lambda (tag)
                  (or (assq tag headers)
                      (cons tag #f)))
                tags)
-          (filter-headers tags headers)))
+          (header-filter tags headers)))
 
 ;;;; Interface
 (define-record-type mime rtd/mime
@@ -327,6 +328,25 @@ body"
 (define-record-discloser rtd/mime
   (lambda (mime)
     `(mime ,(mime-content-type mime))))
+
+(define (port->mime port)
+  (call-with-values
+      (lambda () (headers port))
+    (lambda (headers content-type)
+      (make-mime
+       headers
+       content-type
+       port
+       #f
+       #f))))
+
+(define (mime->duct mime)
+  (let ((head (mime-headers mime))
+        (ctyp (mime-content-type mime)))
+    (charset ctyp
+             (encoding ctyp
+                       (make-bytelen-duct headers
+                                          (mime-port mime))))))
 
 (define (next-part port)
   (call-with-values
@@ -364,9 +384,7 @@ body"
 (define (make-bytelen-duct headers port)
   (let ((duct (port->duct port)))
     (cond ((chunked? headers)
-           ((d/byte-len (string->number
-                         (read-crlf-line port)))
-            duct))
+           ((d/http-chunked) duct))
           ((content-len headers) =>
            (lambda (len)
              ((d/byte-len len) duct)))
@@ -374,16 +392,16 @@ body"
            (e-unimplemented "no boundary reading yet")))))
 
 (define (chunked? headers)
-  (and-let* ((xf (header 'transfer-encoding headers))
+  (and-let* ((xf (header-assoc 'transfer-encoding headers))
              (xf (string-downcase xf)))
     (string=? "chunked" xf)))
 
 (define (content-len headers)
-  (and-let* ((len (header 'content-length headers)))
+  (and-let* ((len (header-assoc 'content-length headers)))
     (string->number len)))
 
 (define (encoding content-type duct)
-  (or (and-let* ((enc (header 'encoding content-type))
+  (or (and-let* ((enc (header-assoc 'encoding content-type))
                  (enc (string-downcase enc)))
         (case-equal enc
           (("base64")
@@ -393,20 +411,18 @@ body"
       duct))
 
 (define (charset content-type duct)
-  (or (and-let* ((set (header 'charset content-type))
+  (or (and-let* ((set (header-assoc 'charset content-type))
                  (set (string-downcase set)))
         (case-equal set
           (("us-ascii")
            ((d/ascii) duct))
-          (("utf-8")
-           ((d/unicode) duct))
           (else
            (e-unimplemented "no charset for" set))))
       duct))
 
 #;
 (define (mimetype content-type duct)
-  (or (and-let* ((type (header '=mime-type content-type))
+  (or (and-let* ((type (header-assoc '=mime-type content-type))
                  (type (string-downcase set)))
         (case-equal type
           (("application/x-form-urlencoded")
@@ -417,7 +433,7 @@ body"
 
 (define *sample-message*
   "Host: coptix.com\r
-Content-type: text/plain; encoding=base64; charset=utf-8\r
+Content-type: text/plain; encoding=base64; charset=us-ascii\r
 Content-Length: 31\r
 \r
 aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
