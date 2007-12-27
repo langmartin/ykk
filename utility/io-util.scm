@@ -222,17 +222,22 @@
        (look #\newline)))
 
 ;;;; string parsing and some quick functions
+(define to-return-pred (string-or-chars->predicate '(#\return)))
+
 (define (read-crlf-line . port)
   (let-maybe-current-input-port
       port
     (let-string-output-port
-     (next-chunk-for-each #\return)
+     (next-chunk-for-each to-return-pred display #f)
      (read-char)
-     (if (char=? #\newline (peek-char))
-         (read-char)
-         (begin
-           (display #\return)
-           (display (read-crlf-line)))))))
+     (let ((next (peek-char)))
+       (if (eof-object? next)
+           next
+           (if (char=? #\newline next)
+               (read-char)
+               (begin
+                 (display #\return)
+                 (display (read-crlf-line)))))))))
 
 (define (string-split string . pred+max)
   (let-optionals* pred+max ((pred whitespace?)

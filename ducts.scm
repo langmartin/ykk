@@ -91,6 +91,48 @@
           (begin (display (ascii->char ch))
                  (lp next)))))) => "foobar")
 
+;;;; transfer-encoding: chunked
+(define (string->hex-number string)
+  (let-string-input-port
+      (string-append "#x" string)
+    (read)))
+
+(assert (string->hex-number "ff") => 255)
+
+(define (hex-string? x)
+  (let ((r (string-fold
+            (lambda (x hex)
+              (and hex
+                   (or (and (char>=? x #\a) (char<=? x #\f))
+                       (and (char>=? x #\A) (char<=? x #\F))
+                       (and (char>=? x #\0) (char<=? x #\9)))))
+            'empty
+            x)))
+    (if (eq? r 'empty) #f r)))
+
+(assert (hex-string? "44fd5")
+        (not (hex-string? "44fd5g"))
+        (not (hex-string? "")))
+
+(define (read-http-chunk-len port)
+  (let ((len (read-crlf-line port)))
+    (if (not (hex-string? len))
+        0
+        (string->hex-number len))))
+
+(define (end-of-chunks) end-of-chunks)
+
+(define (end-of-chunks? obj) (eq? obj end-of-chunks))
+
+(define (open-chunked byte-len parent)
+  (if (end-of-chunks? byte-len)
+      (eof-object)
+      (let ((len (read-http-chunk-len
+                  (find-port-parent parent))))
+        (if (zero? len)
+            (eof-object)
+            ((d/byte-len len) parent)))))
+
 ;;;; Definitions
 (define (d/peek)
   (lambda (parent)
@@ -118,27 +160,22 @@
                (set! buffer
                      (byte-vector-output-port-output write-port)))))))
 
-(define (d/char name0 byte->char char->byte)
+
+(define (d/ascii)
   (lambda (parent)
     (duct-extend*
      parent
-     (name name0)
+     (name "ascii")
      (reader (lambda ()
                (let ((ch (duct-read parent)))
                  (or (and (eof-object? ch) ch)
                      (and (char? ch) ch)
-                     (byte->char ch)))))
+                     (ascii->char ch)))))
      (writer (lambda (ch)
                (duct-write
                 parent
                 (or (and (char? ch) ch)
-                    (char->byte ch))))))))
-
-(define (d/ascii)
-  (d/char "ascii" ascii->char char->ascii))
-
-(define (d/unicode)
-  (d/char "unicode" integer->char char->integer))
+                    (char->ascii ch))))))))
 
 (define (d/base64)
   (lambda (parent)
@@ -155,13 +192,33 @@
      (name "urlencode")
      (reader (urldecode (read-proc parent))))))
 
+(define (d/http-chunked)
+  (lambda (parent)
+    (duct-extend*
+     parent
+     (name "http-chunked")
+     (byte-len 'not-a-duct)
+     (update (lambda ()
+               (let ((new (open-chunked byte-len parent)))
+                 (set! byte-len new)
+                 (if (duct? new)
+                     (duct-read new)
+                     new))))
+     (reader (lambda ()
+               (if (not (duct? byte-len))
+                   (update)
+                   (let ((byte (duct-read byte-len)))
+                     (if (not (eof-object? byte))
+                         byte
+                         (update)))))))))
+
 (assert
  (let-string-ports
-     "Zm9vYmFyYmF6"
+     "9\r\nZm9vYmFyYmF6"
    (let ((out
           ((d/peek)
            ((d/ascii)
             ((d/base64)
-             ((d/byte-len 7)
+             ((d/http-chunked)
               (port->duct (current-input-port))))))))
-     (duct-for-each display out))) => "fooba")
+     (duct-for-each display out))) => "foobar")

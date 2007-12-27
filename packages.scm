@@ -185,16 +185,17 @@
    duct-interface
    (export
     d/byte-len
+    d/http-chunked
     d/peek
     d/base64
     d/ascii
-    d/unicode
     )))
 
 (define-structure ducts ducts-interface
   (open scheme signals
         byte-vectors bitwise ascii unicode
         text-codecs
+        srfi-13
         util io-util
         url
         duct)
@@ -212,10 +213,11 @@
    mime-stream
    mime-read-all
    make-bytelen-duct
-   cons-header
-   filter-headers
+   header-cons
+   header-assoc
+   header-filter
+   header-split
    content-type->header
-   split-headers
    ))
 
 (define-structure mime mime-interface
@@ -259,8 +261,12 @@
 ;;;; http
 (define-interface http-interface
   (export
-   http-client
+   http-get
+   http-form-post
    http-server
+   http-server-exec
+   http-server-exec?
+   http-server-close
    (let-http-response :syntax)
    (let-http-request :syntax)
    (let-headers :syntax)
