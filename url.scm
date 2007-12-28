@@ -13,7 +13,7 @@
 (define (return x) x)
 
 (define (hex . chars)
-  (ascii->char
+  (integer->char
    (read
     (make-string-input-port
      (list->string
@@ -233,6 +233,9 @@
                          (show (car x) (cdr x))
                          (display x)))
                    (intersperse #\& param))))))
+
+(define (url-parameters? url)
+  (not (null? (url-parameters url))))
 
 (assert
  (url-parameter-string
