@@ -189,6 +189,8 @@
     d/peek
     d/base64
     d/ascii
+    d/characters
+    d/null
     )))
 
 (define-structure ducts ducts-interface

@@ -161,11 +161,11 @@
                      (byte-vector-output-port-output write-port)))))))
 
 
-(define (d/ascii)
+(define (d/ascii% name0 ascii->char char->ascii)
   (lambda (parent)
     (duct-extend*
      parent
-     (name "ascii")
+     (name name0)
      (reader (lambda ()
                (let ((ch (duct-read parent)))
                  (or (and (eof-object? ch) ch)
@@ -176,6 +176,10 @@
                 parent
                 (or (and (char? ch) ch)
                     (char->ascii ch))))))))
+
+(define (d/ascii) (d/ascii% "ascii" ascii->char char->ascii))
+
+(define (d/characters) (d/ascii% "ascii" integer->char char->integer))
 
 (define (d/base64)
   (lambda (parent)
@@ -211,6 +215,13 @@
                      (if (not (eof-object? byte))
                          byte
                          (update)))))))))
+
+(define (d/null)
+  (lambda (parent)
+    (duct-extend*
+     parent
+     (name "null")
+     (reader eof-object))))
 
 (assert
  (let-string-ports
