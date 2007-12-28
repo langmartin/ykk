@@ -277,11 +277,11 @@ body"
             (not (memq (car x) tags)))
           headers))
 
-(define (headers port)
+(define (read-headers port)
   (let ((headers (MIME:read-headers port)))
     (values (header-filter '(content-type) headers)
-            (MIME:parse-content-type
-             (header-assoc 'content-type headers)))))
+            (and-let* ((ct (header-assoc 'content-type headers)))
+              (MIME:parse-content-type ct)))))
 
 (define header-cons cons)
 
@@ -317,13 +317,11 @@ body"
 
 ;;;; Interface
 (define-record-type mime rtd/mime
-  (make-mime head content-type port duct body)
+  (make-mime head content-type port)
   mime?
   (head mime-headers)
   (content-type mime-content-type)
-  (port mime-port)
-  (duct mime-duct)
-  (body mime-body mime-set-body!))
+  (port mime-port))
 
 (define-record-discloser rtd/mime
   (lambda (mime)
@@ -331,65 +329,56 @@ body"
 
 (define (port->mime port)
   (call-with-values
-      (lambda () (headers port))
+      (lambda () (read-headers port))
     (lambda (headers content-type)
       (make-mime
        headers
        content-type
-       port
-       #f
-       #f))))
+       port))))
 
 (define (mime->duct mime)
-  (let ((head (mime-headers mime))
-        (ctyp (mime-content-type mime)))
-    (charset ctyp
-             (encoding ctyp
-                       (make-bytelen-duct headers
-                                          (mime-port mime))))))
+  (let* ((duct (mime->byte-duct mime))
+         (ctyp (mime-content-type mime)))
+    (if (not ctyp)
+        duct
+        (charset ctyp (encoding ctyp duct)))))
 
-(define (next-part port)
-  (call-with-values
-      (lambda () (headers port))
-    (lambda (headers content-type)
-      (make-mime
-       headers
-       content-type
-       port
-       (charset content-type
-                (encoding content-type
-                          (make-bytelen-duct headers
-                                             port)))
-       #f))))
-
-(define (mime-stream port)
-  (delay
-    (if (and (char-ready? port)
-            (eof-object? (peek-char port)))
-       '()
-       (cons (next-part port)
-             (mime-stream port)))))
-
-(define (mime-read-all port)
-  (if (and (char-ready? port)
-           (eof-object? (peek-char port)))
-      '()
-      (let ((next (next-part port)))
-        (mime-set-body! next
-                        (duct->string
-                         (mime-duct next)))
-        (cons next
-              (mime-read-all port)))))
-
-(define (make-bytelen-duct headers port)
-  (let ((duct (port->duct port)))
+(define (mime->byte-duct mime)
+  (let* ((headers (mime-headers mime))
+         (port (mime-port mime))
+         (duct (port->duct port)))
     (cond ((chunked? headers)
            ((d/http-chunked) duct))
           ((content-len headers) =>
            (lambda (len)
              ((d/byte-len len) duct)))
           (else
-           (e-unimplemented "no boundary reading yet")))))
+           ((d/null) duct)))))
+
+(define (mime-stream port)
+  (stream-delay
+   (if (and (char-ready? port)
+             (eof-object? (peek-char port)))
+        stream-null
+        (stream-cons (port->mime port)
+                     (mime-stream port)))))
+
+(define (stream-map->list proc stream)
+  (let lp ((stream stream))
+    (if (stream-null? stream)
+        '()
+        (cons (proc (stream-car stream))
+              (stream-map->list
+               proc
+               (stream-cdr stream))))))
+
+(define (mime-read-all port)
+  (stream-map->list
+   (lambda (mime)
+     (cons mime
+           (let-string-output-port
+            (duct-for-each display (mime->duct mime)))))
+   (mime-stream port)))
 
 (define (chunked? headers)
   (and-let* ((xf (header-assoc 'transfer-encoding headers))
@@ -440,6 +429,5 @@ aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
 ")
 
 (assert
- (mime-body
-  (car (mime-read-all (make-string-input-port *sample-message*))))
+ (cdar (mime-read-all (make-string-input-port *sample-message*)))
  => "hello there, foobar")

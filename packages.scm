@@ -207,12 +207,11 @@
    mime-headers
    mime-content-type
    mime-port
-   mime-duct
-   mime-body
+   mime->byte-duct
+   mime->duct
    ;; procs
    mime-stream
    mime-read-all
-   make-bytelen-duct
    header-cons
    header-assoc
    header-filter
@@ -224,7 +223,7 @@
   (open scheme signals define-record-types
         reading
         unicode-char-maps text-codecs byte-vectors
-        srfi-1 srfi-13
+        srfi-1 srfi-13 srfi-40
         posix
         util io-util
         ducts)
