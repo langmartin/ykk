@@ -280,15 +280,14 @@
 (define-structure http http-interface
   (open scheme signals
         fluids
-        extended-ports
-        i/o-internal
         sockets
         define-record-types
         byte-vectors
-        threads
+        tables
+        srfi-40 srfi-8
         util io-util
-        mime ducts url
-        )
+        mime ducts
+        url)
   (files http))
 
 ;;;; Fluids
