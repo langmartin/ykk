@@ -2,3 +2,5 @@
 ,config ,load interfaces.scm
 ,config ,load packages.scm
 ,open octothorpe-extensions
+,in http
+(http-multithreaded-server 'ip 8080 proxy-handler)
