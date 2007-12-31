@@ -353,7 +353,7 @@ Some text goes here.")
     (read-line p #f)
     (close-input-port p))))
 
-;;;; Proxy
+;;;; proxy
 (define (get-style? method)
   (case-equal method
     (("GET") #t)

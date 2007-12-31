@@ -8,7 +8,7 @@
   (apply error "parser: " port " " message " " text))
 
 (define (skip-while skip-chars . port)
-  (let ((port (optional port (current-input-port))))
+  (let-optionals* port ((port (current-input-port)))
     (do ((c (peek-char port) (peek-char port)))
         ((not (memv c skip-chars)) c)
       (read-char port))))
@@ -16,39 +16,39 @@
 (define-syntax w/s
   (syntax-rules ()
     ((_ str body ...)
-     (with-input-from-string str (lambda () body ...)))))
+     (let-string-input-port str body ...))))
 
 (assert
  (w/s "stop here, dude" (skip-while '(#\s #\t))) => #\o)
 
 (define (assert-curr-char expected-chars comment . port)
-  (let ((port (optional port (current-input-port))))
+  (let-optionals* port ((port (current-input-port)))
     (let ((c (read-char port)))
       (if (memv c expected-chars) c
           (parser-error port "Wrong character " c
                         " (0x" (if (eof-object? c) "*eof*"
                                    (number->string (char->integer c) 16)) ") "
-                                   comment ". " expected-chars " expected")))))
+                        comment ". " expected-chars " expected")))))
 
 (assert
  (w/s "foo bar" (assert-curr-char '(#\f) "broken")) => #\f)
 
 (define (peek-next-char . port)
-  (let ((port (optional port (current-input-port))))
+  (let-optionals* port ((port (current-input-port)))
     (read-char port)
     (peek-char port)))
 
 (define (read-text-line . port)
-  (let ((port (optional port (current-input-port)))
-        (char-return #\return))
-    (if (eof-object? (peek-char port)) (peek-char port)
-        (let* ((line
-                (next-token '() (list #\newline #\return (eof-object))
-                            "reading a line" port))
-               (c (read-char port)))	; must be either \n or \r or EOF
-          (and (eqv? c char-return) (eqv? (peek-char port) #\newline)
-               (read-char port))			; skip \n that follows \r
-          line))))
+  (let-optionals* port ((port (current-input-port)))
+    (let ((char-return #\return))
+      (if (eof-object? (peek-char port)) (peek-char port)
+          (let* ((line
+                  (next-token '() (list #\newline #\return (eof-object))
+                              "reading a line" port))
+                 (c (read-char port))) ; must be either \n or \r or EOF
+            (and (eqv? c char-return) (eqv? (peek-char port) #\newline)
+                 (read-char port))       ; skip \n that follows \r
+            line)))))
 
 ;;; from http://okmij.org/ftp/Scheme/lib/input-parse.scm
 (define input-parse:init-buffer
@@ -56,9 +56,8 @@
     (lambda () buffer)))
 
 (define (next-token prefix-skipped-chars break-chars . rest)
-  (let-optionals
-   rest
-   ((comment "") (port (current-input-port)))
+  (let-optionals rest ((comment "")
+                       (port (current-input-port)))
    (let outer ((buffer (input-parse:init-buffer)) (filled-buffer-l '())
                (c (skip-while prefix-skipped-chars port)))
      (let ((curr-buf-len (string-length buffer)))
@@ -144,7 +143,7 @@
       (if (string=? res "")
 	(parser-error port "MIME:parse-content-type: Unexpected empty token ")
 	res)))
-  (call-with-input-string ctype-str
+  (call-with-string-input-port ctype-str
     (lambda (port)
       (let loop ((attrs
 		  (list (cons '=mime-type
@@ -249,12 +248,12 @@
 
 ;;;; Assertions for Oleg's code
 (assert
- (call-with-input-string
+ (call-with-string-input-port
   "Host: header
 Content-type: text/html
 
 body"
-  (lambda (port) (MIME:read-headers port))) =>
+  MIME:read-headers) =>
   '((content-type . "text/html") (host . "header")))
 
 (assert
@@ -432,5 +431,6 @@ aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
 ")
 
 (assert
- (cdar (mime-read-all (make-string-input-port *sample-message*)))
+ (cdar
+  (call-with-string-input-port *sample-message* mime-read-all))
  => "hello there, foobar")

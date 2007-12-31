@@ -83,7 +83,7 @@
    (let-optionals :syntax)
    (call/datum-rest :syntax)))
 
-(define-interface alist-interface
+(define-interface alists-interface
   (export
    list->alist
    update-alist
@@ -92,18 +92,17 @@
    (let-foldr* :syntax)))
 
 (define-interface assert-interface
-  concat-for-each
-  concat
-  concat-write
-  (assert :syntax))
+  (export
+   concat-for-each
+   concat
+   concat-write
+   (assert :syntax)))
 
 (define-interface language-ext-interface
   (export
    (unless :syntax)
    (when :syntax)
    (begin1 :syntax)
-   (while :syntax)
-   (until :syntax)
    make-not
    (case-equal :syntax)))
 
@@ -113,13 +112,24 @@
    (export
     intersperse)))
 
-(define-interface io-util-interface
+(define-interface the-interface-formerly-know-as-util
+  (compound-interface
+   assert-interface
+   srfi-1+-interface
+   srfi-2-interface                     ; and-let*
+   srfi-13-interface
+   srfi-78-interface                    ; check
+   big-util-interface
+   language-ext-interface
+   alists-interface
+   optional-arguments-interface))
+
+(define-interface ykk-ports-interface
   (compound-interface
    extended-ports-interface
    i/o-interface
    i/o-internal-interface
    (export
-    ;; ports
     (let-port-rest :syntax)
     string/port->port
     port?
@@ -131,48 +141,49 @@
     (let-current-input-port :syntax)
     maybe-current-input-port
     (let-maybe-current-input-port :syntax)
+    maybe-current-output-port
+    (let-maybe-current-output-port :syntax)
     call-with-string-output-port
     with-string-output-port
     (let-string-output-port :syntax)
+    call-with-string-input-port
     with-string-input-port
     (let-string-input-port :syntax)
     call-with-u8-output-port
     with-u8-output-port
     (let-u8-output-port :syntax)
     with-string-ports
-    (let-string-ports :syntax)
+    (let-string-ports :syntax))))
 
-    ;; parsing
-    next-chunk-primitive
-    next-chunk-for-each
-    next-chunk
-    not-eof-object?
-    port-slurp
-    string-or-chars->predicate
-    crlf?
-    read-crlf-line
-    string-split
-    whitespace?
-    consume-chars
+(define-interface oleg-style-parsing-interface
+  (export
+   next-chunk-primitive
+   next-chunk-for-each
+   next-chunk
+   not-eof-object?
+   port-slurp
+   string-or-chars->predicate
+   crlf?
+   read-crlf-line
+   read-line
+   read-all
+   string-split
+   whitespace?
+   consume-chars))
 
-    ;; output
+(define-interface monad-style-output-interface
+  (export
     disp-for-each
     disp
     writ
     output-for-each
-    output
+    output))
 
-    ;; gambit like
-    read-line
-    read-all
-    with-output-to-string
-    call-with-output-string
-    with-input-from-string
-    call-with-input-string)))
-
-(define-interface corps-interface
+(define-interface the-interface-formerly-know-as-io-util
   (compound-interface
-   ))
+   ykk-ports-interface
+   oleg-style-parsing-interface
+   monad-style-output-interface))
 
 ;;;; logging cons
 (define-interface logging-cons-interface
@@ -268,10 +279,13 @@
    http-server-exec
    http-server-exec?
    http-server-close
+   call/http-version
+   proxy-client
    (let-http-response :syntax)
    (let-http-request :syntax)
    (let-headers :syntax)
    (let-content-length :syntax)
    (let-header-data :syntax)
    header-reduce
-   http-keepalive?))
+   http-keepalive?
+   proxy-server))

@@ -5,53 +5,86 @@
   (files utility/octothorpe-extensions))
 
 ;;;; core utilites
-(define-structure util util-interface
-  (open scheme signals
-        srfi-1 srfi-2 srfi-78
-        extended-ports
-        i/o-internal)
-  (files utility/util))
-
-(define-structure io-util io-util-interface
-  (open scheme signals
+(define-structure ykk-ports
+  ykk-ports-interface
+  (open scheme
         i/o i/o-internal extended-ports
-        util)
-  (files utility/io-util))
+        optional-arguments)
+  (files utility/ykk-ports))
 
-(define-structure assert assert-interface
-  (open scheme)
+(define-structure assert
+  assert-interface
+  (open scheme
+        signals
+        ykk-ports)
   (files utility/assert))
 
-(define-structure optional-arguments optional-arguments-interface
+(define-structure optional-arguments
+  optional-arguments-interface
   (open scheme
         assert)
   (files utility/optional-arguments))
 
-(define-structure language-ext language-ext-interface
+(define-structure language-ext
+  language-ext-interface
   (open scheme
         assert)
   (files utility/language-ext))
 
-(define-structure srfi-1+ srfi-1+-interface
-  (open scheme)
+(define-structure srfi-1+
+  srfi-1+-interface
+  (open scheme
+        srfi-1
+        assert)
   (files utility/list))
 
-(define-structure utility-grab-bag
+(define-structure oleg-style-parsing
+  oleg-style-parsing-interface
+  (open scheme
+        signals
+        assert
+        extended-ports
+        optional-arguments
+        ykk-ports)
+  (files utility/oleg-style-parsing))
+
+(define-structure monad-style-output
+  monad-style-output-interface
+  (open scheme
+        assert
+        optional-arguments
+        ykk-ports)
+  (files utility/monad-style-output))
+
+(define-structure alists
+  alists-interface
+  (open scheme
+        srfi-1
+        assert)
+  (files utility/alists))
+
+(define-structure http-build-utilities
   (compound-interface
-   assert-interface
-   srfi-1+-interface
-   srfi-2-inteface                      ; and-let*
-   srfi-13-interface
-   big-util-interface
-   language-ext-interface
-   alist-interface
-   optional-arguments-interface)
-  (open scheme signals
-        srfi-1 srfi-2 srfi-78
+   the-interface-formerly-know-as-util
+   the-interface-formerly-know-as-io-util
+   signals-interface
+   define-record-types-interface)
+  (open scheme
+        signals
         i/o i/o-internal extended-ports
-        assert optional-arguments language-ext
-        
-        ))
+        define-record-types
+        big-util
+        srfi-1+
+        srfi-2
+        srfi-13
+        srfi-78
+        assert
+        optional-arguments
+        language-ext
+        alists
+        ykk-ports
+        oleg-style-parsing
+        monad-style-output))
 
 ;;;; Red/Black Trees
 (define-structures ((red/black red/black-interface)
@@ -71,72 +104,6 @@
         srfi-1
         util uuid)
   (files zipper/logging-cons))
-
-;;;; ducts
-(define-structure duct-internal duct-interface
-  (open scheme signals define-record-types
-        ascii
-        text-codecs
-        byte-vectors
-        ports
-        util
-        io-util)
-  (files http/duct))
-
-(define-structure ducts ducts-interface
-  (open scheme signals
-        byte-vectors bitwise ascii unicode
-        text-codecs
-        srfi-13
-        util io-util
-        url
-        duct-internal)
-  (files http/ducts))
-
-;;;; mime & url
-(define-structure mime mime-interface
-  (open scheme signals define-record-types
-        reading
-        unicode-char-maps text-codecs byte-vectors
-        srfi-1 srfi-13 srfi-40
-        posix
-        util io-util
-        ducts)
-  (files http/mime))
-
-(define-structure url url-interface
-  (open scheme
-        define-record-types
-        ascii unicode
-        bitwise
-        srfi-1 srfi-13
-        util io-util)
-  (files http/url))
-
-;;;; http
-(define-structure http http-interface
-  (open scheme signals
-        fluids
-        sockets
-        define-record-types
-        byte-vectors
-        tables
-        threads
-        srfi-40 srfi-8
-        util io-util
-        mime ducts
-        url)
-  (files http/http))
-
-(define-structure http-proxy
-  (export proxy-server)
-  (open scheme
-        sockets
-        tables
-        srfi-40 srfi-8
-        ducts
-        io-util)
-  (files http/http-proxy))
 
 ;;;; Fluids
 (define-structure extended-fluids extended-fluids-interface
@@ -179,4 +146,61 @@
         (s48 bindings) (s48 evaluation) (s48 environments) (s48 packages) (s48 packages-internal) (s48 names)
         ykk/bindings ykk/bindings-internal ykk/environments ykk/environments-internal)
   (files (prim evaluation)))
+
+;;;; ducts
+(define-structure duct-internal duct-interface
+  (open scheme
+        http-build-utilities
+        ascii
+        text-codecs
+        byte-vectors)
+  (files http/duct-internal))
 
+(define-structure ducts ducts-interface
+  (open scheme
+        http-build-utilities
+        byte-vectors
+        bitwise
+        ascii
+        unicode
+        text-codecs
+        url
+        duct-internal)
+  (files http/ducts))
+
+;;;; mime & url
+(define-structure mime mime-interface
+  (open scheme
+        http-build-utilities
+        reading
+        unicode-char-maps
+        text-codecs
+        byte-vectors
+        posix
+        srfi-40
+        ducts)
+  (files http/mime))
+
+(define-structure url url-interface
+  (open scheme
+        http-build-utilities
+        ascii
+        unicode
+        bitwise)
+  (files http/url))
+
+;;;; http
+(define-structure http http-interface
+  (open scheme
+        http-build-utilities
+        fluids
+        sockets
+        byte-vectors
+        tables
+        threads
+        srfi-40
+        srfi-8
+        mime
+        url
+        ducts)
+    (files http/http))
