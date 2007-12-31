@@ -83,6 +83,9 @@
     ((_ body ...)
      (with-string-output-port (lambda () body ...)))))
 
+(define (call-with-string-input-port string receiver)
+  (receiver (make-string-input-port string)))
+
 (define (with-string-input-port string thunk)
   (with-current-input-port
    (make-string-input-port string)

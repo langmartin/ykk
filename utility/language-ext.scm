@@ -18,26 +18,26 @@
        e2 ...
        result))))
 
-(define (call-while test? thunk)
-  (let lp ()
-    (if (test? (thunk))
-        (lp)
-        #f)))
+;; (define (call-while test? thunk)
+;;   (let lp ()
+;;     (if (test? (thunk))
+;;         (lp)
+;;         #f)))
 
-(define-syntax while
-  (syntax-rules ()
-    ((_ test? expr)
-     (call-while test?
-                 (lambda ()
-                   expr)))))
+;; (define-syntax while
+;;   (syntax-rules ()
+;;     ((_ test? expr)
+;;      (call-while test?
+;;                  (lambda ()
+;;                    expr)))))
 
-(define-syntax until
-  (syntax-rules ()
-    ((_ test? expr)
-     (call-while (lambda (x)
-                   (not (test? x)))
-                 (lambda ()
-                   expr)))))
+;; (define-syntax until
+;;   (syntax-rules ()
+;;     ((_ test? expr)
+;;      (call-while (lambda (x)
+;;                    (not (test? x)))
+;;                  (lambda ()
+;;                    expr)))))
 
 (define-syntax case-equal
   (syntax-rules (else)

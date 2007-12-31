@@ -86,6 +86,15 @@
 	  silently
 	  make-null-output-port))
 
+(define-interface signals-interface
+  (export error warn syntax-error call-error note
+	  signal signal-condition
+	  make-condition))
+
+(define-interface define-record-types-interface
+  (export (define-record-type :syntax)
+	  define-record-discloser))
+
 (define-interface srfi-1-interface
   (export map for-each member assoc	; redefined from R5RS
 	  xcons make-list list-tabulate cons* list-copy 
@@ -120,3 +129,63 @@
 	  lset-diff+intersection
 	  lset-union! lset-intersection! lset-difference! lset-xor!
 	  lset-diff+intersection!))
+
+(define-interface srfi-2-interface
+  (export
+   (and-let* :syntax)))
+
+(define-interface srfi-13-interface
+  (export string-map string-map!
+	  string-fold       string-unfold
+	  string-fold-right string-unfold-right 
+	  string-tabulate string-for-each string-for-each-index
+	  string-every string-any
+	  string-hash string-hash-ci
+	  string-compare string-compare-ci
+	  string=    string<    string>    string<=    string>=    string<>
+	  string-ci= string-ci< string-ci> string-ci<= string-ci>= string-ci<> 
+	  string-downcase  string-upcase  string-titlecase  
+	  string-downcase! string-upcase! string-titlecase! 
+	  string-take string-take-right
+	  string-drop string-drop-right
+	  string-pad string-pad-right
+	  string-trim string-trim-right string-trim-both
+	  string-filter string-delete
+	  string-index string-index-right 
+	  string-skip  string-skip-right
+	  string-count
+	  string-prefix-length string-prefix-length-ci
+	  string-suffix-length string-suffix-length-ci
+	  string-prefix? string-prefix-ci?
+	  string-suffix? string-suffix-ci?
+	  string-contains string-contains-ci
+	  string-copy! substring/shared
+	  string-reverse string-reverse! reverse-list->string
+	  string-concatenate
+	  string-concatenate/shared
+	  string-concatenate-reverse
+	  string-concatenate-reverse/shared
+	  string-append/shared
+	  xsubstring string-xcopy!
+	  string-null?
+	  string-join
+	  string-tokenize
+	  string-replace
+
+	  string->list string-copy string-fill! 
+	  string? make-string string-length string-ref string-set! 
+	  string string-append list->string))
+
+(define-interface big-util-interface       
+  (export concatenate-symbol
+	  error breakpoint
+	  atom? null-list? neq? n=
+	  identity no-op
+	  memq? first any? any every?
+	  filter filter! filter-map partition-list partition-list!
+	  remove-duplicates delq delq! delete
+	  reverse!
+	  string->immutable-string
+	  ))
+
+

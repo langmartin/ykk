@@ -30,8 +30,8 @@
     ((_ arg ...)
      (let-optionals* arg ...))))
 
-(assert
- (let-optionals '(a b) ((port "a") (string "b")) (list port string)) => '(a b))
+;; (assert
+;;  (let-optionals '(a b) ((port "a") (string "b")) (list port string)) => '(a b))
 
 (define-syntax call/datum-rest
   (syntax-rules ()
