@@ -4,51 +4,54 @@
   (open scheme primitives reading extended-ports)
   (files utility/octothorpe-extensions))
 
-;;;; Core Utilites
-(define-interface util-interface
-  (compound-interface
-   srfi-78-interface
-   (export
-    ;; srfi-2
-    (and-let* :syntax)
-    ;; optional arguments
-    (if-car :syntax)
-    optional
-    (let-optionals* :syntax)
-    (let-optionals :syntax)
-    (call/datum-rest :syntax)
-    ;; general syntax
-    wind-fluid
-    (unless :syntax)
-    (when :syntax)
-    (begin1 :syntax)
-    make-not
-    call-while
-    (while :syntax)
-    (until :syntax)
-    (case-equal :syntax)
-    ;; lists
-    map*
-    depth-first
-    intersperse
-    list->alist
-    find-first
-    update-alist
-    update-force-alist
-    cons-alist
-    (let-foldr* :syntax)
-    ;; assertion
-    concat-for-each
-    concat
-    concat-write
-    (assert :syntax))))
-
+;;;; core utilites
 (define-structure util util-interface
   (open scheme signals
         srfi-1 srfi-2 srfi-78
         extended-ports
         i/o-internal)
   (files utility/util))
+
+(define-structure io-util io-util-interface
+  (open scheme signals
+        i/o i/o-internal extended-ports
+        util)
+  (files utility/io-util))
+
+(define-structure assert assert-interface
+  (open scheme)
+  (files utility/assert))
+
+(define-structure optional-arguments optional-arguments-interface
+  (open scheme
+        assert)
+  (files utility/optional-arguments))
+
+(define-structure language-ext language-ext-interface
+  (open scheme
+        assert)
+  (files utility/language-ext))
+
+(define-structure srfi-1+ srfi-1+-interface
+  (open scheme)
+  (files utility/list))
+
+(define-structure utility-grab-bag
+  (compound-interface
+   assert-interface
+   srfi-1+-interface
+   srfi-2-inteface                      ; and-let*
+   srfi-13-interface
+   big-util-interface
+   language-ext-interface
+   alist-interface
+   optional-arguments-interface)
+  (open scheme signals
+        srfi-1 srfi-2 srfi-78
+        i/o i/o-internal extended-ports
+        assert optional-arguments language-ext
+        
+        ))
 
 ;;;; Red/Black Trees
 (define-structures ((red/black red/black-interface)
@@ -56,121 +59,21 @@
    (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)   
    (files (utility red-black)))
 
-;;;; Core I/O Utilities
-(define-interface io-util-interface
-  (compound-interface
-   extended-ports-interface
-   i/o-interface
-   i/o-internal-interface
-   (export
-    ;; ports
-    (let-port-rest :syntax)
-    string/port->port
-    port?
-    close-port
-    call-with-current-output-port
-    with-current-output-port
-    (let-current-output-port :syntax)
-    with-current-input-port
-    (let-current-input-port :syntax)
-    maybe-current-input-port
-    (let-maybe-current-input-port :syntax)
-    call-with-string-output-port
-    with-string-output-port
-    (let-string-output-port :syntax)
-    with-string-input-port
-    (let-string-input-port :syntax)
-    call-with-u8-output-port
-    with-u8-output-port
-    (let-u8-output-port :syntax)
-    with-string-ports
-    (let-string-ports :syntax)
-
-    ;; parsing
-    next-chunk-primitive
-    next-chunk-for-each
-    next-chunk
-    not-eof-object?
-    port-slurp
-    string-or-chars->predicate
-    crlf?
-    read-crlf-line
-    string-split
-    whitespace?
-    consume-chars
-
-    ;; output
-    disp-for-each
-    disp
-    writ
-    output-for-each
-    output
-
-    ;; gambit like
-    read-line
-    read-all
-    with-output-to-string
-    call-with-output-string
-    with-input-from-string
-    call-with-input-string
-    )))
-
-(define-structure io-util io-util-interface
-  (open scheme signals
-        i/o i/o-internal extended-ports
-        util)
-  (files utility/io-util))
-
 ;;;; UUID gen
 (define-structure uuid
   (export uuidgen)
   (open scheme srfi-27 bitwise)
-  (files uuid))
+  (files http/uuid))
 
 ;;;; logging cons
-(define-interface logging-cons-interface
-  (export
-   initialize-log
-   lnil
-   lcons
-   lcar
-   lcdr
-   lnull?
-   lpair?
-   llist?
-   map*
-   depth-first
-   ))
-
 (define-structure logging-cons logging-cons-interface
   (open scheme define-record-types tables i/o
         srfi-1
         util uuid)
   (files zipper/logging-cons))
 
-;;;; I/O to support http
-(define-interface duct-interface
-  (export
-   duct?
-   duct-parent
-   port->duct
-   ;; duct->input-port
-   (duct-extend* :syntax)
-   duct-get-property
-   duct-get-local-property
-   duct-set-property!
-   duct-read
-   duct-peek
-   duct-write
-   duct-close
-   duct-foldr
-   duct-for-each
-   duct->string
-   duct-next-chunk-for-each
-   duct-next-chunk
-   ))
-
-(define-structure duct duct-interface
+;;;; ducts
+(define-structure duct-internal duct-interface
   (open scheme signals define-record-types
         ascii
         text-codecs
@@ -178,20 +81,7 @@
         ports
         util
         io-util)
-  (files duct))
-
-(define-interface ducts-interface
-  (compound-interface
-   duct-interface
-   (export
-    d/byte-len
-    d/http-chunked
-    d/peek
-    d/base64
-    d/ascii
-    d/characters
-    d/null
-    )))
+  (files http/duct))
 
 (define-structure ducts ducts-interface
   (open scheme signals
@@ -200,29 +90,10 @@
         srfi-13
         util io-util
         url
-        duct)
-  (files ducts))
-
-(define-interface mime-interface
-  (export
-   ;; record-type
-   mime-headers
-   mime-content-type
-   mime-port
-   mime->byte-duct
-   mime->duct
-   ;; interface
-   mime-stream
-   mime-read-all
-   header-cons
-   header-assoc
-   header-filter
-   header-split
-   content-type->header
-   xfer-chunked?
-   null-header
-   ))
-
+        duct-internal)
+  (files http/ducts))
+
+;;;; mime & url
 (define-structure mime mime-interface
   (open scheme signals define-record-types
         reading
@@ -231,26 +102,7 @@
         posix
         util io-util
         ducts)
-  (files mime))
-
-(define-interface url-interface
-  (export
-   make-url
-   url?
-   url-protocol
-   url-host
-   url-port
-   url-path
-   url-parameters
-   url-parameters?
-   parse-url
-   url=?
-   url-parameter-string
-   urldecode
-   urldecode-string
-   urlencode
-   urlencode-string
-   ))
+  (files http/mime))
 
 (define-structure url url-interface
   (open scheme
@@ -258,28 +110,10 @@
         ascii unicode
         bitwise
         srfi-1 srfi-13
-        util io-util
-        )
-  (files url))
+        util io-util)
+  (files http/url))
 
 ;;;; http
-(define-interface http-interface
-  (export
-   http-get
-   http-form-post
-   http-server
-   http-server-exec
-   http-server-exec?
-   http-server-close
-   (let-http-response :syntax)
-   (let-http-request :syntax)
-   (let-headers :syntax)
-   (let-content-length :syntax)
-   (let-header-data :syntax)
-   header-reduce
-   http-keepalive?
-   ))
-
 (define-structure http http-interface
   (open scheme signals
         fluids
@@ -292,7 +126,17 @@
         util io-util
         mime ducts
         url)
-  (files http))
+  (files http/http))
+
+(define-structure http-proxy
+  (export proxy-server)
+  (open scheme
+        sockets
+        tables
+        srfi-40 srfi-8
+        ducts
+        io-util)
+  (files http/http-proxy))
 
 ;;;; Fluids
 (define-structure extended-fluids extended-fluids-interface

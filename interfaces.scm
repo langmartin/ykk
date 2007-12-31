@@ -72,3 +72,206 @@
 (define-interface red/black-inspection-interface
   (export r/b-tree->node-list
           r/b-tree/in-order->list))
+
+;;;; core utilites
+(define-interface optional-arguments-interface
+  (export
+   ;; optional arguments
+   (if-car :syntax)
+   (if-cdr :syntax)
+   (let-optionals* :syntax)
+   (let-optionals :syntax)
+   (call/datum-rest :syntax)))
+
+(define-interface alist-interface
+  (export
+   list->alist
+   update-alist
+   update-force-alist
+   cons-alist
+   (let-foldr* :syntax)))
+
+(define-interface assert-interface
+  concat-for-each
+  concat
+  concat-write
+  (assert :syntax))
+
+(define-interface language-ext-interface
+  (export
+   (unless :syntax)
+   (when :syntax)
+   (begin1 :syntax)
+   (while :syntax)
+   (until :syntax)
+   make-not
+   (case-equal :syntax)))
+
+(define-interface srfi-1+-interface
+  (compound-interface
+   srfi-1-interface
+   (export
+    intersperse)))
+
+(define-interface io-util-interface
+  (compound-interface
+   extended-ports-interface
+   i/o-interface
+   i/o-internal-interface
+   (export
+    ;; ports
+    (let-port-rest :syntax)
+    string/port->port
+    port?
+    close-port
+    call-with-current-output-port
+    with-current-output-port
+    (let-current-output-port :syntax)
+    with-current-input-port
+    (let-current-input-port :syntax)
+    maybe-current-input-port
+    (let-maybe-current-input-port :syntax)
+    call-with-string-output-port
+    with-string-output-port
+    (let-string-output-port :syntax)
+    with-string-input-port
+    (let-string-input-port :syntax)
+    call-with-u8-output-port
+    with-u8-output-port
+    (let-u8-output-port :syntax)
+    with-string-ports
+    (let-string-ports :syntax)
+
+    ;; parsing
+    next-chunk-primitive
+    next-chunk-for-each
+    next-chunk
+    not-eof-object?
+    port-slurp
+    string-or-chars->predicate
+    crlf?
+    read-crlf-line
+    string-split
+    whitespace?
+    consume-chars
+
+    ;; output
+    disp-for-each
+    disp
+    writ
+    output-for-each
+    output
+
+    ;; gambit like
+    read-line
+    read-all
+    with-output-to-string
+    call-with-output-string
+    with-input-from-string
+    call-with-input-string)))
+
+(define-interface corps-interface
+  (compound-interface
+   ))
+
+;;;; logging cons
+(define-interface logging-cons-interface
+  (export
+   initialize-log
+   lnil
+   lcons
+   lcar
+   lcdr
+   lnull?
+   lpair?
+   llist?
+   map*
+   depth-first))
+
+;;;; ducts
+(define-interface duct-interface
+  (export
+   duct?
+   duct-parent
+   port->duct
+   ;; duct->input-port
+   (duct-extend* :syntax)
+   duct-get-property
+   duct-get-local-property
+   duct-set-property!
+   duct-read
+   duct-peek
+   duct-write
+   duct-close
+   duct-foldr
+   duct-for-each
+   duct->string
+   duct-next-chunk-for-each
+   duct-next-chunk))
+
+(define-interface ducts-interface
+  (compound-interface
+   duct-interface
+   (export
+    d/byte-len
+    d/http-chunked
+    d/peek
+    d/base64
+    d/ascii
+    d/characters
+    d/null)))
+
+;;;; mime & url
+(define-interface mime-interface
+  (export
+   ;; record-type
+   mime-headers
+   mime-content-type
+   mime-port
+   mime->byte-duct
+   mime->duct
+   ;; interface
+   mime-stream
+   mime-read-all
+   header-cons
+   header-assoc
+   header-filter
+   header-split
+   content-type->header
+   xfer-chunked?
+   null-header))
+
+(define-interface url-interface
+  (export
+   make-url
+   url?
+   url-protocol
+   url-host
+   url-port
+   url-path
+   url-parameters
+   url-parameters?
+   parse-url
+   url=?
+   url-parameter-string
+   urldecode
+   urldecode-string
+   urlencode
+   urlencode-string))
+
+;;;; http
+(define-interface http-interface
+  (export
+   http-get
+   http-form-post
+   http-server
+   http-server-exec
+   http-server-exec?
+   http-server-close
+   (let-http-response :syntax)
+   (let-http-request :syntax)
+   (let-headers :syntax)
+   (let-content-length :syntax)
+   (let-header-data :syntax)
+   header-reduce
+   http-keepalive?))
