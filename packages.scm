@@ -109,7 +109,7 @@
 (define-structure extended-fluids extended-fluids-interface
   (for-syntax (open scheme fluids))
   (open scheme fluids)
-  (files fluids))
+  (files utility/fluids))
 
 ;;;; Primitive
 (define (s48 structure)

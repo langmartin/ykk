@@ -42,19 +42,6 @@
 
 (assert (or-filter string? 'foo 'bar 'baz) => #f)
 
-(define-syntax define-dynamic-variable
-  (syntax-rules ()
-    ((proc default real-fluid)
-     (begin
-       (define real-fluid (make-fluid default))
-       (define (proc . new)
-         (let-optionals* new ((new #f))
-           (if new
-               (begin
-                 (set-fluid! real-fluid new)
-                 new)
-               (fluid current-headers$))))))))
-
 (define-syntax quoted-alist
   (syntax-rules ()
     ((_) '())
@@ -63,15 +50,6 @@
            (quoted-alist (key1 val1) ...)))))
 
 (assert (quoted-alist (foo 4) (bar 6)) => '((foo . 4) (bar . 6)))
-
-(define (fold-append kons nil lst . lsts)
-  (if (null? lst)
-      (if (null? lsts)
-          nil
-          (apply fold-append kons nil (car lsts) (cdr lsts)))
-      (apply fold-append kons (kons (car lst) nil) (cdr lst) lsts)))
-
-(assert (fold-append cons '() '(1 2) '(3 4) '(5 6)) => '(6 5 4 3 2 1))
 
 (define (output-debug label . args)
   (let ((real (current-output-port))

@@ -110,7 +110,8 @@
   (compound-interface
    srfi-1-interface
    (export
-    intersperse)))
+    intersperse
+    fold-append)))
 
 (define-interface the-interface-formerly-know-as-util
   (compound-interface
