@@ -211,7 +211,7 @@
    mime-port
    mime->byte-duct
    mime->duct
-   ;; procs
+   ;; interface
    mime-stream
    mime-read-all
    header-cons
@@ -219,6 +219,8 @@
    header-filter
    header-split
    content-type->header
+   xfer-chunked?
+   null-header
    ))
 
 (define-structure mime mime-interface
@@ -274,7 +276,8 @@
    (let-headers :syntax)
    (let-content-length :syntax)
    (let-header-data :syntax)
-   reduce-headers
+   header-reduce
+   http-keepalive?
    ))
 
 (define-structure http http-interface
@@ -284,6 +287,7 @@
         define-record-types
         byte-vectors
         tables
+        threads
         srfi-40 srfi-8
         util io-util
         mime ducts

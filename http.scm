@@ -73,15 +73,15 @@
 
 (assert (fold-append cons '() '(1 2) '(3 4) '(5 6)) => '(6 5 4 3 2 1))
 
-(define (output-debug . args)
+(define (output-debug label . args)
   (let ((real (current-output-port))
         (body (let-string-output-port
                (apply output args))))
     (display body real)
     (let-current-output-port
         (current-error-port)
-     (write (cons output-debug args))
-     (display body))))
+      (output "output-debug: " label newline)
+      (display body))))
 
 ;;;; Server
 (define (http-server-exec thunk)
@@ -115,6 +115,19 @@
         (if (http-server-exec? result)
             ((exec-thunk result))
             (lp))))))
+
+(define (http-multithreaded-server ip port handler)
+  (let ((handler (handle-handler handler))
+        (socket (open-socket port)))
+    (socket-port-number socket)         ; make sure it's open
+    (let lp ()
+      (call-with-values
+          (lambda () (socket-accept socket))
+        (lambda (input output)
+          (spawn
+           (lambda ()
+             (handler input output)))))
+      (lp))))
 
 (define (handle-handler handler)
   (lambda (input-port output-port)
@@ -326,7 +339,7 @@ Some text goes here.")
    (input output)
    (proxy-client
     "HTTP/1.1" method url
-    (header-cons `(accept . "*"))
+    (header-cons 'accept "*" null-header)
     crlf)
    (close-output-port output)
    input))
@@ -385,6 +398,7 @@ Some text goes here.")
                         (url-parameters? url)
                         (cons #\? (url-parameter-string url)))))
          (output
+          ;; "request"
           (let-http-request
            (method " " (url-path url) getp " " version crlf)
            (header-filter
@@ -408,6 +422,11 @@ Some text goes here.")
   (let-header-data
    ((transfer-encoding "identity"))))
 
+(define (proxy-body mime)
+  (duct-for-each display
+                 ((d/characters)
+                  (mime->byte-duct mime))))
+
 (define (proxy-handler version method path port)
   (let* ((url (parse-url path))
          (host (url-host url))          ; proxy req include the host
@@ -423,12 +442,15 @@ Some text goes here.")
                (head (mime-headers mime)))
           (let-http-response
            (code text)
+           #;
+           (lambda ()
+             (output-debug
+              "reply"
+              (header-reduce *proxy-reply-headers* head)))
            (header-reduce *proxy-reply-headers* head)
            (let-content-length
             (lambda ()
-              (duct-for-each display
-                             ((d/characters)
-                              (mime->byte-duct mime)))
+              (proxy-body mime)
               (if (and #f (http-keepalive? head)) ; disabled
                   (store-client-connection host input output)
                   (begin
@@ -451,7 +473,7 @@ Some text goes here.")
 ;;      "HTTP/1.1" "GET" "/index" (current-input-port)))))
 
 (define (proxy-server)
-  (http-server 'ip 8080 proxy-handler))
+  (http-multithreaded-server 'ip 8080 proxy-handler))
 
 ;; (output '(("GET" " " "/css/t.css" #f " " "HTTP/1.1" "\r\n")
 ;;           ((accept ": " "*" "\r\n")

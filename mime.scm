@@ -283,7 +283,10 @@ body"
             (and-let* ((ct (header-assoc 'content-type headers)))
               (MIME:parse-content-type ct)))))
 
-(define header-cons cons)
+(define (header-cons key val cdr)
+  (cons (cons key val) cdr))
+
+(define null-header '())
 
 (define (semi-colon-separate . lst)
   (for-each display
@@ -347,7 +350,7 @@ body"
   (let* ((headers (mime-headers mime))
          (port (mime-port mime))
          (duct (port->duct port)))
-    (cond ((chunked? headers)
+    (cond ((xfer-chunked? headers)
            ((d/http-chunked) duct))
           ((content-len headers) =>
            (lambda (len)
@@ -380,7 +383,7 @@ body"
             (duct-for-each display (mime->duct mime)))))
    (mime-stream port)))
 
-(define (chunked? headers)
+(define (xfer-chunked? headers)
   (and-let* ((xf (header-assoc 'transfer-encoding headers))
              (xf (string-downcase xf)))
     (string=? "chunked" xf)))
