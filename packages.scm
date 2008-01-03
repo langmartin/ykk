@@ -1,3 +1,6 @@
+(define (s48 structure)
+  (with-prefix structure s48:))
+
 ;;;; add #; and #,(foo ...) to the reader
 (define-structure octothorpe-extensions
   (export define-reader-ctor)
@@ -37,6 +40,19 @@
         srfi-1
         assert)
   (files utility/list))
+
+;; SRFI-9 + define-record-discloser
+(define-structure srfi-9+
+  (export (define-record-type :syntax)
+          define-record-discloser)
+  (open scheme-level-2 
+	(s48 define-record-types))
+  (begin
+    (define define-record-discloser s48:define-record-discloser)
+    (define-syntax define-record-type
+      (syntax-rules ()
+	((define-record-type type-name . stuff)
+	 (s48:define-record-type type-name type-name . stuff))))))
 
 (define-structure oleg-style-parsing
   oleg-style-parsing-interface
@@ -105,9 +121,6 @@
   (files utility/fluids))
 
 ;;;; Primitive
-(define (s48 structure)
-  (modify structure (prefix s48-)))
-
 (define-structures ((ykk/bindings ykk/bindings-interface)
                     (ykk/bindings-internal ykk/bindings-internal-interface))
   (open scheme define-record-types meta-types locations
