@@ -92,18 +92,11 @@
    (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)   
    (files (utility red-black)))
 
-;;;; UUID gen
-(define-structure uuid
+;;;; uuidgen
+(define-structure uuidgen
   (export uuidgen)
   (open scheme srfi-27 bitwise)
   (files http/uuid))
-
-;;;; logging cons
-(define-structure logging-cons logging-cons-interface
-  (open scheme define-record-types tables i/o
-        srfi-1
-        util uuid)
-  (files zipper/logging-cons))
 
 ;;;; Fluids
 (define-structure extended-fluids extended-fluids-interface
@@ -204,3 +197,34 @@
         url
         ducts)
     (files http/http))
+
+;;;; zipper
+(define-structure shift-reset
+  (export
+   (shift :syntax)
+   (reset :syntax))
+  (open scheme signals escapes fluids records threads)
+  (files new-shift))
+
+(define-structure zipper
+  zipper-interface
+  (open scheme srfi-9)
+  (files zipper))
+
+(define-structures
+  ((zcons-record zcons-record-interface)
+   (zlist zlist-interface))
+  (open scheme
+        define-record-types
+        tables
+        ykk-ports
+        uuidgen
+        assert)
+  (files zipper/zlist))
+
+(define-structure zlist-srfi-1
+  zlist-srfi-1-interface
+  (open scheme
+        zlist
+        assert)
+  (files zipper/zlist-srfi-1+))

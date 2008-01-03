@@ -186,20 +186,6 @@
    oleg-style-parsing-interface
    monad-style-output-interface))
 
-;;;; logging cons
-(define-interface logging-cons-interface
-  (export
-   initialize-log
-   lnil
-   lcons
-   lcar
-   lcdr
-   lnull?
-   lpair?
-   llist?
-   map*
-   depth-first))
-
 ;;;; ducts
 (define-interface duct-interface
   (export
@@ -290,3 +276,55 @@
    header-reduce
    http-keepalive?
    proxy-server))
+
+;;;; zippers, etc
+(define-interface zcons-record-interface
+  (export
+   zcons-cons
+   zpair?
+   zcons-id
+   zcons-next
+   zcons-car
+   zcons-cdr
+   zcons-set-cdr!))
+
+(define-interface zipper-interface
+  (export
+   zipper
+   zipper?
+   z-k
+   z-curr-node
+   zip-all-the-way-up))
+
+(define-interface zlist-interface
+  (export
+   zlist
+   zcons
+   znull
+   zlist?
+   zpair?
+   znull?
+   zcar
+   zcdr
+   zmap*
+   zdepth-first))
+
+(define-interface zlist-srfi-1-interface
+  (export
+   zmap
+   zfor-each
+   zfold
+   zfold-pair
+   zfold-right
+   zfold-pair-right
+   zlist-tail))
+
+(define-interface plist-interface
+  (export
+   plist
+   plist?
+   plist-type
+   plist-ref
+   plist-set
+   plist-ref-type
+   plist-union))
