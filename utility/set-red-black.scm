@@ -21,6 +21,8 @@
 
 (define set-ref r/b-ref)
 
+(define lfold-set r/b-lfold)
+
 (define (set<=? . sets)
   (boolean-set-fold subset? sets))
 

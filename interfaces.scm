@@ -91,6 +91,8 @@
           set<=?
           set->list
 
+          lfold-set
+
           adjoin adjoin-list
           remove remove-list
           union

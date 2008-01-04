@@ -30,6 +30,9 @@
     (and (not (null? default))
          (car default)))))
 
+(define (lfold-set kons knil set)
+  (fold kons knil (set->list set)))
+
 (define (set=? . sets)
   (apply-nary-lset-op lset= sets))
 
