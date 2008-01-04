@@ -119,7 +119,6 @@
    (files (utility red-black-constructed-from-lists)    
           (utility red-black)
           (utility vred-black)))
-
 
 ;;;; Sets
 (define-structure rb-set set-interface
