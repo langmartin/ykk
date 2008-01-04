@@ -167,12 +167,19 @@
   (files (prim names)))
 
 (define-structures ((ykk/environments ykk/environments-interface)
-                    (ykk/environments-internal ykk/environments-internal-interface))
-  
-  (open scheme uuid define-record-types srfi-1 extended-fluids conditions primitives
-        big-util ; for IDENTITY (is this worth the open?)
-        methods ; FIXME: for :symbol, change to ykk/methods later
-        ykk/names-inspection ; LIST-NAMES for record discloser (FIXME: remove when done with initial development)
+                    (ykk/environments-internal ykk/environments-internal-interface)
+                    (environment-manipulation environment-manipulation-interface))
+  (open scheme
+        uuid
+        srfi-1
+        srfi-9+
+        fluids+
+        conditions
+        primitives
+        big-util                ; for IDENTITY (is this worth the open?)
+        methods                 ; FIXME: for :symbol, change to ykk/methods later
+        (subset packages-internal (for-each-definition))
+        ykk/names-inspection    ; LIST-NAMES for record discloser (FIXME: remove when done with initial development)
         ykk/names
         ykk/bindings
         assert)
