@@ -146,7 +146,6 @@
 
   (descend (root tree)))
 
-
 ; --------------------
 ; insertion
 
@@ -154,9 +153,24 @@
   (new-root tree
             (if (empty-tree? tree)
                 (leaf black value)
-                (change-color black (insert-one tree value)))))
+                (change-color black
+                              (insert-one tree value change-value)))))
 
-(define (insert-one tree new-value)
+(define (maybe-replace tree new-value maybe?)
+  (call-with-current-continuation
+   (lambda (exit)
+     (new-root tree
+               (if (empty-tree? tree)
+                   (leaf black new-value)
+                   (change-color black
+                                 (insert-one tree
+                                             new-value                                             
+                                             (lambda (node new-value)
+                                               (if (maybe? (value node))
+                                                   (change-value node new-value)
+                                                   (exit tree))))))))))
+
+(define (insert-one tree new-value change-value)
   
   (define-tree-lookup (descend tree node new-value)
     (leaf red new-value)
@@ -404,8 +418,8 @@
 (define (tree->node-list tree)
   (node->list (root tree)))
 
-(define (lfold-tree-in-order proc tree seed)
-  (let loop ((acc '()) (node (root tree)))
+(define (lfold-tree-in-order proc seed tree)
+  (let loop ((acc seed) (node (root tree)))
     (if (not node)
         acc
         (loop (proc node
@@ -415,8 +429,8 @@
 (define (tree/in-order->list tree)
   (reverse (lfold-tree-in-order (lambda (item acc)
                                   (cons (value item) acc))
-                                tree
-                                '())))
+                                '()                                
+                                tree)))
 
 (define (insert-set tree lst)
   (if (null? lst)
@@ -434,13 +448,22 @@
 (define r/b-number-tree number-tree)
 (define r/b-symbol-tree symbol-tree)
 (define r/b-string-tree string-tree)
+(define r/b-tree? red/black-tree?)
+(define r/b-empty? empty-tree?)
 (define r/b-ref tree-ref)
 (define r/b-insert insert)
+(define r/b-maybe-replace maybe-replace)
 (define r/b-insert-set insert-set)
 (define r/b-delete delete)
 (define r/b-delete-set delete-set)
 (define r/b-tree->node-list tree->node-list)
 (define r/b-tree/in-order->list tree/in-order->list)
+
+(define (r/b-lfold kons knil tree)
+  (lfold-tree-in-order (lambda (item acc)
+                         (kons (value item) acc))
+                       knil
+                       tree))
 
 ; --------------------
 ; Tests
@@ -674,3 +697,10 @@
     (test-set 'delete-2/right->early-term delete basis (list 8))
     (test-set 'delete-3/right->case-1 delete basis (list 3))        
     (test-set 'delete-all delete basis (list 1 2 3 4 5 6 7 8 9 10))))
+
+(let* ((basis (insert-set (r/b-number-tree)
+                          (list 1 2 3 4)))
+       (same (maybe-replace basis 2 (lambda x #f)))
+       (new (maybe-replace basis 2 (lambda x #t))))
+  (eq? basis same)
+  (eq? basis new))

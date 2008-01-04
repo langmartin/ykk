@@ -108,8 +108,8 @@
    (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)   
    (files (utility red-black)))
 
-;;;; UUID gen
-(define-structure uuid
+;;;; uuidgen
+(define-structure uuidgen
   (export uuidgen)
   (open scheme srfi-27 bitwise)
   (files http/uuid))

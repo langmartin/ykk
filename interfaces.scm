@@ -5,10 +5,10 @@
 	  let-fluid
 	  let-fluids
 	  fluid
-          
+
 	  fluid-cell-ref
 	  fluid-cell-set!
-          
+
 	  set-fluid!))
 
 (define-interface ykk/bindings-interface
@@ -61,17 +61,41 @@
           r/b-symbol-tree
           r/b-string-tree
 
+          r/b-tree?
+          r/b-empty?
           r/b-ref
-          
+
           r/b-insert
+          r/b-maybe-replace
           r/b-insert-set
 
           r/b-delete
-          r/b-delete-set))
+          r/b-delete-set
+
+          r/b-lfold))
 
 (define-interface red/black-inspection-interface
   (export r/b-tree->node-list
           r/b-tree/in-order->list))
+
+;;;; Sets
+(define-interface set-interface
+  (export make-set
+          empty-set
+
+          set?
+          empty?
+          in-set?
+          set-ref
+          set=?
+          set<=?
+          set->list
+
+          adjoin adjoin-list
+          remove remove-list
+          union
+          intersection
+          difference))
 
 ;;;; core utilites
 (define-interface optional-arguments-interface
