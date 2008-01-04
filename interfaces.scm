@@ -1,5 +1,5 @@
 ;;;; Primitive
-(define-interface extended-fluids-interface
+(define-interface fluids+-interface
   (export make-fluid
           (define-fluid :syntax)
 	  let-fluid

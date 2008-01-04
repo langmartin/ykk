@@ -141,7 +141,7 @@
   (files http/uuid))
 
 ;;;; Fluids
-(define-structure extended-fluids extended-fluids-interface
+(define-structure fluids+ fluids+-interface
   (for-syntax (open scheme fluids))
   (open scheme fluids)
   (files utility/fluids))
