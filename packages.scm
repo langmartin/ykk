@@ -169,7 +169,7 @@
                     (ykk/environments-internal ykk/environments-internal-interface)
                     (environment-manipulation environment-manipulation-interface))
   (open scheme
-        uuid
+        uuidgen
         srfi-1
         srfi-9+
         fluids+
