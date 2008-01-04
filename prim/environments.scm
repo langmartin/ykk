@@ -26,7 +26,7 @@
                   ;; def looks like: (NAME VALUE) or (NAME TYPE VALUE)
                   (cond ((not (pair? def))
                          (error "extend-environment: malformed definition ~S" def))
-                        ((not (null? (cddr def)))                         
+                        ((not (null? (cddr def)))
                          (cons (car def)
                                (apply new-binding def)))
                         (else
@@ -42,7 +42,7 @@
   (map->evolved (lambda (pair)
                   (cons (car pair)
                         (cast-binding (%environment-ref env (car pair))
-                                      (cdr pair))))                
+                                      (cdr pair))))
                 env name/type-pairs))
 
 ;;; Internal
@@ -58,18 +58,30 @@
            (error "environment-ref: strange binding ~S in ~S" probe env))
           (else
            (found probe)))))
+
+(define (extend-with-native-package env package export?)
+  (extend-environment env (native-package->ykk-definitions package export?)))
+
+(define (native-package->ykk-definitions env export?)
+  (let ((defs '()))
+    (for-each-definition (lambda (name binding)
+                           (if (export? name binding)
+                               (set! defs (cons (list name binding)
+                                                defs))))
+                         env)
+    defs))
 
 ;;; Package-internal
 
 ;; An environment is actually a package
-(define-record-type rtd/package :ykk/package
+(define-record-type rtd/package
   (really-make-package uid definitions all)
   package?
   (uid package-uid)
   (definitions package-definitions)
   (all all-packages set-all-packages!))
 
-(define-record-discloser :ykk/package
+(define-record-discloser rtd/package
   (lambda (rec)
     `(env ,(package-uid rec) ,(list-names (package-definitions rec)))))
 
@@ -77,6 +89,8 @@
 ;; implementation, this part is actually a global table.  We keep a
 ;; functionally updatable record inside each package in this
 ;; implementation.
+
+;; FIXME: ALL-PACKAGES isn't being used.  Maybe remove it?
 
 (define remember-package cons)
 (define (empty-package-set) '())
@@ -105,22 +119,16 @@
 
 
 ;;; Tests
-(empty-environment)
-(define *test-env* (extend-environment (empty-environment)
-                                       `((a ,:symbol av) (b bv))))
+(assert (package? (empty-environment)))
+(let ((test-env (extend-environment (empty-environment)
+                                    `((a ,:symbol av) (b bv)))))
+  (with-current-environment
+   test-env
+   (lambda ()
+     (assert (lookup 'a) => 'av)))
 
-(with-current-environment
- *test-env*
- (lambda ()
-   (lookup 'a)))
-
-;; (with-current-environment
-;;  (forget-bindings *test-env* '(a))
-;;  (lambda ()
-;;    (lookup 'a)))
-
-(with-current-environment
- (cast-bindings *test-env* `((a . ,:symbol)))
- (lambda ()
-   (lookup 'a)
-   (binding-type (%environment-ref (current-environment) 'a))))
+  (with-current-environment
+   (cast-bindings test-env `((b . ,:symbol)))
+   (lambda ()
+     (assert (lookup 'b) => 'bv)
+     (assert (binding-type (%environment-ref (current-environment) 'b)) => :symbol))))

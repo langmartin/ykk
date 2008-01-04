@@ -48,7 +48,7 @@
 (define-structure srfi-9+
   (export (define-record-type :syntax)
           define-record-discloser)
-  (open scheme-level-2
+  (open scheme-level-2 
 	(s48 define-record-types))
   (begin
     (define define-record-discloser s48:define-record-discloser)
@@ -149,54 +149,34 @@
 ;;;; Primitive
 (define-structures ((ykk/bindings ykk/bindings-interface)
                     (ykk/bindings-internal ykk/bindings-internal-interface))
-  (open scheme
-        meta-types
-        locations
-        methods              ; FIXME: for :value, :symbol, etc.  Change to ykk/methods later
-        srfi-9+
-        assert
-        (s48 bindings)
-        (s48 packages))
+  (open scheme define-record-types meta-types locations
+        methods ; FIXME: for :value, :symbol, etc.  Change to ykk/methods later
+        (s48 bindings) (s48 packages))
   (files (prim binding)))
 
 (define-structures ((ykk/names ykk/names-interface)
                    (ykk/names-inspection ykk/names-inspection-interface))
-  (open scheme
-        set
-        assert)
+  (open scheme red/black red/black-inspection)
   (files (prim names)))
 
 (define-structures ((ykk/environments ykk/environments-interface)
                     (ykk/environments-internal ykk/environments-internal-interface))
   
-  (open scheme uuid define-record-types srfi-1 extended-fluids conditions primitives
+  (open scheme uuidgen define-record-types srfi-1 extended-fluids conditions primitives
         big-util ; for IDENTITY (is this worth the open?)
         methods ; FIXME: for :symbol, change to ykk/methods later
         ykk/names-inspection ; LIST-NAMES for record discloser (FIXME: remove when done with initial development)
         ykk/names
-        ykk/bindings
-        assert)
+        ykk/bindings)
   (files (prim environments)))
 
-(define-structure ykk/evaluation ykk/evaluation-interface
-  (open scheme
-        compiler-envs
-        package-commands-internal
-        srfi-8
-        srfi-9+
-        primitives
-        methods              ; for :symbol, FIXME: remove later
-        (s48 bindings)
-        (s48 evaluation)
-        (s48 environments)
-        (s48 packages)
-        (s48 packages-internal)
-        (s48 names)
-        ykk/bindings
-        ykk/bindings-internal
-        ykk/environments
-        ykk/environments-internal
-        assert)
+(define-structures ((ykk/evaluation ykk/evaluation-interface)
+                    (ykk/evaluation-internal ykk/evaluation-internal-interface))
+  
+  (open scheme compiler-envs package-commands-internal define-record-types primitives
+        methods ; for :symbol, FIXME: remove later
+        (s48 bindings) (s48 evaluation) (s48 environments) (s48 packages) (s48 packages-internal) (s48 names)
+        ykk/bindings ykk/bindings-internal ykk/environments ykk/environments-internal)
   (files (prim evaluation)))
 
 ;;;; ducts

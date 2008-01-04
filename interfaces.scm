@@ -26,7 +26,8 @@
   (export make-name-table
           define-names
           delete-names
-          lookup-name))
+          lookup-name
+          fold-names))
 
 (define-interface ykk/names-inspection-interface
   (export list-names))
@@ -41,18 +42,27 @@
           environment-ref
           lookup))
 
+(define-interface environment-manipulation-interface
+  (export (subset :syntax)
+          (with-prefix :syntax)
+          (modify :syntax)
+          prefix
+          expose
+          hide
+          alias
+          rename))
+
 (define-interface ykk/environments-internal-interface
   (export carefully
-          %environment-ref))
+          %environment-ref
+          extend-with-native-package
+          native-package->ykk-definitions))
 
 (define-interface ykk/evaluation-interface
   (export safe-evaluation-environment
           safe-eval
-          eval/extend))
-
-(define-interface ykk/evaluation-internal-interface
-  (export safe-eval->env
-          s48-package->ykk-definitions))
+          safe-eval->env
+          safe-eval/extend))
 
 ;;;; Red/Black Trees
 (define-interface red/black-interface

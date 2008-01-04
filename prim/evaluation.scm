@@ -8,8 +8,8 @@
 ;;;; PACKAGE).  FORM is evaluated in the environment PACKAGE and the
 ;;;; result of the evaluation is returned.
 
-;;;; The evaluation hook is added by modifying the default "evaluation
-;;;; environment" exported by a scheme48 package (see
+;;;; The evaluation hook is added by modifying the default compiler
+;;;; "evaluation environment" exported by a scheme48 package (see
 ;;;; bcomp/package.scm and bcomp/cenv.scm).  The export procedure
 ;;;; (PACKAGE->ENVIRONMENT), which is actually just a record slot
 ;;;; accessor, is called by COMPILE-AND-RUN in rts/eval.scm.
@@ -22,7 +22,7 @@
 
 ;;; Public
 (define (safe-evaluation-environment ykk-env)
-  (let ((new (s48-make-simple-package (list *safe-scheme-structure*)
+  (let ((new (s48:make-simple-package (list *safe-scheme-structure*)
                                       #t
                                       *tower*)))
     (set-package->environment! new (really-package->environment ykk-env new *tower*))
@@ -30,40 +30,46 @@
 
 ;; Evaluate FORM in YKK-ENV.
 (define (safe-eval form ykk-env)
-  (call-with-values
-      (lambda () (%safe-eval form ykk-env))
-    (lambda (result env)
-      result)))
+  (receive (result env)
+      (%safe-eval form ykk-env)
+    result))
 
-(define (eval/extend form ykk-env export?)
-  (extend-environment ykk-env
-                      (s48-package->ykk-definitions (safe-eval->env form ykk-env)
-                                                    export?)))
+(define (safe-eval->env form ykk-env export?)
+  (extend-with-native-package
+   ykk-env
+   (safe-eval->native-package form ykk-env)
+   export?))
+
+(define (safe-eval/extend form ykk-env . export?)
+  (receive (result package)
+      (%safe-eval form ykk-env)
+    (values result (extend-with-native-package
+                    ykk-env
+                    package
+                    (if (null? export?) every? export?)))))
+
+;; EVERY? -- defined here for clarity, but not exported
+(define (every? . x) #t)
 
 ;;; Internal
-(define (safe-eval->env form ykk-env)
-  (call-with-values
-      (lambda () (%safe-eval form ykk-env))
-    (lambda (result env)
-      env)))
-
-
-(define (s48-package->ykk-definitions env export?)
-  (let ((defs '()))    
-    (s48-for-each-definition (lambda (name binding)
-                               (if (export? name binding)                                   
-                                   (set! defs (cons (list name binding)
-                                                    defs))))
-                             env)
-    defs))
+(define (safe-eval->native-package form ykk-env)
+  (receive (result package)
+      (%safe-eval form ykk-env)
+    package))
 
 ;;; Package-internal
+;; The resulting environment can be inspected.  It will contain the
+;; top-level definitions in FORM.  One could use
+;; S48:FOR-EACH-DEFINITION to iterate over the bindings in ENV.
+(define (%safe-eval form ykk-env)
+  (let ((env (safe-evaluation-environment ykk-env)))
+    (values (s48:eval form env) env)))
 
 ;; FIXME: make a custom scheme environment based on r5rs that removes
 ;; I/O, dangerous operations, etc.
 (define *safe-scheme* (scheme-report-environment 5))
-(define *safe-scheme-structure* (car (s48-package-opens *safe-scheme*)))
-(define *tower* (s48-make-reflective-tower s48-eval (list *safe-scheme-structure*) 'ykk))
+(define *safe-scheme-structure* (car (s48:package-opens *safe-scheme*)))
+(define *tower* (s48:make-reflective-tower s48:eval (list *safe-scheme-structure*) 'ykk))
 
 ;; Here, we have a bit of kludge to replace the normal
 ;; package->environment with one that will first check for bindings in
@@ -79,9 +85,9 @@
                        ;;   1. First check only in PACKAGE
                        ;;   2. Check in YKK-ENV
                        ;;   3. (search-opens NAME PACKAGE)
-                       (really-lookup ykk-env package name (s48-package-integrate? package)))
+                       (really-lookup ykk-env package name (s48:package-integrate? package)))
 		     (lambda (name type . maybe-static)
-		       (s48-package-define! package
+		       (s48:package-define! package
                                             name
                                             type
                                             #f
@@ -92,19 +98,19 @@
 		     package))	; interim hack
 
 (define (really-lookup ykk-env package name integrate?)
-  (let ((probe (s48-package-definition package name)))
+  (let ((probe (s48:package-definition package name)))
     (cond (probe
            (if integrate?
                probe
-               (s48-forget-integration probe)))
-          ((s48-generated? name)
+               (s48:forget-integration probe)))
+          ((s48:generated? name)
            ; Access path is (generated-parent-name name)
-           (s48-generic-lookup (s48-generated-env name)
-                               (s48-generated-name name)))
+           (s48:generic-lookup (s48:generated-env name)
+                               (s48:generated-name name)))
           (else
            (carefully ykk-env name
                       binding->s48-binding
-                      (lambda () (search-opens (s48-package-opens-really package)
+                      (lambda () (search-opens (s48:package-opens-really package)
                                                name
                                                integrate?)))))))
 
@@ -113,53 +119,30 @@
   (let loop ((opens opens))
     (if (null? opens)
 	#f
-	(or (s48-structure-lookup (car opens) name integrate?)
+	(or (s48:structure-lookup (car opens) name integrate?)
 	    (loop (cdr opens))))))
-
-;; The resulting environment can be inspected.  It will contain the
-;; top-level definitions in FORM.  One could use
-;; S48-FOR-EACH-DEFINITION to iterate over the bindings in ENV.
-(define (%safe-eval form ykk-env)
-  (let ((env (safe-evaluation-environment ykk-env)))
-    (values (s48-eval form env) env)))
 
 ;;; Tests
 
-(define *test-env* (extend-environment (empty-environment)
-                                       `((a ,:symbol av) (b bv))))
+(let* ((test-env (extend-environment (empty-environment)
+                                     `((a ,:symbol av) (b bv))))
+       (form '(begin
+                  (define-syntax foo
+                    (syntax-rules ()
+                      ((_ a)
+                       '(foo a))))
+                  (define thing (foo bar))
+                  (define b 'something-else)
+                  (lambda ()
+                    (list thing a b)))))
+  (receive (value env)
+      (safe-eval/extend form test-env)
 
-;; closures work
-((safe-eval
-   '(begin
-      (define-syntax foo
-        (syntax-rules ()
-          ((_ a)
-           '(foo a))))
-      (define thing (foo bar))
-      (define b 'something-else)
-      (lambda ()
-        (list thing a b)))
-   *test-env*))
+    ;; VALUE is a closure
+    (assert (procedure? value))
+    (assert (value) => '((foo bar) av something-else))
 
-(define *evaled-package*
-  (safe-eval->env
-   '(begin
-      (define-syntax foo
-        (syntax-rules ()
-          ((_ a)
-           '(foo a))))
-      (define thing (foo bar))
-      (define b 'something-else)
-      thing)
-   *test-env*))
-
-;; what's inside?
-(s48-package->ykk-definitions *evaled-package* (lambda x #t))
-
-;; equivalent of eval/extend
-(extend-environment
- *test-env*
- (s48-package->ykk-definitions
-  *evaled-package*
-  (lambda x #t)))
-
+    ;; ENV is TEST-ENV extended with the definitions in FORM
+    (assert (environment-ref env 'a) => 'av)
+    (assert (environment-ref env 'b) => 'something-else)
+    (assert (environment-ref env 'thing) => '(foo bar))))
