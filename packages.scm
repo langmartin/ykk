@@ -108,8 +108,21 @@
    (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)   
    (files (utility red-black)))
 
-;;;; UUID gen
-(define-structure uuid
+;;;; Sets
+(define-structure rb-set set-interface
+  (open scheme red/black srfi-1 assert)
+  (files (utility set-red-black)
+         (utility vset)))
+
+(define-structure list-set set-interface
+  (open scheme srfi-1 srfi-9+ assert)
+  (files (utility set-list)
+         (utility vset)))
+
+(define set rb-set)
+
+;;;; uuidgen
+(define-structure uuidgen
   (export uuidgen)
   (open scheme srfi-27 bitwise)
   (files http/uuid))
@@ -136,7 +149,7 @@
 (define-structures ((ykk/environments ykk/environments-interface)
                     (ykk/environments-internal ykk/environments-internal-interface))
   
-  (open scheme uuid define-record-types srfi-1 extended-fluids conditions primitives
+  (open scheme uuidgen define-record-types srfi-1 extended-fluids conditions primitives
         big-util ; for IDENTITY (is this worth the open?)
         methods ; FIXME: for :symbol, change to ykk/methods later
         ykk/names-inspection ; LIST-NAMES for record discloser (FIXME: remove when done with initial development)
@@ -224,20 +237,32 @@
   (open scheme srfi-9)
   (files zipper))
 
+(define-structure zlist-null-log
+  zlist-logging-interface
+  (begin
+    (define (zlist-logging-proc cell)
+      #t))
+  (open scheme))
+
+(define-structure zcons-record
+  zcons-record-interface
+  (open scheme
+        define-record-types)
+  (files zipper/zlist))
+
 (define-structures
-  ((zcons-record zcons-record-interface)
-   (zlist zlist-interface))
+  ((zlist-r5 zlist-interface)
+   (zlist-srfi-1 zlist-srfi-1-interface))
   (open scheme
         define-record-types
         tables
-        ykk-ports
         uuidgen
-        assert)
+        assert
+        zlist-null-log)
   (files zipper/zlist))
 
-(define-structure zlist-srfi-1
-  zlist-srfi-1-interface
-  (open scheme
-        zlist
-        assert)
-  (files zipper/zlist-srfi-1+))
+(define-structure zlist
+  (compound-interface
+   zlist-interface
+   zlist-srfi-1-interface)
+  (open zlist-r5 zlist-srfi-1))

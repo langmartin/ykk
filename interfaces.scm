@@ -302,16 +302,6 @@
    proxy-server))
 
 ;;;; zippers, etc
-(define-interface zcons-record-interface
-  (export
-   zcons-cons
-   zpair?
-   zcons-id
-   zcons-next
-   zcons-car
-   zcons-cdr
-   zcons-set-cdr!))
-
 (define-interface zipper-interface
   (export
    zipper
@@ -320,28 +310,41 @@
    z-curr-node
    zip-all-the-way-up))
 
+(define-interface zlist-logging-interface
+  (export
+   zlist-logging-proc))
+
+(define-interface zcons-record-interface
+  (export
+   cons-cons
+   pair?
+   cons-id
+   cons-next
+   cons-car
+   cons-cdr
+   cons-set-cdr!))
+
 (define-interface zlist-interface
   (export
-   zlist
-   zcons
-   znull
-   zlist?
-   zpair?
-   znull?
-   zcar
-   zcdr
-   zmap*
-   zdepth-first))
+   list
+   cons
+   null
+   list?
+   pair?
+   null?
+   car
+   cdr))
 
 (define-interface zlist-srfi-1-interface
   (export
-   zmap
-   zfor-each
-   zfold
-   zfold-pair
-   zfold-right
-   zfold-pair-right
-   zlist-tail))
+   map*
+   for-each
+   list-tail
+   fold
+   fold-pair
+   fold-right
+   fold-pair-right
+   depth-first))
 
 (define-interface plist-interface
   (export
