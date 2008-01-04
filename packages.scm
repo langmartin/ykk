@@ -108,8 +108,18 @@
 ;;;; Red/Black Trees
 (define-structures ((red/black red/black-interface)
                     (red/black-inspection red/black-inspection-interface))
-   (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)   
-   (files (utility red-black)))
+   (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)
+   (files (utility red-black-constructed-from-records)    
+          (utility red-black)
+          (utility vred-black)))
+
+(define-structures ((list-red/black red/black-interface)
+                    (list-red/black-inspection red/black-inspection-interface))
+   (open scheme srfi-8 srfi-9 simple-signals pp)
+   (files (utility red-black-constructed-from-lists)    
+          (utility red-black)
+          (utility vred-black)))
+
 
 ;;;; Sets
 (define-structure rb-set set-interface
