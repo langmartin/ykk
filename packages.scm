@@ -1,6 +1,9 @@
 (define (s48 structure)
   (with-prefix structure s48:))
 
+(define (r5 structure)
+  (with-prefix structure r5:))
+
 ;;;; add #; and #,(foo ...) to the reader
 (define-structure octothorpe-extensions
   (export define-reader-ctor)
@@ -242,27 +245,26 @@
   (begin
     (define (zlist-logging-proc cell)
       #t))
-  (open scheme))
-
-(define-structure zcons-record
-  zcons-record-interface
   (open scheme
-        define-record-types)
-  (files zipper/zlist))
+        zcons-record))
 
 (define-structures
-  ((zlist-r5 zlist-interface)
-   (zlist-srfi-1 zlist-srfi-1-interface))
+  ((zcons-record zcons-record-interface)
+   (zlist (compound-interface
+           zlist-interface
+           zlist-srfi-1-interface)))
   (open scheme
-        define-record-types
+        srfi-9+
+        (r5 scheme)
+        (r5 srfi-1)
         tables
         uuidgen
         assert
         zlist-null-log)
   (files zipper/zlist))
 
-(define-structure zlist
-  (compound-interface
-   zlist-interface
-   zlist-srfi-1-interface)
-  (open zlist-r5 zlist-srfi-1))
+;; (define-structure zlist
+;;   (compound-interface
+;;    zlist-interface
+;;    zlist-srfi-1-interface)
+;;   (open zlist-r5 zlist-srfi-1))
