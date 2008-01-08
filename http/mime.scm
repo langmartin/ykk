@@ -261,6 +261,10 @@ body"
 
  (MIME:parse-content-type "text/html; charset=foo; encoding=bar") =>
  '((encoding . "bar") (charset . "foo") (=mime-type . "text/html")))
+
+;; (call-with-string-input-port
+;;  "Server: NS_6.1\r\nlocation: http://apple.accuweather.com/adcbin/apple/Apple_Weather_Data.asp?zipcode=37409\r\n"
+;;  MIME:read-headers)
 
 ;;;; Data Definitions
 (define (e-unimplemented . args)
@@ -434,3 +438,7 @@ aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
  (cdar
   (call-with-string-input-port *sample-message* mime-read-all))
  => "hello there, foobar")
+
+(call-with-string-input-port
+ "test: me\r\nfoo: bar"
+ mime-read-all)

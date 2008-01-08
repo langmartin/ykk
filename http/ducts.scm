@@ -115,7 +115,11 @@
         (not (hex-string? "")))
 
 (define (read-http-chunk-len port)
-  (let ((len (read-crlf-line port)))
+  (let* ((len (read-crlf-line port))
+         (len (if (string-null? len)
+                  (read-crlf-line port)
+                  len))
+         (len (string-trim-both len)))
     (if (not (hex-string? len))
         0
         (string->hex-number len))))
@@ -161,7 +165,7 @@
                      (byte-vector-output-port-output write-port)))))))
 
 
-(define (d/ascii% name0 ascii->char char->ascii)
+(define (d/ascii* name0 ascii->char char->ascii)
   (lambda (parent)
     (duct-extend*
      parent
@@ -177,9 +181,9 @@
                 (or (and (char? ch) ch)
                     (char->ascii ch))))))))
 
-(define (d/ascii) (d/ascii% "ascii" ascii->char char->ascii))
+(define (d/ascii) (d/ascii* "ascii" ascii->char char->ascii))
 
-(define (d/characters) (d/ascii% "ascii" integer->char char->integer))
+(define (d/characters) (d/ascii* "ascii" integer->char char->integer))
 
 (define (d/base64)
   (lambda (parent)
@@ -233,3 +237,19 @@
              ((d/http-chunked)
               (port->duct (current-input-port))))))))
      (duct-for-each display out))) => "foobar")
+
+(define (d/tee input-tee output-tee)
+  (lambda (parent)
+    (duct-extend*
+     parent
+     (name "tee")
+     (reader (lambda ()
+               (let ((ch (duct-read parent)))
+                 (write ch input-tee)
+                 ch)))
+     (writer (lambda (ch)
+               (write ch output-tee)
+               (duct-write parent ch)))
+     (closer (lambda ()
+               (close-output-port input-tee)
+               (close-output-port output-tee))))))

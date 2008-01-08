@@ -91,8 +91,12 @@
                  (lambda () (socket-accept socket))
                handler)))
         (if (http-server-exec? result)
-            ((exec-thunk result))
-            (lp))))))
+            (begin
+              (close-socket socket)
+              ((exec-thunk result)))
+            (close-socket socket)
+            ;; (lp)
+            )))))
 
 (define (http-multithreaded-server ip port handler)
   (let ((handler (handle-handler handler))
@@ -115,7 +119,11 @@
        (let ((res (handler version method path input-port)))
          (if (http-server-exec? res)
              res
-             (output-response output-port version res)))))))
+             (begin
+              (output-response output-port version res)
+              (force-output output-port)
+              (close-output-port output-port)
+              (close-input-port input-port))))))))
 
 (define (output-response output-port version response)
   (let-current-output-port
@@ -123,9 +131,7 @@
     (if (or #t (string-ci=? version "HTTP/1.0")) ; no difference for now
         (output version
                 " "
-                response))
-    (force-output output-port)
-    (close-output-port output-port)))
+                response))))
 
 ;; (define (output-head head)
 ;;   (for-each-pair (lambda (key val)
@@ -401,9 +407,11 @@ Some text goes here.")
    ((transfer-encoding "identity"))))
 
 (define (proxy-body mime)
-  (duct-for-each display
-                 ((d/characters)
-                  (mime->byte-duct mime))))
+  (duct-for-each
+   display
+   ((d/characters)
+    (mime->byte-duct mime)))
+  (force-output (current-output-port)))
 
 (define (proxy-handler version method path port)
   (let* ((url (parse-url path))
@@ -420,12 +428,11 @@ Some text goes here.")
                (head (mime-headers mime)))
           (let-http-response
            (code text)
-           #;
-           (lambda ()
-             (output-debug
-              "reply"
-              (header-reduce *proxy-reply-headers* head)))
-           (header-reduce *proxy-reply-headers* head)
+           (if #t
+               (header-reduce *proxy-reply-headers* head)
+               (lambda ()
+                 (output-debug
+                  "reply" (header-reduce *proxy-reply-headers* head))))
            (let-content-length
             (lambda ()
               (proxy-body mime)
@@ -451,7 +458,7 @@ Some text goes here.")
 ;;      "HTTP/1.1" "GET" "/index" (current-input-port)))))
 
 (define (proxy-server)
-  (http-multithreaded-server 'ip 8080 proxy-handler))
+  (http-server 'ip 3128 proxy-handler))
 
 ;; (output '(("GET" " " "/css/t.css" #f " " "HTTP/1.1" "\r\n")
 ;;           ((accept ": " "*" "\r\n")
