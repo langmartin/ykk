@@ -8,8 +8,8 @@
 
 (define-record-discloser rtd/zcons
   (lambda (cons)
-    `(zcons ,(cons-car cons)
-            ,(cdr cons))))
+    `(zc ,(cons-car cons)
+         ,(cdr cons))))
 
 (define *cdr* (make-table))
 
@@ -24,6 +24,17 @@
 
 (define null? r5:null?)
 
+(define (cons car cdr)
+  (let* ((cdr-loc (and (pair? cdr)
+                       (cons-id cdr)))
+         (cell (cons-cons (uuidgen)
+                          cdr-loc
+                          car
+                          cdr)))
+    (bury cell)
+    (zlist-log cell)
+    cell))
+
 (define (list . arguments)
   (r5:fold-right cons
                  null
@@ -33,17 +44,6 @@
   (or (null? obj)
       (pair? obj)))
 
-(define (cons car cdr)
-  (let* ((cdr-loc (and (pair? cdr)
-                       (cons-id cdr)))
-         (cell (cons-cons (uuidgen)
-                          cdr-loc
-                          car
-                          cdr)))
-    (bury cell)
-    (zlist-logging-proc cell)
-    cell))
-
 (define car cons-car)
 
 (define (cdr obj)
@@ -52,6 +52,40 @@
              (val (if (not loc) null (exhume loc))))
         (cons-set-cdr! obj val)
         val)))
+
+;;;; logging
+(define *log* #f)
+
+(define (initialize-log file-name)
+  (set! *log*
+        (open-output-file file-name)))
+
+(define (zlist-log cell)
+  (or (not *log*)
+      (writ (cons-id cell)
+            (cons-next cell)
+            (cons-car cell)
+            newline)))
+
+(define (replay-log-port port)
+  (let-current-input-port
+      port
+    (let lp ()
+      (let ((next (read)))
+        (if (eof-object? next)
+            #t
+            (begin
+              (replay-cell next)
+              (lp)))))))
+
+(define (replay-cell lst)
+  (apply (lambda (id next car)
+           (bury (cons-cons
+                  id
+                  next
+                  (if next car '())
+                  #f)))
+         lst))
 
 ;;;; srfi-1+ procs
 (define (identity x) x)

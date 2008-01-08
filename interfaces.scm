@@ -324,7 +324,9 @@
 
 (define-interface zlist-logging-interface
   (export
-   zlist-logging-proc))
+   zlist-log
+   initialize-log
+   replay-log-port))
 
 (define-interface zcons-record-interface
   (export
@@ -338,9 +340,9 @@
 
 (define-interface zlist-interface
   (export
-   list
    cons
    null
+   list
    list?
    pair?
    null?
@@ -367,3 +369,12 @@
    plist-set
    plist-ref-type
    plist-union))
+
+(define-interface process-interface
+  (export
+   process-cons
+   process?
+   process-auth
+   process-block
+   depth-first-blocked
+   depth-first-running))

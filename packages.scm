@@ -276,31 +276,44 @@
   (open scheme srfi-9)
   (files zipper))
 
-(define-structure zlist-null-log
-  zlist-logging-interface
-  (begin
-    (define (zlist-logging-proc cell)
-      #t))
-  (open scheme
-        zcons-record))
+;; (define-structure zlist-null-log
+;;   zlist-logging-interface
+;;   (begin
+;;     (define (zlist-logging-proc cell)
+;;       #t))
+;;   (open scheme
+;;         zcons-record))
 
-(define-structures
-  ((zcons-record zcons-record-interface)
-   (zlist (compound-interface
-           zlist-interface
-           zlist-srfi-1-interface)))
+(define-structure zlist
+  (compound-interface
+   zlist-interface
+   zlist-srfi-1-interface
+   zlist-logging-interface)
   (open scheme
         srfi-9+
         (r5 scheme)
         (r5 srfi-1)
         tables
         uuidgen
-        assert
-        zlist-null-log)
+        ykk-ports
+        monad-style-output)
   (files zipper/zlist))
 
-;; (define-structure zlist
-;;   (compound-interface
-;;    zlist-interface
-;;    zlist-srfi-1-interface)
-;;   (open zlist-r5 zlist-srfi-1))
+(define-structure z-red/black
+  red/black-interface
+  (open scheme srfi-8 srfi-9 simple-signals pp
+        zlist)
+   (files (utility red-black-constructed-from-lists)
+          (utility red-black)
+          (utility vred-black)))
+
+(define-structure process
+  process-interface
+  (open scheme
+        srfi-9+
+        simple-signals
+        z-red/black
+        assert
+        ykk-ports
+        monad-style-output)
+  (files (zipper process)))
