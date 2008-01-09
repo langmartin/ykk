@@ -52,8 +52,7 @@
 
 (define (crlf? port)
   (define (look ch)
-    (and (char-ready? port)
-         (char=? ch (peek-char port))
+    (and (char=? ch (peek-char port))
          (read-char port)))
   (and (look #\return)
        (look #\newline)))

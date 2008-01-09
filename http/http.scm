@@ -356,7 +356,8 @@ Some text goes here.")
 (define (proxy-client-headers url)
   (let-header-data
    ((host (url-host url))
-    (connection "close"))))
+    (connection "close")
+    (accept-encoding "identity, deflate"))))
 
 (define *proxy-client-filter*
   '(keep-alive))

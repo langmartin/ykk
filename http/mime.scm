@@ -287,13 +287,12 @@ body"
           headers))
 
 (define (read-headers port)
-  (and (char-ready? port)
-       (let ((headers (MIME:read-headers port)))
-         (values
-          ;; (header-filter '(content-type) headers)
-          headers
-          (and-let* ((ct (header-assoc 'content-type headers)))
-            (MIME:parse-content-type ct))))))
+  (let ((headers (MIME:read-headers port)))
+    (values
+     ;; (header-filter '(content-type) headers)
+     headers
+     (and-let* ((ct (header-assoc 'content-type headers)))
+       (MIME:parse-content-type ct)))))
 
 (define (header-cons key val cdr)
   (cons (cons key val) cdr))
@@ -358,11 +357,10 @@ body"
 
 (define (mime-stream port)
   (stream-delay
-   (if (and (char-ready? port)
-            (eof-object? (peek-char port)))
-        stream-null
-        (stream-cons (port->mime port)
-                     (mime-stream port)))))
+   (if (eof-object? (peek-char port))
+       stream-null
+       (stream-cons (port->mime port)
+                    (mime-stream port)))))
 
 (define (stream-map->list proc stream)
   (let lp ((stream stream))
