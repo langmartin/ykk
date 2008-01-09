@@ -157,10 +157,11 @@
 ;;   `(content-length . ,(byte-vector-length body)))
 
 (define (call/http-version port proc)
-  (apply
-   proc (string-split (read-crlf-line port)
-                      whitespace?
-                      3)))
+  (let* ((lst (string-split (read-crlf-line port) whitespace? 3))
+         (lst (if (< (length lst) 3)
+                  (list (car lst) (cadr lst) #f)
+                  lst)))
+    (apply proc lst)))
 
 ;; (define (http-status code text)
 ;;   (concat code " " text))
@@ -429,7 +430,13 @@ Some text goes here.")
           (let-http-response
            (code text)
            (if #t
-               (header-reduce *proxy-reply-headers* head)
+               (header-reduce
+                *proxy-reply-headers*
+                (and-let* ((ct (mime-content-type mime)))
+                  (list
+                   (content-type->header ct)))
+                ;; (error mime)
+                head)
                (lambda ()
                  (output-debug
                   "reply" (header-reduce *proxy-reply-headers* head))))

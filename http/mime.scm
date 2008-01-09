@@ -246,6 +246,12 @@
 	(read-new-header http-port '()))
       ))
 
+;; (define (MIME:read-headers port)
+;;   (let ((assoc (MIME:read-headers* port)))
+;;     (write assoc (current-error-port))
+;;     (newline (current-error-port))
+;;     assoc))
+
 ;;;; Assertions for Oleg's code
 (assert
  (call-with-string-input-port
@@ -439,6 +445,6 @@ aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
   (call-with-string-input-port *sample-message* mime-read-all))
  => "hello there, foobar")
 
-(call-with-string-input-port
- "test: me\r\nfoo: bar"
- mime-read-all)
+;; (call-with-string-input-port
+;;  "test: me\r\nfoo: bar"
+;;  mime-read-all)

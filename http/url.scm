@@ -66,6 +66,11 @@
       (and (char>=? ch #\A) (char<=? ch #\Z))
       (and (char>=? ch #\0) (char<=? ch #\9))))
 
+(define (urladditional? ch)
+  (case ch
+    ((#\_ #\/ #\. #\-) ch)
+    (else #f)))
+
 (define (urlencode producer)
   (define buffer '())
   (define (write-nibble n)
@@ -81,7 +86,7 @@
         (let ((ch (producer)))
           (cond ((eof-object? ch)
                  ch)
-                ((alphanumeric? ch)
+                ((or (alphanumeric? ch) (urladditional? ch))
                  ch)
                 ((char=? #\space ch)
                  #\+)
@@ -219,6 +224,12 @@
 (assert
  (url=? (parse-url "http://coptix.com:81/foo/page.php?foo=bar%20baz")
         (make-url 'http "coptix.com" 81 "/foo/page.php" '(("foo" . "bar baz")))))
+
+(assert
+ (url=?
+  (parse-url "http://coptix.com:81/foo/page.php?foo=bar%20baz&thing=5;bz=blip")
+  (make-url 'http "coptix.com" 81 "/foo/page.php"
+            '(("foo" . "bar baz") ("thing" . "5") ("bz" . "blip")))))
 
 (define (url-parameter-string url)
   (define (show key val)
