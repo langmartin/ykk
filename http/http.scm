@@ -414,13 +414,14 @@ Some text goes here.")
   (with-exception-catcher
    (lambda (c propagate)
      (let-http-response
-      (404 "Proxy Failure")
+      (500 "Proxy Failure")
       (let-headers
        ((content-type "text/plain"))
        (let-content-length
         (lambda ()
-          (output "404: "
-                  "almost certainly because the hostname is wrong\n"
+          (output "500: two known causes:\n"
+                  "https requests always error\n"
+                  "or the hostname doesn't exist\n"
                   (condition-stuff c)))))))
    thunk))
 
