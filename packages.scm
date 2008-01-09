@@ -104,6 +104,13 @@
         ykk-ports
         oleg-style-parsing
         monad-style-output))
+
+(define-structure exceptions
+  exceptions-interface
+  (open scheme
+        handle
+        simple-conditions)
+  (files (utility exceptions)))
 
 ;;;; Red/Black Trees
 (define-structures ((red/black red/black-interface)
@@ -258,6 +265,7 @@
         threads
         srfi-40
         srfi-8
+        exceptions
         mime
         url
         ducts)

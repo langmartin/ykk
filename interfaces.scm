@@ -221,6 +221,11 @@
    ykk-ports-interface
    oleg-style-parsing-interface
    monad-style-output-interface))
+
+(define-interface exceptions-interface
+  (export
+   with-exception-catcher
+   condition-stuff))
 
 ;;;; ducts
 (define-interface duct-interface

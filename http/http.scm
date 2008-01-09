@@ -410,31 +410,47 @@ Some text goes here.")
     (mime->byte-duct mime)))
   (force-output (current-output-port)))
 
+(define (proxy-client-handler thunk)
+  (with-exception-catcher
+   (lambda (c propagate)
+     (let-http-response
+      (404 "Proxy Failure")
+      (let-headers
+       ((content-type "text/plain"))
+       (let-content-length
+        (lambda ()
+          (output "404: "
+                  "almost certainly because the hostname is wrong\n"
+                  (condition-stuff c)))))))
+   thunk))
+
 (define (proxy-handler version method path port)
   (let* ((url (parse-url path))
          (host (url-host url))          ; proxy req include the host
          (mime (proxy-mime port))
          (head (mime-headers mime)))
-    (receive
-     (input output)
-     (proxy-client version method url head (proxy-req-body mime))
-     (call/http-version
-      input
-      (lambda (version code text)
-        (let* ((mime (proxy-mime input))
-               (head (mime-headers mime)))
-          (let-http-response
-           (code text)
-           (header-reduce *proxy-reply-headers*
-                          head)
-           (let-content-length
-            (lambda ()
-              (proxy-body mime)
-              (if (and #f (http-keepalive? head)) ; disabled
-                  (store-client-connection host input output)
-                  (begin
-                    (close-output-port output)
-                    (close-input-port input))))))))))))
+    (proxy-client-handler
+     (lambda ()
+       (receive
+        (input output)
+        (proxy-client version method url head (proxy-req-body mime))
+        (call/http-version
+         input
+         (lambda (version code text)
+           (let* ((mime (proxy-mime input))
+                  (head (mime-headers mime)))
+             (let-http-response
+              (code text)
+              (header-reduce *proxy-reply-headers*
+                             head)
+              (let-content-length
+               (lambda ()
+                 (proxy-body mime)
+                 (if (and #f (http-keepalive? head)) ; disabled
+                     (store-client-connection host input output)
+                     (begin
+                       (close-output-port output)
+                       (close-input-port input))))))))))))))
 
 ;; (lambda ()
 ;;   (output-debug
