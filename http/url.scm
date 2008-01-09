@@ -68,7 +68,7 @@
 
 (define (urladditional? ch)
   (case ch
-    ((#\_ #\/ #\. #\-) ch)
+    ((#\_ #\/ #\. #\- #\:) ch)
     (else #f)))
 
 (define (urlencode producer)
