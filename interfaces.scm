@@ -271,7 +271,6 @@
    header-assoc
    header-filter
    header-split
-   content-type->header
    xfer-chunked?
    null-header))
 

@@ -287,10 +287,13 @@ body"
           headers))
 
 (define (read-headers port)
-  (let ((headers (MIME:read-headers port)))
-    (values (header-filter '(content-type) headers)
-            (and-let* ((ct (header-assoc 'content-type headers)))
-              (MIME:parse-content-type ct)))))
+  (and (char-ready? port)
+       (let ((headers (MIME:read-headers port)))
+         (values
+          ;; (header-filter '(content-type) headers)
+          headers
+          (and-let* ((ct (header-assoc 'content-type headers)))
+            (MIME:parse-content-type ct))))))
 
 (define (header-cons key val cdr)
   (cons (cons key val) cdr))
@@ -305,20 +308,6 @@ body"
   (concat (car pair)
           ": "
           (cdr pair)))
-
-(define (content-type->header ct)
-  (define mimetype cdar)
-  (call-with-values
-      (lambda ()
-        (header-split '(=mime-type) ct))
-    (lambda (mt rest)
-      (cons 'content-type
-            (with-string-output-port
-             (lambda ()
-               (apply
-                semi-colon-separate
-                (mimetype mt)
-                (map header->string rest))))))))
 
 (define (header-split tags headers)
   (values (map (lambda (tag)
@@ -370,7 +359,7 @@ body"
 (define (mime-stream port)
   (stream-delay
    (if (and (char-ready? port)
-             (eof-object? (peek-char port)))
+            (eof-object? (peek-char port)))
         stream-null
         (stream-cons (port->mime port)
                      (mime-stream port)))))

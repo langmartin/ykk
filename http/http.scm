@@ -58,8 +58,7 @@
     (display body real)
     (let-current-output-port
         (current-error-port)
-      (output "output-debug: " label newline)
-      (display body))))
+      (output "(output-debug\n " label "\n" body ")\n\n"))))
 
 ;;;; Server
 (define (http-server-exec thunk)
@@ -94,9 +93,7 @@
             (begin
               (close-socket socket)
               ((exec-thunk result)))
-            (close-socket socket)
-            ;; (lp)
-            )))))
+            (lp))))))
 
 (define (http-multithreaded-server ip port handler)
   (let ((handler (handle-handler handler))
@@ -388,8 +385,8 @@ Some text goes here.")
            (method " " (url-path url) getp " " version crlf)
            (header-filter
             *proxy-client-filter*
-            (header-reduce (proxy-client-headers url) headers))))
-         (output body)
+            (header-reduce (proxy-client-headers url) headers)))
+          body)
          (force-output (current-output-port))
          (values input-port output-port))))))
 
@@ -399,9 +396,7 @@ Some text goes here.")
 (define (proxy-req-body mime)
   (list crlf
         (lambda ()
-          (duct-for-each
-           display
-           (mime->byte-duct mime)))))
+          (proxy-body mime))))
 
 (define *proxy-reply-headers*
   (let-header-data
@@ -413,12 +408,6 @@ Some text goes here.")
    ((d/characters)
     (mime->byte-duct mime)))
   (force-output (current-output-port)))
-
-(define (mime->content-type mime)
-  (or (and-let* ((ct (mime-content-type mime)))
-        (list
-         (content-type->header ct)))
-      '()))
 
 (define (proxy-handler version method path port)
   (let* ((url (parse-url path))
@@ -435,14 +424,8 @@ Some text goes here.")
                (head (mime-headers mime)))
           (let-http-response
            (code text)
-           (if #t
-               (header-reduce
-                *proxy-reply-headers*
-                (mime->content-type mime)
-                head)
-               (lambda ()
-                 (output-debug
-                  "reply" (header-reduce *proxy-reply-headers* head))))
+           (header-reduce *proxy-reply-headers*
+                          head)
            (let-content-length
             (lambda ()
               (proxy-body mime)
@@ -451,6 +434,11 @@ Some text goes here.")
                   (begin
                     (close-output-port output)
                     (close-input-port input))))))))))))
+
+;; (lambda ()
+;;   (output-debug
+;;    "reply"
+;;    (header-reduce *proxy-reply-headers* head)))
 
 ;; (define *request* "Host: coptix.com\r
 ;; Content-type: text/plain\r
