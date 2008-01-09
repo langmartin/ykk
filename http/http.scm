@@ -414,6 +414,12 @@ Some text goes here.")
     (mime->byte-duct mime)))
   (force-output (current-output-port)))
 
+(define (mime->content-type mime)
+  (or (and-let* ((ct (mime-content-type mime)))
+        (list
+         (content-type->header ct)))
+      '()))
+
 (define (proxy-handler version method path port)
   (let* ((url (parse-url path))
          (host (url-host url))          ; proxy req include the host
@@ -432,10 +438,7 @@ Some text goes here.")
            (if #t
                (header-reduce
                 *proxy-reply-headers*
-                (and-let* ((ct (mime-content-type mime)))
-                  (list
-                   (content-type->header ct)))
-                ;; (error mime)
+                (mime->content-type mime)
                 head)
                (lambda ()
                  (output-debug
