@@ -419,7 +419,7 @@ Some text goes here.")
        ((content-type "text/plain"))
        (let-content-length
         (lambda ()
-          (output "500: two known causes:\n"
+          (output "500: known causes:\n"
                   "https requests always error\n"
                   "or the hostname doesn't exist\n"
                   (condition-stuff c)))))))

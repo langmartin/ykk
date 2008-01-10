@@ -141,7 +141,9 @@
   (define (non-empty-token-of pred port)
     (let ((res (next-token-of pred port)))
       (if (string=? res "")
-	(parser-error port "MIME:parse-content-type: Unexpected empty token ")
+	(parser-error port
+                      "MIME:parse-content-type: Unexpected empty token "
+                      ctype-str)
 	res)))
   (call-with-string-input-port ctype-str
     (lambda (port)
