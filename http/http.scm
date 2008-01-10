@@ -51,14 +51,14 @@
 
 (assert (quoted-alist (foo 4) (bar 6)) => '((foo . 4) (bar . 6)))
 
-(define (output-debug label . args)
+(define (output-debug . args)
   (let ((real (current-output-port))
         (body (let-string-output-port
                (apply output args))))
     (display body real)
     (let-current-output-port
         (current-error-port)
-      (output "(output-debug\n " label "\n" body ")\n\n"))))
+      (output "output-debug\n" body "\n\n"))))
 
 ;;;; Server
 (define (http-server-exec thunk)
@@ -381,7 +381,6 @@ Some text goes here.")
                         (url-parameters? url)
                         (cons #\? (url-parameter-string url)))))
          (output
-          ;; "request"
           (let-http-request
            (method " " (url-path url) getp " " version crlf)
            (header-filter
