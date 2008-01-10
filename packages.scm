@@ -253,6 +253,21 @@
         unicode
         bitwise)
   (files http/url))
+
+(define-structure curl
+  (export
+   curl*
+   curl-ssl->string)
+  (open scheme
+        srfi-8
+        signals
+        posix
+        i/o
+        ykk-ports
+        srfi-1
+        assert
+        url)
+  (files (http curl)))
 
 ;;;; http
 (define-structure http http-interface
