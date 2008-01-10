@@ -59,42 +59,35 @@
 
 (assert (urldecode-string "foo+bar") => "foo bar") 
 
-(define hex-values "0123456789ABCDEF")
-
 (define (alphanumeric? ch)
   (or (and (char>=? ch #\a) (char<=? ch #\z))
       (and (char>=? ch #\A) (char<=? ch #\Z))
       (and (char>=? ch #\0) (char<=? ch #\9))))
 
-(define (urladditional? ch)
-  (case ch
-    ((#\_ #\/ #\. #\- #\:) ch)
-    (else #f)))
+;; (define (urladditional? ch)
+;;   (case ch
+;;     ((#\_ #\/ #\. #\- #\:) ch)
+;;     (else #f)))
 
 (define (urlencode producer)
   (define buffer '())
-  (define (write-nibble n)
-    (set! buffer (cons (string-ref hex-values n) buffer)))
   (define (pop!)
-    (if (null? buffer)
-        #f
-        (let ((c (car buffer)))
-          (set! buffer (cdr buffer))
-          c)))
+    (and (pair? buffer)
+         (let ((c (car buffer)))
+           (set! buffer (cdr buffer))
+           c)))
   (lambda ()
     (or (pop!)
         (let ((ch (producer)))
-          (cond ((eof-object? ch)
-                 ch)
-                ((or (alphanumeric? ch) (urladditional? ch))
-                 ch)
+          (cond ((eof-object? ch) ch)
+                ((alphanumeric? ch) ch)
                 ((char=? #\space ch)
                  #\+)
                 (else
                  (let ((n (char->scalar-value ch)))
-                   (write-nibble
-                    (bitwise-and (arithmetic-shift n -4) 15))
-                   (write-nibble (bitwise-and n 15))
+                   (set! buffer
+                         (string->list
+                          (number->string n 16)))
                    #\%)))))))
 
 (define (urlencode-string string)
@@ -102,7 +95,7 @@
       string
     (for-each-display (urlencode read-char))))
 
-(assert (urlencode-string "foo bar baz!") => "foo+bar+baz%12")
+(assert (urlencode-string "foo bar baz!") => "foo+bar+baz%21")
 
 (define (urlencode-display string)
   (let-string-input-port
@@ -251,4 +244,4 @@
 (assert
  (url-parameter-string
   (make-url 1 2 3 4 '(("foo" . "bar!") ("baz" . "quux, biatch!"))))
- => "foo=bar%12&baz=quux%C2+biatch%12")
+ => "foo=bar%21&baz=quux%2c+biatch%21")
