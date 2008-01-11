@@ -348,7 +348,7 @@
    http-keepalive?
    proxy-server))
 
-;;;; zippers, etc
+;;;; zippers, kernel
 (define-interface zipper-interface
   (export
    zipper
@@ -359,8 +359,7 @@
 
 (define-interface zlist-logging-interface
   (export
-   zlist-log
-   initialize-log
+   reopen-log-file
    replay-log-port))
 
 (define-interface zcons-record-interface
@@ -395,15 +394,11 @@
    fold-pair-right
    depth-first))
 
-(define-interface plist-interface
+(define-interface top-level-data-interface
   (export
-   plist
-   plist?
-   plist-type
-   plist-ref
-   plist-set
-   plist-ref-type
-   plist-union))
+   top-ref
+   top-set
+   top-del))
 
 (define-interface process-interface
   (export
@@ -411,5 +406,5 @@
    process?
    process-auth
    process-block
-   depth-first-blocked
-   depth-first-running))
+   fold-blocked
+   fold-running))

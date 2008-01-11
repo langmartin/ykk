@@ -1,10 +1,11 @@
-(define process-list (top-ref 'process-list))
+;;;; first, the process list
+(define (process-list) (top-ref 'process-list))
 
 (define (running-list)
-  (car (top-ref 'process-list)))
+  (car (process-list)))
 
 (define (blocked-list)
-  (cdr (top-ref 'process-list)))
+  (cdr (process-list)))
 
 (define (update running blocked)
   (top-set
@@ -12,15 +13,12 @@
    (cons running
          blocked)))
 
-(define (proc-insert process lst)
-  (r/b-insert
-   lst
-   process))
+(define proc-insert cons)
 
 (define (proc-delete process lst)
-  (r/b-delete
-   lst
-   process))
+  (filter (lambda (x)
+            (not (eq? x process)))
+          lst))
 
 (define-record-type process
   (make-process resource auth)
@@ -55,13 +53,5 @@
 
 (define (fold-blocked cons nil)
   (fold-procs cons nil (blocked-list)))
-
-;; (define (depth-first-procs cons lst)
-;;   (depth-first cons lst))
-
-;; (define (depth-first-running cons)
-;;   (depth-first-procs cons (running-list)))
-
-;; (define (depth-first-blocked cons)
-;;   (depth-first-procs cons (blocked-list)))
-
+
+;;;; processes themselves

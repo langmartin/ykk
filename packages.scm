@@ -116,14 +116,14 @@
 (define-structures ((red/black red/black-interface)
                     (red/black-inspection red/black-inspection-interface))
    (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)
-   (files (utility red-black-constructed-from-records)    
+   (files (utility red-black-constructed-from-records)
           (utility red-black)
           (utility vred-black)))
 
 (define-structures ((list-red/black red/black-interface)
                     (list-red/black-inspection red/black-inspection-interface))
    (open scheme srfi-8 srfi-9 simple-signals pp)
-   (files (utility red-black-constructed-from-lists)    
+   (files (utility red-black-constructed-from-lists)
           (utility red-black)
           (utility vred-black)))
 
@@ -311,14 +311,6 @@
   (open scheme srfi-9)
   (files zipper))
 
-;; (define-structure zlist-null-log
-;;   zlist-logging-interface
-;;   (begin
-;;     (define (zlist-logging-proc cell)
-;;       #t))
-;;   (open scheme
-;;         zcons-record))
-
 (define-structure zlist
   (compound-interface
    zlist-interface
@@ -329,6 +321,7 @@
         (r5 scheme)
         (r5 srfi-1)
         tables
+        fluids+
         uuidgen
         ykk-ports
         monad-style-output)
@@ -347,7 +340,6 @@
   (open scheme
         srfi-9+
         simple-signals
-        z-red/black
         assert
         ykk-ports
         monad-style-output)

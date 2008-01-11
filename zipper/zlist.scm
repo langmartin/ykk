@@ -54,29 +54,41 @@
         val)))
 
 ;;;; logging
-(define *log* #f)
+(define-fluid *log* #f
+  log
+  with-log)
 
-(define (initialize-log file-name)
-  (set! *log*
-        (open-output-file file-name)))
+(define (set-log! port)
+  (set-fluid! *log* port))
 
-(define (zlist-log cell)
-  (or (not *log*)
-      (writ (cons-id cell)
-            (cons-next cell)
-            (cons-car cell)
-            newline)))
+(define (reopen-log-file file-name)
+  (if (log) (close-output-port (log)))
+  (set-log! (open-output-file file-name)))
+
+(define (log-cell cell)
+  (or (not (log))
+      (write (list
+              (cons-id cell)
+              (cons-next cell)
+              (cons-car cell))
+             (log))
+      (newline (log))))
 
 (define (replay-log-port port)
-  (let-current-input-port
-      port
-    (let lp ()
-      (let ((next (read)))
-        (if (eof-object? next)
-            #t
-            (begin
-              (replay-cell next)
-              (lp)))))))
+  (with-log
+   #f
+   (let-current-input-port
+       port
+     (let lp ()
+       (let ((next (read)))
+         (if (not (eof-object? next))
+             (begin
+               (if (not (pair? next))
+                   (set! *top-id* (car lst))
+                   (replay-cell next))
+               (lp))))))
+   (set! *top* (exhume *top-id*))
+   *top*))
 
 (define (replay-cell lst)
   (apply (lambda (id next car)
@@ -86,6 +98,42 @@
                   (if next car '())
                   #f)))
          lst))
+
+(define *top* null)
+
+(define *top-id* #f)
+
+(define (top-log)
+  (display *top-id* (log))
+  (newline (log)))
+
+(define (fold-top cons)
+  (let ((top (fold cons '() *top*)))
+    (or (eq? top *top*)
+        top)))
+
+(define (top-ref tag)
+  (cond ((assoc tag *top*) => cdr)
+        (else #f)))
+
+(define (top-set tag val)
+  (let ((top
+         (or (fold-top (lambda (x top)
+                         (if (eq? tag (car x))
+                             (cons (cons tag val)
+                                   top)
+                             (cons x top))))
+             (cons (cons 'tag val)
+                   *top*))))
+    (set! *top* top)
+    (set! *top-id* (cons-id top))
+    (top-log)))
+
+(define (top-del tag)
+  (fold-top (lambda (x top)
+              (if (eq? tag (car x))
+                  top
+                  (cons x top)))))
 
 ;;;; srfi-1+ procs
 (define (identity x) x)
