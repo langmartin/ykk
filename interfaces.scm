@@ -109,6 +109,37 @@
           intersection
           difference))
 
+;;;; ykk methods
+(define-interface ykk/methods-interface
+  (export (define-generic :syntax)
+	  (define-method :syntax)
+	  (define-simple-type :syntax)
+          (with-generic :syntax)
+	  :values
+	  :value
+	  :number
+	  :complex
+	  :real
+	  :rational
+	  :integer
+	  :exact-integer
+	  :boolean
+	  :symbol
+	  :char
+	  :null
+	  :pair
+	  :vector
+	  :string
+	  :procedure
+	  :input-port
+	  :output-port
+	  :eof-object
+	  :record
+	  :record-type
+	  :zero
+	  singleton
+	  disclose &disclose))
+
 ;;;; core utilites
 (define-interface optional-arguments-interface
   (export

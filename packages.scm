@@ -212,6 +212,18 @@
         assert)
   (files (prim evaluation)))
 
+;;;; generics
+(define-structure ykk/methods ykk/methods-interface
+  (open scheme
+	define-record-types
+	records record-types records-internal
+	bitwise util primitives
+	simple-signals
+        assert
+        ykk-ports)
+  (files (prim ykk-methods))
+  (optimize auto-integrate))
+
 ;;;; ducts
 (define-structure duct-internal duct-interface
   (open scheme
