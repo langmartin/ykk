@@ -16,10 +16,10 @@
 (define (exhume id)
   (table-ref *cdr* id))
 
-(define (bury cell)
+(define (bury id datum)
   (table-set! *cdr* (cons-id cell) cell))
 
-;;;; Inteface definitions
+;;;; lists
 (define null '())
 
 (define null? r5:null?)
@@ -31,8 +31,8 @@
                           cdr-loc
                           car
                           cdr)))
-    (bury cell)
-    (zlist-log cell)
+    (bury (cons-id cell) cell)
+    (record-cell cell)
     cell))
 
 (define (list . arguments)
@@ -52,8 +52,35 @@
              (val (if (not loc) null (exhume loc))))
         (cons-set-cdr! obj val)
         val)))
+
+(define (record-cell cell)
+  (or (not (log))
+      (write (list
+              (cons-id cell)
+              (cons-next cell)
+              (record-car (cons-car cell)))
+             (log))
+      (newline (log))))
+
+(define (restore-cell lst)
+  (apply (lambda (id next car)
+           (bury id
+                 (cons-cons
+                  id
+                  next
+                  (if next car '())
+                  #f)))
+         lst))
 
 ;;;; logging
+(define (record-car val)
+  (cond ((list? val)
+         (list-id val))
+        ((vector? val)
+         (vector-id val))
+        (else
+         val)))
+
 (define-fluid *log* #f
   log
   with-log)
@@ -61,50 +88,37 @@
 (define (set-log! port)
   (set-fluid! *log* port))
 
+(define-syntax without-log
+  (syntax-rules ()
+    ((_ body ...)
+     (with-log #f body ...))))
+
 (define (reopen-log-file file-name)
   (if (log) (close-output-port (log)))
   (set-log! (open-output-file file-name)))
 
-(define (log-cell cell)
-  (or (not (log))
-      (write (list
-              (cons-id cell)
-              (cons-next cell)
-              (cons-car cell))
-             (log))
-      (newline (log))))
-
 (define (replay-log-port port)
-  (with-log
-   #f
-   (let-current-input-port
-       port
-     (let lp ()
-       (let ((next (read)))
-         (if (not (eof-object? next))
-             (begin
-               (if (not (pair? next))
-                   (set! *top-id* (car lst))
-                   (replay-cell next))
-               (lp))))))
-   (set! *top* (exhume *top-id*))
+  (without-log
+   (let ((top-id #f))
+     (let-current-input-port
+         port
+       (let lp ()
+         (let ((next (read)))
+           (if (not (eof-object? next))
+               (begin
+                 (cond ((not (pair? next)) (set! top-id next))
+                       ((r5:vector? (cdr next))
+                        (restore-vector next))
+                       (else
+                        (replay-cell next)))
+                 (lp)))))))
+   (set! *top* (exhume top-id))
    *top*))
-
-(define (replay-cell lst)
-  (apply (lambda (id next car)
-           (bury (cons-cons
-                  id
-                  next
-                  (if next car '())
-                  #f)))
-         lst))
 
 (define *top* null)
 
-(define *top-id* #f)
-
 (define (top-log)
-  (display *top-id* (log))
+  (display (cons-id *top*) (log))
   (newline (log)))
 
 (define (fold-top cons)
@@ -126,7 +140,6 @@
              (cons (cons 'tag val)
                    *top*))))
     (set! *top* top)
-    (set! *top-id* (cons-id top))
     (top-log)))
 
 (define (top-del tag)
@@ -134,72 +147,3 @@
               (if (eq? tag (car x))
                   top
                   (cons x top)))))
-
-;;;; srfi-1+ procs
-(define (identity x) x)
-
-(define (fold-pair->fold fold-pair cons nil lst)
-  (fold-pair (lambda (lst acc)
-               (cons (car lst) acc))
-             nil
-             lst))
-
-(define (map* proc lst)
-  (if (null? lst)
-      lst
-      (let ((head (car lst)) (tail (cdr lst)))
-        (let ((head1 (proc head))
-              (tail1 (map* proc tail)))
-          (if (and (eq? head1 head) (eq? tail1 tail))
-              lst
-              (cons head1 tail1))))))
-
-(define (for-each proc lst)
-  (fold (lambda (x acc)
-           (proc x))
-         #f
-         lst))
-
-(define (list-tail lst index)
-  (if (zero? index)
-      lst
-      (list-tail (cdr lst)
-                  (- index 1))))
-
-(define (fold-pair cons nil lst)
-  (if (null? lst)
-      nil
-      (fold-pair cons
-                 (cons lst nil)
-                 (cdr lst))))
-
-(define (fold cons nil lst)
-  (fold-pair->fold
-   fold-pair cons nil lst))
-
-(define (fold-pair-right cons nil lst)
-  (if (null? lst)
-      nil
-      (let ((tail (cdr lst))
-            (folded
-             (fold-right cons nil (cdr lst))))
-        (cons (car lst)
-              (if (eq? tail folded)
-                  tail
-                  folded)))))
-
-(define (fold-right cons nil lst)
-  (fold-pair->fold
-   fold-pair-right cons nil lst))
-
-(define (depth-first handle tree)
-  (cond ((null? tree) tree)
-        ((handle tree) => identity)
-        ((not (pair? tree)) tree)
-        (else
-         (let ((mapped (map* (lambda (kid)
-                                (depth-first handle kid))
-                              tree)))
-           (if (eq? mapped tree)
-               tree
-               mapped)))))
