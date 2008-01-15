@@ -359,22 +359,14 @@
    z-curr-node
    zip-all-the-way-up))
 
-(define-interface zlist-logging-interface
+(define-interface persistent-immutable-logging-interface
   (export
    reopen-log-file
-   replay-log-port))
+   replay-log-port
+   (with-log :syntax)
+   (without-log :syntax)))
 
-(define-interface zcons-record-interface
-  (export
-   cons-cons
-   pair?
-   cons-id
-   cons-next
-   cons-car
-   cons-cdr
-   cons-set-cdr!))
-
-(define-interface zlist-interface
+(define-interface list-interface
   (export
    cons
    null
@@ -385,7 +377,16 @@
    car
    cdr))
 
-(define-interface zlist-srfi-1-interface
+(define-interface vector-interface
+  (export
+   make-vector
+   vector
+   vector-length
+   vector-ref
+   vector-set
+   vector-for-each-index))
+
+(define-interface tiny-srfi-1-interface
   (export
    map*
    for-each
@@ -396,7 +397,14 @@
    fold-pair-right
    depth-first))
 
-(define-interface top-level-data-interface
+(define-interface tiny-srfi-43-interface
+  (export
+   vector-fold
+   vector-fold-right
+   vector-for-each
+   vector-map))
+
+(define-interface top-level-dictionary-interface
   (export
    top-ref
    top-set

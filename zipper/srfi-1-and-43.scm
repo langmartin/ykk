@@ -1,11 +1,5 @@
 (define (identity x) x)
 
-(define (fold-pair->fold fold-pair cons nil lst)
-  (fold-pair (lambda (lst acc)
-               (cons (car lst) acc))
-             nil
-             lst))
-
 (define (map* proc lst)
   (if (null? lst)
       lst
@@ -16,28 +10,11 @@
               lst
               (cons head1 tail1))))))
 
-(define (for-each proc lst)
-  (fold (lambda (x acc)
-           (proc x))
-         #f
-         lst))
-
 (define (list-tail lst index)
   (if (zero? index)
       lst
       (list-tail (cdr lst)
                   (- index 1))))
-
-(define (fold-pair cons nil lst)
-  (if (null? lst)
-      nil
-      (fold-pair cons
-                 (cons lst nil)
-                 (cdr lst))))
-
-(define (fold cons nil lst)
-  (fold-pair->fold
-   fold-pair cons nil lst))
 
 (define (fold-pair-right cons nil lst)
   (if (null? lst)
@@ -65,3 +42,33 @@
            (if (eq? mapped tree)
                tree
                mapped)))))
+
+(define (vector-fold proc nil vector)
+  (let ((len (vector-length vector)))
+    (let lp ((idx 0) (acc nil))
+      (if (= idx len)
+          acc
+          (lp (+ idx 1)
+              (proc (vector-ref vector idx)
+                    acc))))))
+
+(define (vector-fold-right proc nil vector)
+  (let ((len (vector-length vector)))
+    (let lp ((idx 0))
+      (if (= idx len)
+          nil
+          (proc (vector-ref vector idx)
+                (lp (+ idx 1)))))))
+
+(define (vector-for-each proc vector)
+  (vector-fold (lambda (x acc)
+                 (proc x))
+               #f
+               vector))
+
+(define (vector-map proc vector)
+  (vector-fold-right (lambda (x acc)
+                       (r5:cons (proc x)
+                                acc))
+                     '()
+                     vector))

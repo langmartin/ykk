@@ -58,7 +58,7 @@
 	 (s48:define-record-type type-name type-name . stuff))))))
 
 (define-structure ykk-parsing
-  oleg-style-parsing-interface
+  ykk-parsing-interface
   (open scheme
         signals
         assert
@@ -304,19 +304,23 @@
    (shift :syntax)
    (reset :syntax))
   (open scheme signals escapes fluids records threads)
-  (files new-shift))
+  (files (zipper new-shift)))
 
 (define-structure zipper
   zipper-interface
   (open scheme srfi-9)
-  (files zipper))
+  (files (zipper zipper)))
 
-(define-structure zlist
+(define-structure persistent-immutable
   (compound-interface
-   zlist-interface
-   zlist-srfi-1-interface
-   zlist-logging-interface)
+   persistent-immutable-logging-interface
+   list-interface
+   vector-interface
+   tiny-srfi-1-interface
+   tiny-srfi-43-interface
+   top-level-dictionary-interface)
   (open scheme
+        signals
         srfi-9+
         (r5 scheme)
         (r5 srfi-1)
@@ -324,16 +328,18 @@
         fluids+
         uuidgen
         ykk-ports
-        monad-style-output)
-  (files zipper/zlist))
+        monad-style-output
+        ykk-parsing)
+  (files (zipper persistent-immutable)
+         (zipper srfi-1-and-43)))
 
-(define-structure z-red/black
-  red/black-interface
-  (open scheme srfi-8 srfi-9 simple-signals pp
-        zlist)
-   (files (utility red-black-constructed-from-lists)
-          (utility red-black)
-          (utility vred-black)))
+(define-structure functional-records
+  (export
+   (define-record-type :syntax)
+   vector?)
+  (open scheme
+        persistent-immutable)
+  (files (zipper records)))
 
 (define-structure process
   process-interface
