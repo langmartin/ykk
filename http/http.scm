@@ -380,7 +380,7 @@ Some text goes here.")
        (let ((getp (and (get-style? method)
                         (url-parameters? url)
                         (cons #\? (url-parameter-string url)))))
-         (output
+         (output-debug
           (let-http-request
            (method " " (url-path url) getp " " version crlf)
            (header-filter
