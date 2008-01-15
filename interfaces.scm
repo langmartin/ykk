@@ -223,7 +223,7 @@
     with-string-ports
     (let-string-ports :syntax))))
 
-(define-interface oleg-style-parsing-interface
+(define-interface ykk-parsing-interface
   (export
    next-chunk-primitive
    next-chunk-for-each
@@ -234,6 +234,8 @@
    crlf?
    read-crlf-line
    read-line
+   port-fold
+   port-fold-right
    read-all
    string-split
    whitespace?
@@ -250,7 +252,7 @@
 (define-interface the-interface-formerly-know-as-io-util
   (compound-interface
    ykk-ports-interface
-   oleg-style-parsing-interface
+   ykk-parsing-interface
    monad-style-output-interface))
 
 (define-interface exceptions-interface

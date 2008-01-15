@@ -57,7 +57,7 @@
 	((define-record-type type-name . stuff)
 	 (s48:define-record-type type-name type-name . stuff))))))
 
-(define-structure oleg-style-parsing
+(define-structure ykk-parsing
   oleg-style-parsing-interface
   (open scheme
         signals
@@ -65,7 +65,7 @@
         extended-ports
         optional-arguments
         ykk-ports)
-  (files utility/oleg-style-parsing))
+  (files (utility ykk-parsing)))
 
 (define-structure monad-style-output
   monad-style-output-interface
@@ -102,7 +102,7 @@
         language-ext
         alists
         ykk-ports
-        oleg-style-parsing
+        ykk-parsing
         monad-style-output))
 
 (define-structure exceptions

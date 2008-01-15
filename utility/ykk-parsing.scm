@@ -83,15 +83,23 @@
         (next-chunk separator port include-separator?)
         (next-chunk (lambda (c) #f) port))))
 
+(define (port-fold cons nil reader . port)
+  (let ((current (apply reader port)))
+    (if (eof-object? current)
+        nil
+        (port-fold cons (cons current nil) reader))))
+
+(define (port-fold-right cons nil reader . port)
+  (let ((current (apply reader port)))
+    (if (eof-object? current)
+        nil
+        (cons current
+              (port-fold-right cons nil reader)))))
+
 (define (read-all . rest)
   (let-optionals* rest ((reader read)
                         (port (current-input-port)))
-    (let lp ()
-      (let ((current (reader port)))
-        (if (eof-object? current)
-            '()
-            (cons current
-                  (lp)))))))
+    (port-fold-right cons '() reader port)))
 
 (define (string-split string . pred+max)
   (let-optionals* pred+max ((pred whitespace?)
