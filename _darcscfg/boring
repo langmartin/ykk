@@ -35,3 +35,4 @@
 (^|/)\._
 ^TAGS$
 ^template($|/)
+^attic($|/)
