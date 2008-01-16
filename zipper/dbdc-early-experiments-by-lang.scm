@@ -65,9 +65,22 @@
            (if (eq? mapped tree)
                tree
                mapped)))))
-
-;;;; So we've got a working depth-first, yeah?
 
+(define (mapz* lst k)
+  (if (null? lst)
+      (k '())
+      (let* ((k0 (lambda (value tail)
+                   (k (if (eq? value (car lst))
+                          lst
+                          (cons value tail)))))
+             (kz (lambda (el)
+                   (mapz* (cdr lst)
+                          (lambda (tail)
+                            (k0 (or el (car lst))
+                                tail))))))
+        (zipper (car lst) kz))))
+
+;;;; zipper
 (define-record-type zipper :zipper
   (zipper tree k)
   zipper?
