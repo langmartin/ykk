@@ -4,6 +4,9 @@
 (define (r5 structure)
   (with-prefix structure r5:))
 
+(define (ykk structure)
+  (with-prefix structure ykk:))
+
 ;;;; add #; and #,(foo ...) to the reader
 (define-structure octothorpe-extensions
   (export define-reader-ctor)
@@ -141,10 +144,7 @@
 (define set rb-set)
 
 ;;;; uuidgen
-(define-structure uuidgen
-  (export uuidgen)
-  (open scheme srfi-27 bitwise)
-  (files http/uuid))
+
 
 ;;;; Fluids
 (define-structure fluids+ fluids+-interface
@@ -245,7 +245,7 @@
         duct-internal)
   (files http/ducts))
 
-;;;; mime & url
+;;;; mime & url, http
 (define-structure mime mime-interface
   (open scheme
         http-build-utilities
@@ -280,8 +280,12 @@
         assert
         url)
   (files (http curl)))
-
-;;;; http
+
+(define-structure uuidgen
+  (export uuidgen)
+  (open scheme srfi-27 bitwise)
+  (files http/uuid))
+
 (define-structure http http-interface
   (open scheme
         http-build-utilities
@@ -311,35 +315,60 @@
   (open scheme srfi-9)
   (files (zipper zipper)))
 
+;;;; the set of symbols that will work when passed to persistent-symbol-set!
+(define-structure persistent-symbols
+  (export
+   processes)
+  (open scheme)
+  (begin
+    (define processes #f)))
+
 (define-structure persistent-immutable
   (compound-interface
    persistent-immutable-logging-interface
-   list-interface
-   vector-interface
-   tiny-srfi-1-interface
-   tiny-srfi-43-interface
-   top-level-dictionary-interface)
+   vector-interface)
   (open scheme
         signals
         srfi-9+
         (r5 scheme)
         (r5 srfi-1)
         tables
+        package-commands-internal
+        environments
         fluids+
         uuidgen
         ykk-ports
         monad-style-output
-        ykk-parsing)
-  (files (zipper persistent-immutable)
-         (zipper srfi-1-and-43)))
+        ykk-parsing
+        persistent-symbols)
+  (files (zipper persistent-immutable)))
 
-(define-structure functional-records
+(define-structure functional-persistent-records
   (export
    (define-record-type :syntax)
    vector?)
+  (for-syntax (open scheme assert))
+  (open ykk-records
+        scheme
+        signals)
+  (files (zipper functional-records)))
+
+(define-structure def-record
+  (export
+   (def-record :syntax)
+   (def-discloser :syntax))
   (open scheme
-        persistent-immutable)
-  (files (zipper records)))
+        functional-persistent-records)
+  (files (zipper def-record)))
+
+(define-structure persistent-data
+  (compound-interface
+   list-interface
+   tiny-srfi-1-interface
+   tiny-srfi-43-interface)
+  (open scheme
+        def-record)
+  (files (zipper persistent-things)))
 
 (define-structure process
   process-interface

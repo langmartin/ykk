@@ -163,6 +163,7 @@
    concat-for-each
    concat
    concat-write
+   concat->symbol
    (assert :syntax)))
 
 (define-interface language-ext-interface
@@ -361,10 +362,11 @@
 
 (define-interface persistent-immutable-logging-interface
   (export
-   reopen-log-file
+   reopen-log-port
    replay-log-port
-   (with-log :syntax)
-   (without-log :syntax)))
+   with-log
+   (without-log :syntax)
+   persistent-symbol-set!))
 
 (define-interface list-interface
   (export
@@ -381,9 +383,9 @@
   (export
    make-vector
    vector
+   vector?
    vector-length
    vector-ref
-   vector-set
    vector-for-each-index))
 
 (define-interface tiny-srfi-1-interface
@@ -404,11 +406,12 @@
    vector-for-each
    vector-map))
 
-(define-interface top-level-dictionary-interface
+(define-interface low-level-record-interface
   (export
-   top-ref
-   top-set
-   top-del))
+   vector?
+   record?
+   make-record
+   record-ref))
 
 (define-interface process-interface
   (export

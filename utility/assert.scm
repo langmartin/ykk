@@ -28,3 +28,7 @@
 
 (define (concat-write . things)
   (concat-for-each write things))
+
+(define (concat->symbol . args)
+  (string->symbol
+   (apply concat args)))
