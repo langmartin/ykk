@@ -386,25 +386,25 @@
    vector?
    vector-length
    vector-ref
-   vector-for-each-index))
+   vector-for-each))
 
 (define-interface tiny-srfi-1-interface
   (export
-   map*
    for-each
    list-tail
+   assoc/predicate
+   assq
    fold
    fold-pair
    fold-right
    fold-pair-right
+   map*
    depth-first))
 
 (define-interface tiny-srfi-43-interface
   (export
    vector-fold
-   vector-fold-right
-   vector-for-each
-   vector-map))
+   vector-fold-right))
 
 (define-interface low-level-record-interface
   (export

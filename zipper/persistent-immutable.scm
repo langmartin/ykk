@@ -38,8 +38,12 @@
           (proc idx)
           (lp (+ 1 idx))))))
 
-(define (vector-for-each-index proc vector)
-  (for-each-number proc 0 (vector-length vector)))
+(define (vector-for-each proc vector)
+  (for-each-number
+   (lambda (idx)
+     (proc (vector-ref vector idx)))
+   0
+   (vector-length vector)))
 
 ;;;; logging, "memory" store
 (define (e-unkown-type obj)
@@ -109,11 +113,9 @@
   (write-log
    (lambda ()
      (disp "(v " (vector-id vec))
-     (vector-for-each-index (lambda (idx)
-                              (disp #\space
-                                    (disclose-object
-                                     (vector-ref vec idx))))
-                            vec)
+     (vector-for-each (lambda (el)
+                        (disp #\space (disclose-object el)))
+                      vec)
      (disp ")"))))
 
 (define (persistent-symbol-set! sym val)

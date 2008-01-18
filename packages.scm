@@ -315,7 +315,7 @@
   (open scheme srfi-9)
   (files (zipper zipper)))
 
-;;;; the set of symbols that will work when passed to persistent-symbol-set!
+;;; the set of symbols that will work when passed to persistent-symbol-set!
 (define-structure persistent-symbols
   (export
    processes)
@@ -323,10 +323,9 @@
   (begin
     (define processes #f)))
 
-(define-structure persistent-immutable
-  (compound-interface
-   persistent-immutable-logging-interface
-   vector-interface)
+(define-structures
+  ((persistent-logging persistent-immutable-logging-interface)
+   (persistent-vectors vector-interface))
   (open scheme
         signals
         srfi-9+
@@ -343,12 +342,12 @@
         persistent-symbols)
   (files (zipper persistent-immutable)))
 
-(define-structure functional-persistent-records
+(define-structure functional-records
   (export
    (define-record-type :syntax)
    vector?)
   (for-syntax (open scheme assert))
-  (open ykk-records
+  (open persistent-vectors
         scheme
         signals)
   (files (zipper functional-records)))
@@ -358,15 +357,17 @@
    (def-record :syntax)
    (def-discloser :syntax))
   (open scheme
-        functional-persistent-records)
+        functional-records
+        methods)
   (files (zipper def-record)))
 
-(define-structure persistent-data
+(define-structure persistent-things
   (compound-interface
    list-interface
    tiny-srfi-1-interface
    tiny-srfi-43-interface)
   (open scheme
+        functional-records
         def-record)
   (files (zipper persistent-things)))
 

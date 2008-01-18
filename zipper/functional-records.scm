@@ -7,7 +7,7 @@
        ...)
      (begin
        (define type
-         (make-record-type 'type '(field-tag ...) #f))
+         (make-record-type 'type '(field-tag ...)))
        (define constructor
          (record-constructor type '(constructor-tag ...)))
        (define predicate
@@ -109,3 +109,5 @@
   foo?
   (one foo-one)
   (two foo-two))
+
+(define bar (make-foo 1 2))
