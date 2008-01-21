@@ -1,5 +1,4 @@
-;;;; first, the process list
-(define (process-list) (top-ref 'process-list))
+(define (process-list) top:processes)
 
 (define (running-list)
   (car (process-list)))
@@ -8,8 +7,8 @@
   (cdr (process-list)))
 
 (define (update running blocked)
-  (top-set
-   'process-list
+  (persistent-symbol-set!
+   top:processes
    (cons running
          blocked)))
 

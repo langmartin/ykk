@@ -52,3 +52,24 @@
 
 (define (make-not proc)
   (lambda x (not (apply proc x))))
+
+(define (fold-numbers proc nil start stop step)
+  (if (= start stop)
+      nil
+      (fold-numbers
+       proc
+       (proc start nil)
+       (+ start step)
+       stop
+       step)))
+
+(define (fold-right-numbers proc nil start stop step)
+  (if (= start stop)
+      nil
+      (proc start
+            (fold-right-numbers
+             proc
+             nil
+             (+ start step)
+             stop
+             step))))

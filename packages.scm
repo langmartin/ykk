@@ -28,6 +28,16 @@
         ykk-ports)
   (files utility/assert))
 
+(define-structure zassert
+  (compound-interface
+   assert-interface
+   (export equal?))
+  (open persistent-immutable-equal
+        scheme
+        signals
+        ykk-ports)
+  (files utility/assert))
+
 (define-structure optional-arguments
   optional-arguments-interface
   (open scheme
@@ -318,14 +328,13 @@
 ;;; the set of symbols that will work when passed to persistent-symbol-set!
 (define-structure persistent-symbols
   (export
-   processes)
+   *processes*)
   (open scheme)
   (begin
-    (define processes #f)))
+    (define *processes* #f)))
 
-(define-structures
-  ((persistent-logging persistent-immutable-logging-interface)
-   (persistent-vectors vector-interface))
+(define-structure persistent-immutable
+  vector-interface
   (open scheme
         signals
         srfi-9+
@@ -339,15 +348,29 @@
         ykk-ports
         monad-style-output
         ykk-parsing
-        persistent-symbols)
+        persistent-symbols
+        language-ext)
   (files (zipper persistent-immutable)))
 
-(define-structure functional-records
+(define-structure persistent-immutable-equal
+  (export equal?)
+  (open persistent-immutable
+        scheme
+        (r5 scheme)
+        language-ext
+        alists)
+  (files (zipper equal)))
+
+(define-structure persistent-logging
+  persistent-immutable-logging-interface
+  (open persistent-immutable))
+
+(define-structure persistent-records
   (export
    (define-record-type :syntax)
    vector?)
   (for-syntax (open scheme assert))
-  (open persistent-vectors
+  (open persistent-immutable
         scheme
         signals)
   (files (zipper functional-records)))
@@ -357,18 +380,21 @@
    (def-record :syntax)
    (def-discloser :syntax))
   (open scheme
-        functional-records
+        persistent-records
         methods)
   (files (zipper def-record)))
 
-(define-structure persistent-things
+(define-structure persistent-lists
   (compound-interface
    list-interface
    tiny-srfi-1-interface
    tiny-srfi-43-interface)
   (open scheme
-        functional-records
-        def-record)
+        (r5 scheme)
+        (r5 srfi-1)
+        persistent-records
+        def-record
+        zassert)
   (files (zipper persistent-things)))
 
 (define-structure process
@@ -378,5 +404,6 @@
         simple-signals
         assert
         ykk-ports
-        monad-style-output)
+        monad-style-output
+        persistent-records)
   (files (zipper process)))

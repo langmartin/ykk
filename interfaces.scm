@@ -152,6 +152,7 @@
 
 (define-interface alists-interface
   (export
+   fold-two
    list->alist
    update-alist
    update-force-alist
@@ -172,7 +173,9 @@
    (when :syntax)
    (begin1 :syntax)
    make-not
-   (case-equal :syntax)))
+   (case-equal :syntax)
+   fold-numbers
+   fold-right-numbers))
 
 (define-interface srfi-1+-interface
   (compound-interface
@@ -371,7 +374,6 @@
 (define-interface list-interface
   (export
    cons
-   null
    list
    list?
    pair?
@@ -385,8 +387,7 @@
    vector
    vector?
    vector-length
-   vector-ref
-   vector-for-each))
+   vector-ref))
 
 (define-interface tiny-srfi-1-interface
   (export
@@ -403,12 +404,14 @@
 
 (define-interface tiny-srfi-43-interface
   (export
+   vector-fold-index
    vector-fold
+   vector-fold-right-index
    vector-fold-right))
 
 (define-interface low-level-record-interface
   (export
-   vector?
+   ;; vector?
    record?
    make-record
    record-ref))

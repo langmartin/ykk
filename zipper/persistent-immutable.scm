@@ -7,14 +7,15 @@
 
 (define-record-discloser rtd/zvector
   (lambda (vec)
-    `(z ,(r5-vector vec))))
+    `(zv ,(r5-vector vec))))
 
 (define (make-vector-with-r5 proc . args)
-  (let ((id (uuidgen)))
-    (replay-vector! id (apply proc args))
-    (let ((vec (exhume id)))
-      (write-vector vec)
-      vec)))
+  (let* ((id (uuidgen))
+         (r5 (apply proc args))
+         (vec (make-vector* id r5)))
+    (bury id vec)
+    (write-vector vec)
+    vec))
 
 (define (make-vector len . fill)
   (apply make-vector-with-r5 r5:make-vector len fill))
@@ -32,15 +33,16 @@
   (apply vector lst))
 
 (define (for-each-number proc start stop)
-  (let lp ((idx start))
-    (if (not (= idx stop))
-        (begin
-          (proc idx)
-          (lp (+ 1 idx))))))
+  (fold-numbers (lambda (x acc)
+                  (proc x))
+                #f
+                start
+                stop
+                1))
 
 (define (vector-for-each proc vector)
   (for-each-number
-   (lambda (idx)
+   (lambda (idx acc)
      (proc (vector-ref vector idx)))
    0
    (vector-length vector)))
@@ -122,3 +124,9 @@
   (write-log
    (lambda ()
      (write (list 'set! sym (disclose-object val))))))
+
+(define (test-creation)
+  (let lp ((count 500))
+    (if (= count 0)
+        'done
+        (vector (lp (- count 1))))))

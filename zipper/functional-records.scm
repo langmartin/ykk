@@ -17,21 +17,21 @@
        ...))))
 
 ;;;; record-type
-(define record-marker (list 'record-marker))
+(define record-marker (vector 'record-marker))
 
-(define real-vector? vector?)
+;; (define real-vector? vector?)
 
 (define (record-marker? x)
   (and (< 0 (vector-length x))
        (eq? (vector-ref x 0)
             record-marker)))
 
-(define (vector? x)
-  (and (real-vector? x)
-       (not (record-marker? x))))
+;; (define (vector? x)
+;;   (and (real-vector? x)
+;;        (not (record-marker? x))))
 
 (define (record? x)
-  (and (real-vector? x)
+  (and (vector? x)
        (record-marker? x)))
 
 (define (make-record . args)
