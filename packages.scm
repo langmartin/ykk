@@ -389,13 +389,14 @@
    list-interface
    tiny-srfi-1-interface
    tiny-srfi-43-interface)
-  (open scheme
+  (open zassert
+        scheme
         (r5 scheme)
         (r5 srfi-1)
         persistent-records
         def-record
-        zassert)
-  (files (zipper persistent-things)))
+        language-ext)
+  (files (zipper lists)))
 
 (define-structure process
   process-interface

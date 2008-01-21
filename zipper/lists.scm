@@ -5,7 +5,7 @@
   (cdr cdr))
 
 (def-discloser pair? ((cell :zcons))
-  `(zc ,(car cell) ,(cdr cell)))
+  `(c ,(car cell) ,(cdr cell)))
 
 (define (list? obj)
   (or (pair? obj)
@@ -108,7 +108,8 @@
            (if (eq? mapped tree)
                tree
                mapped)))))
-
+
+;;;; srfi-43
 (define (vector-fold-index proc nil vector)
   (fold-numbers
    proc
@@ -138,7 +139,3 @@
      (proc (vector-ref vector idx) acc))
    nil
    vector))
-
-
-
-

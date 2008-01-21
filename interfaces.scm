@@ -393,13 +393,15 @@
   (export
    for-each
    list-tail
+   map
+   filter
    assoc/predicate
    assq
    fold
    fold-pair
    fold-right
    fold-pair-right
-   map*
+   map/cons*
    depth-first))
 
 (define-interface tiny-srfi-43-interface
