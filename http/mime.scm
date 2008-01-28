@@ -5,7 +5,10 @@
    port))
 
 (define (parser-error port message . text)
-  (apply error "parser: " port " " message " " text))
+  (let-current-output-port
+      (current-error-port)
+    (apply disp "parser: " port " " message " " text)
+    (newline)))
 
 (define (skip-while skip-chars . port)
   (let-optionals* port ((port (current-input-port)))

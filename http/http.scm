@@ -357,7 +357,7 @@ Some text goes here.")
   (let-header-data
    ((host (url-host url))
     (connection "close")
-    (accept-encoding "identity, deflate"))))
+    (accept-encoding "identity"))))
 
 (define *proxy-client-filter*
   '(keep-alive))
@@ -418,9 +418,9 @@ Some text goes here.")
        ((content-type "text/plain"))
        (let-content-length
         (lambda ()
-          (output "500: known causes:\n"
-                  "https requests always error\n"
-                  "or the hostname doesn't exist\n"
+          (output "500\n"
+                  "https requests are not yet supported.\n"
+                  "non-existent hostname?\n"
                   (condition-stuff c)))))))
    thunk))
 
