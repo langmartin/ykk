@@ -336,11 +336,6 @@ Some text goes here.")
     (close-input-port p))))
 
 ;;;; proxy
-(define (get-style? method)
-  (case-equal method
-    (("GET") #t)
-    (else #f)))
-
 (define *client-keep-alive* (make-string-table))
 
 (define (store-client-connection host in out)
@@ -377,8 +372,7 @@ Some text goes here.")
      (client-connect host port)
      (let-current-output-port
          output-port
-       (let ((getp (and (get-style? method)
-                        (url-parameters? url)
+       (let ((getp (and (url-parameters? url)
                         (cons #\? (url-parameter-string url)))))
          (output-debug
           (let-http-request
