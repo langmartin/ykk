@@ -1,4 +1,4 @@
-(define (process-list) top:processes)
+(define (process-list) ykk:processes)
 
 (define (running-list)
   (car (process-list)))
@@ -7,8 +7,8 @@
   (cdr (process-list)))
 
 (define (update running blocked)
-  (persistent-symbol-set!
-   top:processes
+  (ykk:persistent-symbol-set!
+   ykk:processes
    (cons running
          blocked)))
 
@@ -19,11 +19,15 @@
             (not (eq? x process)))
           lst))
 
-(define-record-type process
-  (make-process resource auth)
-  process?
-  (resource process-resource)
-  (auth process-auth))
+(def-record rtd/process
+  proc-cons
+  proc?
+  (proc-copy proc-apply)
+  proc-zipper
+  proc-auth)
+
+(def-discloser ((proc :rtd/process))
+  `(proc ,(proc-zipper proc)))
 
 (define (process-start resource auth)
   (update
@@ -40,17 +44,39 @@
    (proc-insert proc (running-list))
    (proc-delete proc (blocked-list))))
 
-(define (fold-procs cons nil lst)
-  (if (null? lst)
-      nil
-      (let ((lst1
-             (fold-procs cons nil (cdr lst))))
-        (if (eq? lst1 lst) lst lst1))))
+;; (define (fold-procs cons nil lst)
+;;   (if (null? lst)
+;;       nil
+;;       (let ((lst1
+;;              (fold-procs cons nil (cdr lst))))
+;;         (if (eq? lst1 lst) lst lst1))))
 
-(define (fold-running cons nil)
-  (fold-procs cons nil (running-list)))
+;; (define (fold-running cons nil)
+;;   (fold-procs cons nil (running-list)))
 
-(define (fold-blocked cons nil)
-  (fold-procs cons nil (blocked-list)))
-
-;;;; processes themselves
+;; (define (fold-blocked cons nil)
+;;   (fold-procs cons nil (blocked-list)))
+
+(define running car)
+(define blocked cadr)
+
+(define (block proc acc)
+  (cons (cons proc (blocked acc))
+        acc))
+
+(define (keep proc acc)
+  (cons (cons proc (running acc))
+        acc))
+
+(define (process-fold)
+  (let ((new 
+         (fold-append (lambda (proc acc)
+                        (let ((new (advance proc)))
+                          (if (blocked? proc)
+                              (block proc acc)
+                              (keep proc acc))))
+                      '()
+                      (running-list)
+                      (blocked-list))))
+    (update (running new)
+            (blocked new))))
