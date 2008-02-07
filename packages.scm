@@ -398,13 +398,14 @@
         language-ext)
   (files (zipper lists)))
 
-(define-structure process
-  process-interface
+(define-structure kernel
+  (export kernel-start!)
   (open scheme
         srfi-9+
         simple-signals
-        assert
+        persistent-records
+        (ykk persistent-symbols)
+        zassert
         ykk-ports
-        monad-style-output
-        persistent-records)
-  (files (zipper process)))
+        monad-style-output)
+  (files (zipper kernel)))
