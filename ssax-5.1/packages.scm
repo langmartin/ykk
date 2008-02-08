@@ -1,11 +1,36 @@
 (define-structure scsh-compat
   (export
-   file-size)
+   file-size
+   open-output-string
+   open-input-string
+   get-output-string
+   error)
   (open scheme
-        posix)
+        simple-signals
+        posix
+        extended-ports)
   (begin
     (define (file-size name)
-      (file-info-size (get-file-info name)))))
+      (file-info-size (get-file-info name)))
+    (define open-output-string make-string-output-port)
+    (define (get-output-string port)
+      (let ((r (string-output-port-output port)))
+        (close-output-port port)
+        r))
+    (define open-input-string make-string-input-port)))
+
+(define-interface htmlprag-interface
+  (export
+   html->sxml
+   html->shtml
+   write-shtml-as-html
+   shtml->html))
+
+(define-structure htmlprag
+  htmlprag-interface
+  (open scheme
+        scsh-compat)
+  (files htmlprag))
 
 ;; Interface definitions first
 
