@@ -1,4 +1,5 @@
 ,config ,load utility/s48-interfaces.scm
 ,config ,load interfaces.scm
+,config ,load ssax-5.1/packages.scm
 ,config ,load packages.scm
 ,open octothorpe-extensions
