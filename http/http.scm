@@ -374,7 +374,7 @@ Some text goes here.")
          output-port
        (let ((getp (and (url-parameters? url)
                         (cons #\? (url-parameter-string url)))))
-         (output-debug
+         (output
           (let-http-request
            (method " " (url-path url) getp " " version crlf)
            (header-filter
