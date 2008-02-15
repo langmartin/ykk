@@ -415,3 +415,28 @@
         ykk-ports
         monad-style-output)
   (files (zipper kernel)))
+
+;;; Types
+(define-structures ((ykk/types ykk/types-interface)
+                    (type-reflection ykk/type-reflection-interface)
+                    (type-destructuring type-destructuring-interface))
+
+  ;; for destructuring
+  (for-syntax (open scheme type-structure-parser srfi-1))
+  (open scheme
+        assert
+        methods meta-methods
+        srfi-1 srfi-8 srfi-9+ srfi-26
+        conditions+
+        primitives
+        type-structure-parser
+        (subset record-types (record-type?)))  
+  (files types type-destructuring))
+
+(define-structure type-structure-parser type-structure-parser-interface
+  (open scheme
+        srfi-1 srfi-8
+        conditions+
+        assert
+        fluids+)
+  (files type-structure-parser))

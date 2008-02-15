@@ -430,3 +430,53 @@
    process-block
    fold-blocked
    fold-running))
+
+;;; Types
+(define-interface type-structure-parser-interface
+  (export parse
+          structure->grouped-bindings
+          alias-everything
+
+          scheme-binding?
+          identifier?
+          nested?
+          aliased?          
+          anonymous-aliased?
+          
+          type-structure-syntax-error
+          type-structure-syntax-error?
+          parse-error
+          (descend :syntax)
+          pretty-path))
+
+(define-interface type-destructuring-interface
+  (export (destructure :syntax)
+          (with-destructured :syntax)))
+
+(define-interface ykk/types-interface
+  (export (type-definition :syntax)
+          (define-type :syntax)
+          new
+          undefined
+          undefined?
+
+          :ykk
+          :ykk-type))
+
+(define-interface ykk/type-reflection-interface
+  (export ykk-type?
+          
+          type-slots
+          type-slot-ref
+          slot-names
+          slot-types
+
+          slot-name
+          slot-type
+          slot-initform
+
+          instance-type
+          instance-values
+
+          has-init-form?))
+
