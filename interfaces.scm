@@ -27,7 +27,8 @@
           define-names
           delete-names
           lookup-name
-          fold-names))
+          fold-names
+          merge-name-tables))
 
 (define-interface ykk/names-inspection-interface
   (export list-names))

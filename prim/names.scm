@@ -22,6 +22,8 @@
                (kons (car pair) (cdr pair) acc))
              knil
              table))
+
+(define merge-name-tables union)
 
 ;;; Internal Interface
 (define (car-eq? a b)
