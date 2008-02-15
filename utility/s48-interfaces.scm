@@ -188,4 +188,31 @@
 	  string->immutable-string
 	  ))
 
-
+(define-interface methods-interface
+  (export (define-generic :syntax)
+	  (define-method :syntax)
+	  (define-simple-type :syntax)
+	  :values
+	  :value
+	  :number
+	  :complex
+	  :real
+	  :rational
+	  :integer
+	  :exact-integer
+	  :boolean
+	  :symbol
+	  :char
+	  :null
+	  :pair
+	  :vector
+	  :string
+	  :procedure
+	  :input-port
+	  :output-port
+	  :eof-object
+	  :record
+	  :record-type
+	  :zero
+	  singleton
+	  disclose &disclose))
