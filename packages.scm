@@ -88,6 +88,12 @@
         ykk-ports)
   (files utility/monad-style-output))
 
+(define-structure conditions+ conditions+-interface
+  (open scheme
+        simple-signals
+        simple-conditions)
+  (files (utility conditions+)))
+
 (define-structure alists
   alists-interface
   (open scheme

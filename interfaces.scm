@@ -184,6 +184,9 @@
     intersperse
     fold-append)))
 
+(define-interface conditions+-interface
+  (export (define-condition :syntax)))
+
 (define-interface the-interface-formerly-know-as-util
   (compound-interface
    assert-interface
