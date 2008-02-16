@@ -481,3 +481,20 @@
 
           has-init-form?))
 
+;;;; Graph
+(define-interface persisted-graph-interface
+  (export (define-root :syntax)
+          (root :syntax)
+          root?          
+
+          :edge edge?
+          new-edge
+          replace-node
+          
+          :node node?
+          (node :syntax)
+          new-node
+          replace-children
+          
+          edge-list
+          fold-edge-list))

@@ -440,3 +440,12 @@
         assert
         fluids+)
   (files type-structure-parser))
+
+;;;; Graph
+(define-structure persisted-graph persisted-graph-interface
+  (open scheme
+        srfi-1+
+        ykk/types type-destructuring
+        methods
+        assert)
+  (files persisted-graph))
