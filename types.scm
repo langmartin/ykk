@@ -20,7 +20,7 @@
 
 (define (make-type-definition name ancestors slot-defs)
   (initialize!
-   (let ((super (list (most-specific-common-superior ancestors))))    
+   (let ((super (list (most-specific-common-superior ancestors))))
      (really-make-type-definition
       name
       ancestors
@@ -71,7 +71,7 @@
        (define pred? (type-instance-predicate name))))))
 
 (define (inherit-slots super defs ancestors)
-  (receive (projection rest)      
+  (receive (projection rest)
       (project-slots-onto (merge-slots-by-name (append (map type-slots ancestors) (list defs)))
                           super)
     (append projection rest)))
@@ -254,7 +254,7 @@
 
 (define (most-specific-common-superior types)
   (cond ((null? types)
-         '())        
+         '())
         ((null? (cdr types))
          (car types))
         (else
@@ -336,14 +336,14 @@
   (project-slots-onto-names slots (map slot-name (type-slots type))))
 
 (define (project-slots-onto-names slots names)
-  
+
   (define (find-name slot)
     (memq (slot-name slot) names))
 
   (define (find-slot name slots)
     (find (lambda (slot)
             (eq? name (slot-name slot)))
-          slots))  
+          slots))
 
   (receive (matched unmatched)
       (partition find-name slots)
@@ -470,9 +470,9 @@
                    (cons (assert-type slot (car arguments))
                          all-arguments)))))))
 
-(define (eval-initform form)
+(define (eval-initform slot)
   ;; FIXME: punt for now
-  form)
+  (slot-initform slot))
 
 (define (assert-type slot value)
   (if ((type-predicate (slot-type slot)) value)
@@ -483,6 +483,36 @@
                    `(value: ,value)
                    `(type: ,(slot-type slot))
                    slot))))
+
+(define-syntax define-updater
+  (syntax-rules (update)
+    ((_ (proc-name formals ...) (instance type) (name value) ...)
+     (define proc-name
+       (let ((slot-name-check (delay (remove (cute memq <> (map slot-name (type-slots type))) '(name ...))))
+             (pred? (type-predicate type)))
+         (lambda (formals ...)
+           ;; This first check is to make sure that the names from the
+           ;; (NAME VALUE) pairs are all good (i.e. actual slot
+           ;; names).  Only do the work once.
+           (let ((bad (force slot-name-check)))
+             (if (not (null? bad)) (type-error 'slots-do-not-exist 'proc-name bad)))
+
+           ;; The next check is to make sure the instance passed in
+           ;; consistent with the type the updater is defined over.
+           (if (not (pred? instance))
+               (type-error 'updater-argument-not-proper-type 'proc-name type instance))
+
+           ;; Finally, do the actual update.
+           (update-type-instance instance (cons 'name value) ...)))))))
+
+(define (update-type-instance instance . new-slot-values)
+  (make-type-instance (instance-type instance)
+                      (map-in-order (lambda (slot value)
+                                      (cond ((assq (slot-name slot) new-slot-values) =>
+                                             (lambda (pair) (assert-type slot (cdr pair))))
+                                            (else value)))
+                                    (type-slots (instance-type instance))
+                                    (instance-values instance))))
 
 ;;;  integration with METHODS
 (define simple-type (record-ref :value 0))
@@ -544,6 +574,31 @@
      (begin warn-form continue-form))))
 
 ;;; tests
+
+;; --------------------
+;; instances
+
+(begin
+
+  ;; --------------------
+  ;; construction
+
+  (define-type :foo ()
+    (a :symbol 'a-value) (b))
+
+  (assert (instance-values (new :foo 'b-value)) => `(a-value b-value))
+
+  ;; --------------------
+  ;; updates
+
+  (define-updater (update-foo foo new-a-value)
+    (foo :foo) (a new-a-value))
+
+  (assert (instance-values (update-foo (new :foo 'b-value) 'a)) => `(a b-value)))
+
+;; --------------------
+;; generics
+
 (begin
   (assert (similar:simple? :real :number))
   (assert (similar:simple? :number :real) => #f)
@@ -564,7 +619,7 @@
     (tropical? :boolean #f))
 
   (define-type :pie (:apple :cinnamon)
-    (name :string "apple-cinnamon"))  
+    (name :string "apple-cinnamon"))
 
   (define-type :pastry (:food)
     (hot? :boolean)
@@ -586,6 +641,4 @@
 
   (assert (cook (new :pie)) => "I don't know how")
   (assert (cook (new :apple "apple sauce")) => "roast it")
-  (assert (cook (new :pastry "cinnamon roll" #t 'caramel)) => "I don't know how")
-
-  )
+  (assert (cook (new :pastry "cinnamon roll" #t 'caramel)) => "I don't know how"))

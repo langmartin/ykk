@@ -456,6 +456,7 @@
 (define-interface ykk/types-interface
   (export (type-definition :syntax)
           (define-type :syntax)
+          (define-updater :syntax)
           new
           undefined
           undefined?
