@@ -166,7 +166,9 @@
    concat
    concat-write
    concat->symbol
-   (assert :syntax)))
+   (assert :syntax)
+   (define-checked :syntax)
+   (check :syntax)))
 
 (define-interface language-ext-interface
   (export

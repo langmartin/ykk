@@ -23,9 +23,13 @@
 
 (define-structure assert
   assert-interface
+  (for-syntax (open scheme srfi-1 names))
   (open scheme
         signals
-        ykk-ports)
+        ykk-ports
+
+        ;; SAME-TYPE? for CHECK
+        meta-methods)  
   (files utility/assert))
 
 (define-structure zassert
