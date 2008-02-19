@@ -77,7 +77,8 @@
         assert
         extended-ports
         optional-arguments
-        ykk-ports)
+        ykk-ports
+        srfi-13)
   (files (utility ykk-parsing)))
 
 (define-structure monad-style-output

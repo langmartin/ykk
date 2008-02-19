@@ -243,7 +243,9 @@
    read-all
    string-split
    whitespace?
-   consume-chars))
+   consume-chars
+   escape-by-doubling
+   escape-and-quote))
 
 (define-interface monad-style-output-interface
   (export
