@@ -17,7 +17,18 @@
         srfi-1)
   (files site-zero))
 
+(define-interface date-parsing-interface
+  (export
+   strftime
+   date-parse
+   date-format))
 
+(define-structure date-parsing
+  date-parsing-interface
+  (open scheme
+        posix-time
+        external-calls)
+  (files (utility date)))
 
 ;; (define-structure file-uploader
 ;;   (export foo)
