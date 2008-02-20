@@ -135,3 +135,27 @@
  (string-split "foo   bar" whitespace? 3) => '("foo" "bar")
  (string-split "foo bar" whitespace? 1) => '("foo")
  (string-split "foo   bar") => '("foo" "bar"))
+
+(define (%string-escape pred string)
+  (string-for-each (lambda (ch)
+                     (if (pred ch)
+                         (display ch))
+                     (display ch))
+                   string))
+
+(define (escape-by-doubling strpred string)
+  (let ((pred (string-or-chars->predicate strpred)))
+    (let-string-output-port
+     (%string-escape pred string))))
+
+(define (escape-and-quote ch string)
+  (let-string-output-port
+   (display ch)
+   (%string-escape (lambda (el)
+                     (char=? el ch))
+                   string)
+   (display ch)))
+
+(assert
+ (escape-by-doubling #\' "''") => "''''"
+ (escape-and-quote #\/ "hello/there") => "/hello//there/")
