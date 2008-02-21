@@ -181,13 +181,15 @@
 
 (define (url-foldr-parameters-lp param-proc nil)
   (let ((lp (lambda () (url-foldr-parameters-lp param-proc nil)))
-        (key (urldecode-string (next-chunk "="))))
-      (read-char)
-      (if (empty-string? key)
-          nil
-          (let ((val (urldecode-string (next-chunk "&;"))))
-            (read-char)
-            (param-proc key val (lp))))))
+        (variable (next-chunk "&;")))
+    (read-char)
+    (if (string-null? variable)
+        nil
+        (let* ((port (make-string-input-port variable))
+               (key (urldecode-string (next-chunk #\= port)))
+               (_ (read-char port))
+               (val (urldecode-string (next-chunk (lambda (x) #f) port))))
+          (param-proc key val (lp))))))
 
 (define (url-foldr-parameters proc nil . port)
   (let-maybe-current-input-port
@@ -212,11 +214,11 @@
 
 (assert
  (url=? (parse-url "http://coptix.com/foo/page.php")
-        (make-url 'http "coptix.com" 80 "/foo/page.php" '())))
-
-(assert
+        (make-url 'http "coptix.com" 80 "/foo/page.php" '()))
  (url=? (parse-url "http://coptix.com:81/foo/page.php?foo=bar%20baz")
-        (make-url 'http "coptix.com" 81 "/foo/page.php" '(("foo" . "bar baz")))))
+        (make-url 'http "coptix.com" 81 "/foo/page.php" '(("foo" . "bar baz"))))
+ (url=? (parse-url "http://coptix.com:81/foo/page.php?foo&bar")
+        (make-url 'http "coptix.com" 81 "/foo/page.php" '(("foo" . "") ("bar" . "")))))
 
 (assert
  (url=?
