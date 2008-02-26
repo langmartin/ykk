@@ -26,9 +26,10 @@
 (define-structure date-parsing
   date-parsing-interface
   (open scheme
-        posix-time
-        external-calls)
-  (files (utility date)))
+        posix
+        language-ext
+        assert)
+  (files (utility date-fork)))
 
 ;; (define-structure file-uploader
 ;;   (export foo)
