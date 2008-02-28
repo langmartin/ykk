@@ -245,6 +245,23 @@
   (files (prim ykk-methods))
   (optimize auto-integrate))
 
+;;;; tree diffing & merging
+(define-structure tree-merging
+  (export lcs-fold)
+  (open scheme
+        srfi-1
+        srfi-13
+        srfi-26
+        define-record-types
+        simple-signals
+        simple-conditions
+        def-record
+        shift-reset
+        table
+        random
+        time)
+  (files (zipper diffing)))
+
 ;;;; ducts
 (define-structure duct-internal duct-interface
   (open scheme
