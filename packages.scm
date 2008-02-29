@@ -110,8 +110,8 @@
   (compound-interface
    the-interface-formerly-know-as-util
    the-interface-formerly-know-as-io-util
-   signals-interface
-   define-record-types-interface)
+   (interface-of signals)
+   (interface-of define-record-types))
   (open scheme
         signals
         i/o i/o-internal extended-ports

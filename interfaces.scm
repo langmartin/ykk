@@ -182,7 +182,7 @@
 
 (define-interface srfi-1+-interface
   (compound-interface
-   srfi-1-interface
+   (interface-of srfi-1)
    (export
     intersperse
     fold-append)))
@@ -194,19 +194,19 @@
   (compound-interface
    assert-interface
    srfi-1+-interface
-   srfi-2-interface                     ; and-let*
-   srfi-13-interface
-   srfi-78-interface                    ; check
-   big-util-interface
+   (interface-of srfi-2)                ; and-let*
+   (interface-of srfi-13)
+   (interface-of srfi-78)               ; check
+   (interface-of big-util)
    language-ext-interface
    alists-interface
    optional-arguments-interface))
 
 (define-interface ykk-ports-interface
   (compound-interface
-   extended-ports-interface
-   i/o-interface
-   i/o-internal-interface
+   (interface-of extended-ports)
+   (interface-of i/o)
+   (interface-of i/o-internal)
    (export
     (let-port-rest :syntax)
     string/port->port
