@@ -21,6 +21,7 @@
         (n8 (random-integer 65536)))
     (string->symbol
      (string
+      #\u
       ;; time_lo
       (vector-ref hex (extract-bit-field 4 12 n1))
       (vector-ref hex (extract-bit-field 4  8 n1))

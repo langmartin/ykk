@@ -27,19 +27,19 @@
   (open scheme
         signals
         ykk-ports
-
         ;; SAME-TYPE? for CHECK
         meta-methods)  
   (files utility/assert))
 
 (define-structure zassert
-  (compound-interface
-   assert-interface
-   (export equal?))
+  (compound-interface assert-interface (export equal?))
+  (for-syntax (open scheme srfi-1 names))
   (open persistent-immutable-equal
         scheme
         signals
-        ykk-ports)
+        ykk-ports
+        ;; SAME-TYPE? for CHECK
+        meta-methods)  
   (files utility/assert))
 
 (define-structure optional-arguments
@@ -359,8 +359,9 @@
   (begin
     (define *processes* #f)))
 
-(define-structure persistent-immutable
-  vector-interface
+(define-structures
+  ((persistent-immutable vector-interface)
+   (persistent-immutable-logging persistent-immutable-logging-interface))
   (open scheme
         signals
         srfi-9+
@@ -386,10 +387,6 @@
         language-ext
         alists)
   (files (zipper equal)))
-
-(define-structure persistent-logging
-  persistent-immutable-logging-interface
-  (open persistent-immutable))
 
 (define-structure persistent-records
   (export

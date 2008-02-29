@@ -87,7 +87,7 @@
   (let ((current (apply reader port)))
     (if (eof-object? current)
         nil
-        (port-fold cons (cons current nil) reader))))
+        (apply port-fold cons (cons current nil) reader port))))
 
 (define (port-fold-right cons nil reader . port)
   (let ((current (apply reader port)))

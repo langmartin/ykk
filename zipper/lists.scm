@@ -139,3 +139,16 @@
      (proc (vector-ref vector idx) acc))
    nil
    vector))
+
+;;;; stress testing
+(define (list-creation-test)
+  (reopen-log-port (open-output-file "/tmp/log"))
+  (fold-numbers (lambda (n acc)
+                  (cons n acc))
+                '()
+                0
+                100000
+                1)
+  (reopen-log-port #f))
+;; 22.79 seconds 1st run
+;; 18.12

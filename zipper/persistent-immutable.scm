@@ -42,7 +42,7 @@
 
 (define (vector-for-each proc vector)
   (for-each-number
-   (lambda (idx acc)
+   (lambda (idx)
      (proc (vector-ref vector idx)))
    0
    (vector-length vector)))
@@ -54,7 +54,9 @@
 (define *cdr* (make-table))
 
 (define (exhume id)
-  (table-ref *cdr* id))
+  (if (or (pair? id))
+      #f
+      (table-ref *cdr* id)))
 
 (define (bury id datum)
   (table-set! *cdr* id datum))
@@ -84,39 +86,55 @@
 (define (replay-log-port port)
   (without-log
    (port-fold (lambda (expr acc)
-                (eval expr
-                      (environment-ref
-                       (config-package)
-                       'persistent-immutable)))
+                ;; (eval expr (interaction-environment))
+                (let ((head (car expr)) (tail (cdr expr)))
+                 (cond ((eq? 'v head)
+                        (apply replay-vector! tail))
+                       ((eq? '! head)
+                        (eval `(set! (car tail)
+                                     ,(exhume (cadr tail))))))))
               #f
               read
               port)))
 
 (define (write-log thunk)
   (or (not (current-log))
-      (with-current-output-port
-          (current-log)
-        thunk)
-      (newline (current-log))))
+      (begin
+        (with-current-output-port
+           (current-log)
+         thunk)
+        (newline (current-log)))))
 
-(define (replay-vector! id r5vec)
-  (for-each-number (lambda (idx)
-                     (let ((obj (exhume (r5:vector-ref r5vec idx))))
-                       (if obj
-                           (vector-set! r5vec idx obj))))
-                   0
-                   (r5:vector-length r5vec))
-  (bury id (make-vector* id r5vec))
-  #f)
+(define (replay-vector! id . vector-el)
+  (let ((r5vec (apply r5:vector vector-el)))
+   (for-each-number (lambda (idx)
+                      (let ((obj (exhume (r5:vector-ref r5vec idx))))
+                        (if obj
+                            (vector-set! r5vec idx obj))))
+                    0
+                    (r5:vector-length r5vec))
+   (bury id (make-vector* id r5vec))))
 
-(define v replay-vector!)
+;; (define (write-vector vec)
+;;   (write-log
+;;    (lambda ()
+;;      (disp "(v '" (vector-id vec))
+;;      (vector-for-each (lambda (el)
+;;                         (display #\space)
+;;                         (let ((rep (disclose-object el)))
+;;                           (if (symbol? rep)
+;;                               (disp #\' rep)
+;;                               (display rep))))
+;;                       vec)
+;;      (disp ")"))))
 
 (define (write-vector vec)
   (write-log
    (lambda ()
      (disp "(v " (vector-id vec))
      (vector-for-each (lambda (el)
-                        (disp #\space (disclose-object el)))
+                        (display #\space)
+                        (display (disclose-object el)))
                       vec)
      (disp ")"))))
 
@@ -125,8 +143,10 @@
    (lambda ()
      (write (list 'set! sym (disclose-object val))))))
 
-(define (test-creation)
-  (let lp ((count 500))
-    (if (= count 0)
-        'done
-        (vector (lp (- count 1))))))
+(define (list-replay-test)
+  (replay-log-port (open-input-file "/tmp/log")))
+
+;; (eval '(v 'A8CC534D-7BAB-47C5-A7DF-26A64873115E 'DB7F49A3-BBF6-40F3-95A1-038CCACE1D88 'D604C012-3A9D-4D7B-BE70-4ACB9260659F 0 '())
+;;       (interaction-environment))
+
+;; (read (open-input-file "log"))
