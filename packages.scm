@@ -245,6 +245,21 @@
   (files (prim ykk-methods))
   (optimize auto-integrate))
 
+;;;; dictionary generic type
+(define-interface dictionary-interface
+  (export
+   make-dictionary
+   dict-ref
+   dict-update
+   dict-match))
+
+(define-structure dictionary
+  dictionary-interface
+  (open scheme
+        red/black
+        tables)
+  (files (utility dictionary)))
+
 ;;;; ducts
 (define-structure duct-internal duct-interface
   (open scheme
