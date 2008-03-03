@@ -483,10 +483,94 @@
   (files type-structure-parser))
 
 ;;;; Graph
-(define-structure persisted-graph persisted-graph-interface
-  (open scheme
+
+;; --------------------
+;; Abstract
+
+(define-module (make-traversal-structure graph)
+  (structure graph-traversal-interface
+             (open extra-scheme
+                   srfi-1+ srfi-9+
+                   shift-reset
+                   graph
+                   proc-def
+                   (modify sharing
+                           (rename (shared:share share)
+                                   (shared:shared-cons shared-cons))
+                           (prefix shared:))
+                   ykk/types ; for testing
+                   )             
+             (files graph-traversal)))
+
+(define-module (make-path-structure graph traverse)
+  (structure graph-path-interface
+    (open extra-scheme
+          srfi-1+ srfi-9+ srfi-13 srfi-14
+          proc-def
+          checking
+          shift-reset
+          conditions+
+          graph
+          traverse
+          ykk/types ; for testing
+          )
+    (files graph-path)))
+
+(define-syntax define-graph-structures
+  (syntax-rules (primitive implement)
+    ((_ big (implement interfaces ...) (primitive prim) traverse path)
+     (begin
+       (def traverse (make-traversal-structure prim))
+       (def path (make-path-structure prim traverse))
+       (define-structure big (compound-interface interfaces ...
+                                                 graph-interface
+                                                 graph-traversal-interface
+                                                 graph-path-interface)
+         (open prim traverse path))))))
+
+;; --------------------
+;; Persisted
+
+(define-structure primitive-persisted-graph graph-interface  
+  (open extra-scheme
         srfi-1+
-        ykk/types type-destructuring
+        conditions+
+        data-definition
+        proc-def
+        ykk/types
         methods
-        assert)
+        (subset sharing (share)))  
   (files persisted-graph))
+
+(define-graph-structures persisted-graph
+  (implement)
+  (primitive primitive-persisted-graph)
+  persisted-traversal
+  persisted-path)
+
+;; --------------------
+;; Scanned
+
+(define-structure source-scan source-scan-interface
+  (open extra-scheme
+        srfi-1+
+        conditions+)
+  (files source-scan))
+
+(define-structure primitive-scanned-graph scanned-graph-interface  
+  (open extra-scheme
+        srfi-1+ srfi-9+
+        proc-def
+        conditions+
+        (with-prefix primitive-persisted-graph source:)
+        methods
+        ykk/types
+        source-scan
+        sharing)
+  (files scanned-graph))
+
+(define-graph-structures scanned-graph
+  (implement scanned-graph-interface)
+  (primitive primitive-scanned-graph)
+  scanned-traversal
+  scanned-path)
