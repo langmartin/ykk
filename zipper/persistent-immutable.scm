@@ -66,33 +66,16 @@
       (vector-id obj)
       obj))
 
-(define-fluid (*log* #f)
-  current-log
-  with-log)
-
-(define (set-log! port)
-  (set-fluid! *log* port))
-
-(define-syntax without-log
-  (syntax-rules ()
-    ((_ body ...)
-     (with-log #f (lambda () body ...)))))
-
-(define (reopen-log-port port)
-  (if (current-log)
-      (close-output-port (current-log)))
-  (set-log! port))
-
-(define (replay-log-port port)
+(define (replay-log)
   (without-log
    (port-fold (lambda (expr acc)
-                ;; (eval expr (interaction-environment))
                 (let ((head (car expr)) (tail (cdr expr)))
-                 (cond ((eq? 'v head)
-                        (apply replay-vector! tail))
-                       ((eq? '! head)
-                        (eval `(set! (car tail)
-                                     ,(exhume (cadr tail))))))))
+                  (cond ((eq? 'v head)
+                         (apply replay-vector! tail))
+                        ((eq? '! head)
+                         (table-set! *cdr*
+                                     (car tail)
+                                     (exhume (cadr tail)))))))
               #f
               read
               port)))
@@ -115,19 +98,6 @@
                     (r5:vector-length r5vec))
    (bury id (make-vector* id r5vec))))
 
-;; (define (write-vector vec)
-;;   (write-log
-;;    (lambda ()
-;;      (disp "(v '" (vector-id vec))
-;;      (vector-for-each (lambda (el)
-;;                         (display #\space)
-;;                         (let ((rep (disclose-object el)))
-;;                           (if (symbol? rep)
-;;                               (disp #\' rep)
-;;                               (display rep))))
-;;                       vec)
-;;      (disp ")"))))
-
 (define (write-vector vec)
   (write-log
    (lambda ()
@@ -141,12 +111,17 @@
 (define (persistent-symbol-set! sym val)
   (write-log
    (lambda ()
-     (write (list 'set! sym (disclose-object val))))))
+     (write (list '! sym (disclose-object val))))))
+
+(define (persistent-symbol sym)
+  (table-ref *cdr* sym))
 
 (define (list-replay-test)
   (replay-log-port (open-input-file "/tmp/log")))
 
-;; (eval '(v 'A8CC534D-7BAB-47C5-A7DF-26A64873115E 'DB7F49A3-BBF6-40F3-95A1-038CCACE1D88 'D604C012-3A9D-4D7B-BE70-4ACB9260659F 0 '())
-;;       (interaction-environment))
-
-;; (read (open-input-file "log"))
+(define (cdr-table-count)
+  (let ((count 0))
+    (table-walk (lambda (k v)
+                  (set! count (+ count 1)))
+                *cdr*)
+    count))

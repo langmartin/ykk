@@ -351,31 +351,30 @@
   (open scheme srfi-9)
   (files (zipper zipper)))
 
-;;; the set of symbols that will work when passed to persistent-symbol-set!
-(define-structure persistent-symbols
-  (export
-   *processes*)
-  (open scheme)
-  (begin
-    (define *processes* #f)))
+(define-structure meta-packages-to-include-in-heap
+  (export)
+  (open srfi-1+
+        red/black))
 
 (define-structures
-  ((persistent-immutable vector-interface)
-   (persistent-immutable-logging persistent-immutable-logging-interface))
+  ((persistent-immutable
+    (compound-interface
+     vector-interface
+     persistent-symbol-interface))
+   (persistent-logging persistent-logging-interface))
   (open scheme
         signals
         srfi-9+
         (r5 scheme)
         (r5 srfi-1)
         tables
-        package-commands-internal
-        environments
+        write-images
+        meta-packages-to-include-in-heap
         fluids+
         uuidgen
         ykk-ports
         monad-style-output
         ykk-parsing
-        persistent-symbols
         language-ext)
   (files (zipper persistent-immutable)))
 
@@ -407,7 +406,7 @@
         methods)
   (files (zipper def-record)))
 
-(define-structure persistent-lists
+(define-structure zlist
   (compound-interface
    list-interface
    tiny-srfi-1-interface
