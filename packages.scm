@@ -6,7 +6,7 @@
 
 (define (ykk structure)
   (with-prefix structure ykk:))
-
+
 ;;;; add #; and #,(foo ...) to the reader
 (define-structure octothorpe-extensions
   (export define-reader-ctor)
@@ -23,13 +23,35 @@
 
 (define-structure assert
   assert-interface
-  (for-syntax (open scheme srfi-1 names))
   (open scheme
         signals
         ykk-ports
         ;; SAME-TYPE? for CHECK
-        meta-methods)  
+        meta-methods)
   (files utility/assert))
+
+(define-structure checking checking-interface
+  (for-syntax (open scheme srfi-1 names))
+  (open scheme
+        assert
+        simple-signals
+        meta-methods)
+  (files (utility check)))
+
+(define-structure extra-scheme extra-scheme-interface  
+  (open (modify scheme (hide cond let let* letrec define))
+        srfi-61
+        srfi-71
+        simple-signals
+        assert
+        big-util
+        (modify checking (rename (define-checked define))))  
+  (files (utility extra-scheme)))
+
+;; lang: put whatever you want in here
+(define-structure scheme+ (compound-interface
+                           (interface-of extra-scheme))
+  (open extra-scheme))
 
 (define-structure zassert
   (compound-interface assert-interface (export equal?))
@@ -96,7 +118,8 @@
 (define-structure conditions+ conditions+-interface
   (open scheme
         simple-signals
-        simple-conditions)
+        simple-conditions
+        fluids+)
   (files (utility conditions+)))
 
 (define-structure alists
@@ -135,6 +158,22 @@
         handle
         simple-conditions)
   (files (utility exceptions)))
+
+(define-structure proc-def procedure-definition-interface
+  (open scheme
+        srfi-26)
+  (files (utility procedure-def)))
+
+(define-structure sharing sharing-interface
+  (open extra-scheme
+        srfi-1+
+        proc-def)  
+  (files (utility share)))
+
+(define-structure data-definition data-definition-interface
+  (open extra-scheme
+        methods)  
+  (files (utility data-def)))
 
 ;;;; Red/Black Trees
 (define-structures ((red/black red/black-interface)
@@ -259,6 +298,23 @@
         red/black
         tables)
   (files (utility dictionary)))
+
+;;;; tree diffing & merging
+(define-structure tree-merging
+  (export lcs-fold)
+  (open scheme
+        srfi-1
+        srfi-13
+        srfi-26
+        define-record-types
+        simple-signals
+        simple-conditions
+        def-record
+        shift-reset
+        table
+        random
+        time)
+  (files (zipper diffing)))
 
 ;;;; ducts
 (define-structure duct-internal duct-interface
@@ -420,17 +476,17 @@
         language-ext)
   (files (zipper lists)))
 
-(define-structure kernel
-  (export kernel-start!)
-  (open scheme
-        srfi-9+
-        simple-signals
-        persistent-records
-        (ykk persistent-symbols)
-        zassert
-        ykk-ports
-        monad-style-output)
-  (files (zipper kernel)))
+;; (define-structure kernel
+;;   (export kernel-start!)
+;;   (open scheme
+;;         srfi-9+
+;;         simple-signals
+;;         persistent-records
+;;         (ykk persistent-symbols)
+;;         zassert
+;;         ykk-ports
+;;         monad-style-output)
+;;   (files (zipper kernel)))
 
 ;;; Types
 (define-structures ((ykk/types ykk/types-interface)
@@ -439,10 +495,11 @@
 
   ;; for destructuring
   (for-syntax (open scheme type-structure-parser srfi-1))
-  (open scheme
-        assert
+  (open extra-scheme
+        (modify sharing (rename (shared:share share)) (prefix shared:))
         methods meta-methods
-        srfi-1 srfi-8 srfi-9+ srfi-26
+        srfi-1+ srfi-8 srfi-9+
+        proc-def
         conditions+
         primitives
         type-structure-parser
@@ -458,10 +515,94 @@
   (files type-structure-parser))
 
 ;;;; Graph
-(define-structure persisted-graph persisted-graph-interface
-  (open scheme
+
+;; --------------------
+;; Abstract
+
+(define-module (make-traversal-structure graph)
+  (structure graph-traversal-interface
+             (open extra-scheme
+                   srfi-1+ srfi-9+
+                   shift-reset
+                   graph
+                   proc-def
+                   (modify sharing
+                           (rename (shared:share share)
+                                   (shared:shared-cons shared-cons))
+                           (prefix shared:))
+                   ykk/types ; for testing
+                   )             
+             (files graph-traversal)))
+
+(define-module (make-path-structure graph traverse)
+  (structure graph-path-interface
+    (open extra-scheme
+          srfi-1+ srfi-9+ srfi-13 srfi-14
+          proc-def
+          checking
+          shift-reset
+          conditions+
+          graph
+          traverse
+          ykk/types ; for testing
+          )
+    (files graph-path)))
+
+(define-syntax define-graph-structures
+  (syntax-rules (primitive implement)
+    ((_ big (implement interfaces ...) (primitive prim) traverse path)
+     (begin
+       (def traverse (make-traversal-structure prim))
+       (def path (make-path-structure prim traverse))
+       (define-structure big (compound-interface interfaces ...
+                                                 graph-interface
+                                                 graph-traversal-interface
+                                                 graph-path-interface)
+         (open prim traverse path))))))
+
+;; --------------------
+;; Persisted
+
+(define-structure primitive-persisted-graph graph-interface  
+  (open extra-scheme
         srfi-1+
-        ykk/types type-destructuring
+        conditions+
+        data-definition
+        proc-def
+        ykk/types
         methods
-        assert)
+        (subset sharing (share)))  
   (files persisted-graph))
+
+(define-graph-structures persisted-graph
+  (implement)
+  (primitive primitive-persisted-graph)
+  persisted-traversal
+  persisted-path)
+
+;; --------------------
+;; Scanned
+
+(define-structure source-scan source-scan-interface
+  (open extra-scheme
+        srfi-1+
+        conditions+)
+  (files source-scan))
+
+(define-structure primitive-scanned-graph scanned-graph-interface  
+  (open extra-scheme
+        srfi-1+ srfi-9+
+        proc-def
+        conditions+
+        (with-prefix primitive-persisted-graph source:)
+        methods
+        ykk/types
+        source-scan
+        sharing)
+  (files scanned-graph))
+
+(define-graph-structures scanned-graph
+  (implement scanned-graph-interface)
+  (primitive primitive-scanned-graph)
+  scanned-traversal
+  scanned-path)

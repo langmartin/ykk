@@ -32,7 +32,7 @@
 ;  and the dynamic env of that reset
 (define *meta-continuation*
   (vector
-    (lambda (v)
+   (lambda (v)
       (error "You forgot the top-level reset...")) ;0
     'no-reset				; 1 full-k
     '()                                 ; 2 dynamic-env
@@ -58,13 +58,13 @@
 	     (lambda (k)
 	       (set! *meta-continuation*
 		 (vector
-		   (lambda (v)
+                  (lambda (v)
 		     (set! *meta-continuation* mc)
 		     (set-dynamic-env! env)
 		     (set-dynamic-point! pt)
 		     (with-continuation k-pure (lambda () v)))
 		   k
-		   env))
+		   env))               
 	       thunk))))))))
 
 ; compute the list difference between l and lsuffix
@@ -76,10 +76,14 @@
   (let* ((parent-env (vector-ref *meta-continuation* 2))
 	 (curr-env   (get-dynamic-env))
 	 (diff-env   (unwind-env curr-env parent-env)))
-    (let ((v (call-with-current-continuation
-	       (lambda (k)
-		 (*abort-env (lambda ()
-			       (f (lambda (v)
-					(reset (k v))))))))))
-      (set-dynamic-env! (append diff-env (vector-ref *meta-continuation* 2)))
-      v)))
+
+    (call-with-values
+        (lambda ()
+          (call-with-current-continuation
+           (lambda (k)
+             (*abort-env (lambda ()
+                           (f (lambda v
+                                (reset (apply k v)))))))))
+      (lambda v
+        (set-dynamic-env! (append diff-env (vector-ref *meta-continuation* 2)))
+        (apply values v)))))
