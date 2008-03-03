@@ -6,7 +6,7 @@
 
 (define (ykk structure)
   (with-prefix structure ykk:))
-
+
 ;;;; add #; and #,(foo ...) to the reader
 (define-structure octothorpe-extensions
   (export define-reader-ctor)
@@ -23,14 +23,33 @@
 
 (define-structure assert
   assert-interface
-  (for-syntax (open scheme srfi-1 names))
   (open scheme
         signals
-        ykk-ports
-
-        ;; SAME-TYPE? for CHECK
-        meta-methods)  
+        ykk-ports)  
   (files utility/assert))
+
+(define-structure checking checking-interface
+  (for-syntax (open scheme srfi-1 names))
+  (open scheme
+        assert
+        simple-signals
+        meta-methods)
+  (files (utility check)))
+
+(define-structure extra-scheme extra-scheme-interface  
+  (open (modify scheme (hide cond let let* letrec define))
+        srfi-61
+        srfi-71
+        simple-signals
+        assert
+        big-util
+        (modify checking (rename (define-checked define))))  
+  (files (utility extra-scheme)))
+
+;; lang: put whatever you want in here
+(define-structure scheme+ (compound-interface
+                           (interface-of extra-scheme))
+  (open extra-scheme))
 
 (define-structure zassert
   (compound-interface
@@ -95,7 +114,8 @@
 (define-structure conditions+ conditions+-interface
   (open scheme
         simple-signals
-        simple-conditions)
+        simple-conditions
+        fluids+)
   (files (utility conditions+)))
 
 (define-structure alists
@@ -134,6 +154,22 @@
         handle
         simple-conditions)
   (files (utility exceptions)))
+
+(define-structure proc-def procedure-definition-interface
+  (open scheme
+        srfi-26)
+  (files (utility procedure-def)))
+
+(define-structure sharing sharing-interface
+  (open extra-scheme
+        srfi-1+
+        proc-def)  
+  (files (utility share)))
+
+(define-structure data-definition data-definition-interface
+  (open extra-scheme
+        methods)  
+  (files (utility data-def)))
 
 ;;;; Red/Black Trees
 (define-structures ((red/black red/black-interface)
@@ -427,10 +463,11 @@
 
   ;; for destructuring
   (for-syntax (open scheme type-structure-parser srfi-1))
-  (open scheme
-        assert
+  (open extra-scheme
+        (modify sharing (rename (shared:share share)) (prefix shared:))
         methods meta-methods
-        srfi-1 srfi-8 srfi-9+ srfi-26
+        srfi-1+ srfi-8 srfi-9+
+        proc-def
         conditions+
         primitives
         type-structure-parser

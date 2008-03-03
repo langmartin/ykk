@@ -166,9 +166,34 @@
    concat
    concat-write
    concat->symbol
-   (assert :syntax)
-   (define-checked :syntax)
-   (check :syntax)))
+   (assert :syntax)))
+
+(define checking-interface
+  (export (define-checked :syntax)
+          (check :syntax)
+          (wildcard :syntax)))
+
+(define-interface extra-scheme-interface
+  (compound-interface
+   (interface-of scheme)
+   (interface-of srfi-71)
+   (export assert
+
+           promise?
+           maybe-force
+           always?
+           never?
+           proj-0 proj-1 proj-2
+
+           ;; part of big-util
+           error
+           breakpoint
+           atom?
+           null-list?
+           neq?
+           n=
+           identity
+           no-op)))
 
 (define-interface language-ext-interface
   (export
@@ -180,15 +205,18 @@
    fold-numbers
    fold-right-numbers))
 
+(define-interface conditions+-interface
+  (export (define-condition :syntax)
+          with-condition
+          (let-condition :syntax)
+          raise-condition))
+
 (define-interface srfi-1+-interface
   (compound-interface
    srfi-1-interface
    (export
     intersperse
     fold-append)))
-
-(define-interface conditions+-interface
-  (export (define-condition :syntax)))
 
 (define-interface the-interface-formerly-know-as-util
   (compound-interface
@@ -269,6 +297,23 @@
   (export
    with-exception-catcher
    condition-stuff))
+
+(define-interface procedure-definition-interface
+  (compound-interface (interface-of srfi-26)
+                      (export (compose :syntax))))
+
+(define-interface sharing-interface
+  (export share
+          shared-kons
+          shared-cons
+          transform
+          transform-list
+          map
+          map-matching
+          map-once
+          map-while
+          remove
+          map2))
 
 ;;;; ducts
 (define-interface duct-interface
