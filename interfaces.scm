@@ -166,9 +166,34 @@
    concat
    concat-write
    concat->symbol
-   (assert :syntax)
-   (define-checked :syntax)
-   (check :syntax)))
+   (assert :syntax)))
+
+(define checking-interface
+  (export (define-checked :syntax)
+          (check :syntax)
+          (wildcard :syntax)))
+
+(define-interface extra-scheme-interface
+  (compound-interface
+   (interface-of scheme)
+   (interface-of srfi-71)
+   (export assert
+
+           promise?
+           maybe-force
+           always?
+           never?
+           proj-0 proj-1 proj-2
+
+           ;; part of big-util
+           error
+           breakpoint
+           atom?
+           null-list?
+           neq?
+           n=
+           identity
+           no-op)))
 
 (define-interface language-ext-interface
   (export
@@ -180,15 +205,18 @@
    fold-numbers
    fold-right-numbers))
 
+(define-interface conditions+-interface
+  (export (define-condition :syntax)
+          with-condition
+          (let-condition :syntax)
+          raise-condition))
+
 (define-interface srfi-1+-interface
   (compound-interface
    srfi-1-interface
    (export
     intersperse
     fold-append)))
-
-(define-interface conditions+-interface
-  (export (define-condition :syntax)))
 
 (define-interface the-interface-formerly-know-as-util
   (compound-interface
@@ -271,6 +299,23 @@
   (export
    with-exception-catcher
    condition-stuff))
+
+(define-interface procedure-definition-interface
+  (compound-interface (interface-of srfi-26)
+                      (export (compose :syntax))))
+
+(define-interface sharing-interface
+  (export share
+          shared-kons
+          shared-cons
+          transform
+          transform-list
+          map
+          map-matching
+          map-once
+          map-while
+          remove
+          map2))
 
 ;;;; ducts
 (define-interface duct-interface
@@ -444,9 +489,9 @@
           scheme-binding?
           identifier?
           nested?
-          aliased?          
+          aliased?
           anonymous-aliased?
-          
+
           type-structure-syntax-error
           type-structure-syntax-error?
           parse-error
@@ -465,12 +510,15 @@
           undefined
           undefined?
 
+          (unstructure :syntax)
+          instance-ref
+
           :ykk
           :ykk-type))
 
 (define-interface ykk/type-reflection-interface
   (export ykk-type?
-          
+
           type-slots
           type-slot-ref
           slot-names
@@ -486,19 +534,112 @@
           has-init-form?))
 
 ;;;; Graph
-(define-interface persisted-graph-interface
-  (export (define-root :syntax)
-          (root :syntax)
-          root?          
 
-          :edge edge?
-          new-edge
-          replace-node
+;; --------------------
+;; General-pupose
+
+(define-interface graph-interface
+  (export
+
+   ;; constructors
+   (root :syntax)
+   (edge :syntax)
+   (node :syntax)
+   (children :syntax)
+   child-list
+   add-child
+
+   ;; types
+   :graph
+   :node
+   :edge
+   :children
+   :child
+
+   ;; predicates
+   graph?
+   root?
+   leaf?
+   child?
+   children?
+   null-children?
+
+   ;; accessors
+   graph-name
+   graph-edge
+   graph-node
+   graph-children
+   child-name
+   child->graph
+   next-child
+
+   ;; children
+   end-of-children?
+   share-children
+   share-child
+   fold-children
+
+   ;; mutators
+   add-child
+   replace-node
+   replace-node-children
+   replace-children
+   rename
+   
+   ;; conditions
+   graph-error
+   graph-error?))
+
+(define-interface graph-traversal-interface
+  (export walk
+          map->list
+          traverse
+
+          :graph-zipper
+          graph-zipper?
+          z-dir
+          z-item
+          z-k
+          zip-graph
+          move
+          zip-all-the-way-up))
+
+(define-interface graph-path-interface
+  (export path->list
           
-          :node node?
-          (node :syntax)
-          new-node
-          replace-children
+          absolute?
+          relative?
+          path-error
+          path-error?
           
-          edge-list
-          fold-edge-list))
+          resolve
+          resolve-in
+          find-child
+
+          z-graph?
+          z-child?
+          z-end?
+          up down prev next parent first-child))
+
+(define-interface graph-access-interface
+  (export has-access?))
+
+;; --------------------
+;; Implementation-specific
+
+(define-interface scanned-graph-interface
+  (compound-interface
+   graph-interface
+   (export scan
+           graph-forms
+           graph-structures
+           has-access?)))
+
+;; --------------------
+;; Auxilliary
+
+(define-interface data-definition-interface
+  (export (define-tagged-list-data :syntax)))
+
+(define-interface source-scan-interface
+  (export shallow-scan))

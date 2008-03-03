@@ -506,13 +506,18 @@
            (update-type-instance instance (cons 'name value) ...)))))))
 
 (define (update-type-instance instance . new-slot-values)
-  (make-type-instance (instance-type instance)
-                      (map-in-order (lambda (slot value)
-                                      (cond ((assq (slot-name slot) new-slot-values) =>
-                                             (lambda (pair) (assert-type slot (cdr pair))))
-                                            (else value)))
-                                    (type-slots (instance-type instance))
-                                    (instance-values instance))))
+  (share instance
+         instance-values
+         (cut shared-update instance <> new-slot-values)
+         (cut make-type-instance (instance-type instance) <>)))
+
+(define (shared-update instance values new-values)
+  (shared:map2 (lambda (value slot)
+                 (cond ((assq (slot-name slot) new-values)
+                        => (lambda (pair) (assert-type slot (cdr pair))))
+                       (else value)))
+               values
+               (type-slots (instance-type instance))))
 
 ;;;  integration with METHODS
 (define simple-type (record-ref :value 0))
@@ -558,6 +563,39 @@
   (map (lambda (slot-def)
          (slot-type slot-def))
        (type-slots (instance-type instance))))
+
+(define (instance-ref instance name)
+  (instance-lookup-ref (instance-lookup instance) name))
+
+(define-syntax unstructure
+  (syntax-rules ()
+    ((_ instance name ...)
+     (really-unstructure instance '(name ...)))))
+
+(define (really-unstructure instance names)  
+  (apply values
+         (if (null? names)
+             (instance-values instance)
+             (unstructure-pattern (instance-lookup instance) '() names))))
+
+(define (unstructure-pattern lookup seed names)
+  (fold-right (lambda (name acc)
+                (if (not (pair? name))
+                    (cons (instance-lookup-ref lookup name) acc)
+                    (let ((nested (instance-lookup-ref lookup (car name))))                      
+                      (unstructure-pattern (instance-lookup nested)
+                                           acc
+                                           (cdr name)))))
+              seed
+              names))
+
+(define (instance-lookup instance)
+  (zip (slot-names instance) (instance-values instance)))
+
+(define (instance-lookup-ref lookup name)
+  (cond ((assq name lookup) => cadr)
+        (else (type-error 'slot-not-found name))))
+
 
 ;;; auxiliary
 (define-condition
@@ -586,7 +624,14 @@
   (define-type :foo ()
     (a :symbol 'a-value) (b))
 
-  (assert (instance-values (new :foo 'b-value)) => `(a-value b-value))
+  (let ((inst (new :foo 'b-value)))
+    
+    (assert (instance-values inst) => `(a-value b-value))
+    (assert (instance-ref inst 'a) => 'a-value))
+
+  (let ((a b (unstructure (new :foo (new :foo 'b-value)) a (b b))))    
+    (assert a => 'a-value)
+    (assert b => 'b-value))
 
   ;; --------------------
   ;; updates
