@@ -20,9 +20,10 @@
           lst))
 
 (def-record rtd/process
-  proc-cons
-  proc?
-  (proc-copy proc-apply)
+  (make-proc
+   proc?
+   proc-update
+   proc-apply)
   proc-zipper
   proc-auth)
 

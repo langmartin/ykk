@@ -1,9 +1,10 @@
 (define-syntax def-record
   (syntax-rules ()
     ((_ type
-        constructor
-        predicate
-        (re-constructor apply)
+        (constructor
+         pred
+         update
+         apply)
         accessor
         ...)
      (begin
@@ -12,11 +13,11 @@
          predicate
          (accessor accessor)
          ...)
-       (define (apply proc obj)
-         (proc (accessor obj) ...))
-       (define (re-constructor inst accessor ...)
+       (define (update accessor inst ...)
          (constructor (or accessor (accessor inst))
-                      ...))))))
+                      ...))
+       (define (apply proc obj)
+         (proc (accessor obj) ...))))))
 
 (define-syntax def-discloser
   (syntax-rules ()

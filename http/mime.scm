@@ -321,14 +321,14 @@ body"
           (header-filter tags headers)))
 
 ;;;; Interface
-(define-record-type mime rtd/mime
+(define-record-type mime
   (make-mime head content-type port)
   mime?
   (head mime-headers)
   (content-type mime-content-type)
   (port mime-port))
 
-(define-record-discloser rtd/mime
+(define-record-discloser mime
   (lambda (mime)
     `(mime ,(mime-content-type mime))))
 

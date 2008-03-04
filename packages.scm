@@ -25,9 +25,7 @@
   assert-interface
   (open scheme
         signals
-        ykk-ports
-        ;; SAME-TYPE? for CHECK
-        meta-methods)
+        ykk-ports)
   (files utility/assert))
 
 (define-structure checking checking-interface
@@ -38,30 +36,46 @@
         meta-methods)
   (files (utility check)))
 
-(define-structure extra-scheme extra-scheme-interface  
+(define-structure extra-scheme extra-scheme-interface
   (open (modify scheme (hide cond let let* letrec define))
-        srfi-61
-        srfi-71
+        srfi-61                         ; steroidal cond
+        srfi-71                         ; steroidal let
         simple-signals
         assert
         big-util
-        (modify checking (rename (define-checked define))))  
+        (modify checking (rename (define-checked define))))
   (files (utility extra-scheme)))
+
+;;;; Meta-structure for convenience
+(define-syntax define-meta-structure
+  (syntax-rules ()
+    ((_ struct (package ...) body ...)
+     (define-structure struct
+       (compound-interface
+        (interface-of package)
+        ...)
+       (open package ...)
+       body ...))))
 
-;; lang: put whatever you want in here
-(define-structure scheme+ (compound-interface
-                           (interface-of extra-scheme))
-  (open extra-scheme))
+(define-meta-structure scheme+
+  (extra-scheme
+   assert
+   ykk-ports
+   ykk-parsing
+   monad-style-output
+   language-ext
+   optional-arguments
+   srfi-1+
+   srfi-2
+   srfi-9+
+   srfi-13))
 
 (define-structure zassert
   (compound-interface assert-interface (export equal?))
-  (for-syntax (open scheme srfi-1 names))
   (open persistent-immutable-equal
         scheme
         signals
-        ykk-ports
-        ;; SAME-TYPE? for CHECK
-        meta-methods)  
+        ykk-ports)
   (files utility/assert))
 
 (define-structure optional-arguments
@@ -89,12 +103,7 @@
           define-record-discloser)
   (open scheme-level-2
 	(s48 define-record-types))
-  (begin
-    (define define-record-discloser s48:define-record-discloser)
-    (define-syntax define-record-type
-      (syntax-rules ()
-	((define-record-type type-name . stuff)
-	 (s48:define-record-type type-name type-name . stuff))))))
+  (files (utility srfi-9+)))
 
 (define-structure ykk-parsing
   ykk-parsing-interface
@@ -129,29 +138,6 @@
         assert)
   (files utility/alists))
 
-(define-structure http-build-utilities
-  (compound-interface
-   the-interface-formerly-know-as-util
-   the-interface-formerly-know-as-io-util
-   (interface-of signals)
-   (interface-of define-record-types))
-  (open scheme
-        signals
-        i/o i/o-internal extended-ports
-        define-record-types
-        big-util
-        srfi-1+
-        srfi-2
-        srfi-13
-        srfi-78
-        assert
-        optional-arguments
-        language-ext
-        alists
-        ykk-ports
-        ykk-parsing
-        monad-style-output))
-
 (define-structure exceptions
   exceptions-interface
   (open scheme
@@ -167,12 +153,12 @@
 (define-structure sharing sharing-interface
   (open extra-scheme
         srfi-1+
-        proc-def)  
+        proc-def)
   (files (utility share)))
 
 (define-structure data-definition data-definition-interface
   (open extra-scheme
-        methods)  
+        methods)
   (files (utility data-def)))
 
 ;;;; Red/Black Trees
@@ -202,9 +188,6 @@
          (utility vset)))
 
 (define set rb-set)
-
-;;;; uuidgen
-
 
 ;;;; Fluids
 (define-structure fluids+ fluids+-interface
@@ -284,32 +267,16 @@
   (files (prim ykk-methods))
   (optimize auto-integrate))
 
-;;;; dictionary generic type
-(define-interface dictionary-interface
-  (export
-   make-dictionary
-   dict-ref
-   dict-update
-   dict-match))
-
-(define-structure dictionary
-  dictionary-interface
-  (open scheme
-        red/black
-        tables)
-  (files (utility dictionary)))
-
 ;;;; tree diffing & merging
 (define-structure tree-merging
   (export lcs-fold)
   (open scheme
         srfi-1
+        srfi-9+
         srfi-13
         srfi-26
-        define-record-types
         simple-signals
         simple-conditions
-        def-record
         shift-reset
         table
         random
@@ -318,16 +285,15 @@
 
 ;;;; ducts
 (define-structure duct-internal duct-interface
-  (open scheme
-        http-build-utilities
+  (open scheme+
+        alists
         ascii
         text-codecs
         byte-vectors)
   (files http/duct-internal))
 
 (define-structure ducts ducts-interface
-  (open scheme
-        http-build-utilities
+  (open scheme+
         byte-vectors
         bitwise
         ascii
@@ -339,8 +305,7 @@
 
 ;;;; mime & url, http
 (define-structure mime mime-interface
-  (open scheme
-        http-build-utilities
+  (open scheme+
         reading
         unicode-char-maps
         text-codecs
@@ -351,8 +316,7 @@
   (files http/mime))
 
 (define-structure url url-interface
-  (open scheme
-        http-build-utilities
+  (open scheme+
         ascii
         unicode
         bitwise)
@@ -379,8 +343,7 @@
   (files http/uuid))
 
 (define-structure http http-interface
-  (open scheme
-        http-build-utilities
+  (open scheme+
         fluids
         sockets
         byte-vectors
@@ -453,14 +416,11 @@
         signals)
   (files (zipper functional-records)))
 
-(define-structure def-record
-  (export
-   (def-record :syntax)
-   (def-discloser :syntax))
-  (open scheme
-        persistent-records
-        methods)
-  (files (zipper def-record)))
+(define-structure zrecords
+  (interface-of srfi-9+)
+  (open scheme-level-2
+        (s48 persistent-records))
+  (files (utility srfi-9+)))
 
 (define-structure zlist
   (compound-interface
@@ -468,25 +428,12 @@
    tiny-srfi-1-interface
    tiny-srfi-43-interface)
   (open zassert
-        scheme
+        extra-scheme
         (r5 scheme)
         (r5 srfi-1)
-        persistent-records
-        def-record
+        zrecords
         language-ext)
   (files (zipper lists)))
-
-;; (define-structure kernel
-;;   (export kernel-start!)
-;;   (open scheme
-;;         srfi-9+
-;;         simple-signals
-;;         persistent-records
-;;         (ykk persistent-symbols)
-;;         zassert
-;;         ykk-ports
-;;         monad-style-output)
-;;   (files (zipper kernel)))
 
 ;;; Types
 (define-structures ((ykk/types ykk/types-interface)
@@ -503,7 +450,7 @@
         conditions+
         primitives
         type-structure-parser
-        (subset record-types (record-type?)))  
+        (subset record-types (record-type?)))
   (files types type-destructuring))
 
 (define-structure type-structure-parser type-structure-parser-interface
@@ -531,7 +478,7 @@
                                    (shared:shared-cons shared-cons))
                            (prefix shared:))
                    ykk/types ; for testing
-                   )             
+                   )
              (files graph-traversal)))
 
 (define-module (make-path-structure graph traverse)
@@ -563,7 +510,7 @@
 ;; --------------------
 ;; Persisted
 
-(define-structure primitive-persisted-graph graph-interface  
+(define-structure primitive-persisted-graph graph-interface
   (open extra-scheme
         srfi-1+
         conditions+
@@ -571,7 +518,7 @@
         proc-def
         ykk/types
         methods
-        (subset sharing (share)))  
+        (subset sharing (share)))
   (files persisted-graph))
 
 (define-graph-structures persisted-graph
@@ -589,7 +536,7 @@
         conditions+)
   (files source-scan))
 
-(define-structure primitive-scanned-graph scanned-graph-interface  
+(define-structure primitive-scanned-graph scanned-graph-interface
   (open extra-scheme
         srfi-1+ srfi-9+
         proc-def

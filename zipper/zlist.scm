@@ -4,8 +4,9 @@
   (car car)
   (cdr cdr))
 
-(def-discloser pair? ((cell :zcons))
-  `(c ,(car cell) ,(cdr cell)))
+(define-record-discloser zcons
+  (lambda (cell)
+    `(c ,(car cell) ,(cdr cell))))
 
 (define (list? obj)
   (or (pair? obj)

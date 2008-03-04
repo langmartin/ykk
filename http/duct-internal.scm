@@ -9,13 +9,13 @@
 (define (write-byte b . maybe-out)
   (apply write-char (ascii->char b) maybe-out))
 
-(define-record-type duct rtd/duct
+(define-record-type duct
   (make-duct parent attr)
   duct?
   (parent duct-parent)
   (attr duct-attr duct-set-attr!))
 
-(define-record-discloser rtd/duct
+(define-record-discloser duct
   (lambda (duct)
     `(duct ,(duct-get-property duct 'name))))
 

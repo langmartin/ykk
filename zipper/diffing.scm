@@ -171,36 +171,39 @@
 ;; This is basically half of a zipper.
 ;; Interesting, should I be working
 ;; fully with zippers?
-(define-record-type hole rtd/hole
+(define-record-type hole
   (make-hole node path)
   hole?
   (node hole-node)
   (path hole-path))
 
-(define-record-type insertion rtd/insertion
+(define-record-type insertion
   (make-insertion hole)
   insertion?
   (hole insertion-hole))
 
-(define-record-type deletion rtd/deletion
+(define-record-type deletion
   (make-deletion hole)
   deletion?
   (hole deletion-hole))
 
-(define-record-type match rtd/match
+(define-record-type match
   (make-match hole-1 hole-2)
   match?
   (hole-1 match-hole-1)
   (hole-2 match-hole-2))
 
-(def-discloser insertion? ((ins :insertion))
-  `(ins ,(hole-path (insertion-hole ins))))
+(define-record-discloser insertion
+  (lambda (ins)
+    `(ins ,(hole-path (insertion-hole ins)))))
 
-(def-discloser deletion? ((del :deletion))
-  `(del ,(hole-path (deletion-hole del))))
+(define-record-discloser deletion
+  (lambda (del)
+    `(del ,(hole-path (deletion-hole del)))))
 
-(def-discloser match? ((m :match))
-  `(match ,(hole-path (match-hole-1 m)) ,(hole-path (match-hole-2 m))))
+(define-record-discloser match
+  (lambda (m)
+    `(match ,(hole-path (match-hole-1 m)) ,(hole-path (match-hole-2 m)))))
 
 ;; Change sets
 
@@ -211,15 +214,16 @@
 ;; where deletions and insertions
 ;; have to be ordered properly.  This
 ;; will do for now.
-(define-record-type change-set rtd/change-set
+(define-record-type change-set
   (make-change-set matches deletions insertions)
   change-set?
   (matches cs-matches cs-matches-set!)
   (deletions cs-deletions cs-deletions-set!)
   (insertions cs-insertions cs-insertions-set!))
 
-(def-discloser change-set? ((cs :change-set))
-  `(cs ,(cs-matches cs) ,(cs-deletions cs) ,(cs-insertions cs)))
+(define-record-discloser change-set
+  (lambda (cs)
+    `(cs ,(cs-matches cs) ,(cs-deletions cs) ,(cs-insertions cs))))
   
 (define (empty-change-set)
   (make-change-set '() '() '()))
@@ -246,7 +250,7 @@
 
 ;; Higher-order zipper
 
-(define-record-type bulky-zipper rtd/bulky-zipper
+(define-record-type bulky-zipper
   (make-bulky-zipper curr-node k path)
   bulky-zipper?
   (curr-node bz-node)
@@ -297,7 +301,7 @@
 
 ;; Conflicts
 
-(define-record-type conflict-node rtd/conflict-node
+(define-record-type conflict-node
   (make-conflict-node left-action right-action)
   conflict-node?
   (left-action conflict-left-action)
@@ -358,15 +362,16 @@
 (define (identity x) x)
 
 ;; Data structure
-(define-record-type node :node
+(define-record-type node
   (really-make-node tag data nodes)
   node?
   (tag node-tag)
   (data node-data)
   (nodes node-children))
 
-(def-discloser node? ((node :node))
-  `(n ,(node-tag node) ,(node-data node) ,(node-children node)))
+(define-record-discloser node
+  (lambda (node)
+    `(n ,(node-tag node) ,(node-data node) ,(node-children node))))
 
 (define *gensym-counter* -1)
 

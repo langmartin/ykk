@@ -74,12 +74,6 @@
   (and (pair? obj)
        (eq? http-server-exec? (car obj))))
 
-;; (define-record-type response rtd/response
-;;   (make-response status head body)
-;;   (status r/status)
-;;   (head r/head)
-;;   (body r/body))
-
 (define (http-server ip port handler)
   (let ((handler (handle-handler handler))
         (socket (open-socket port)))

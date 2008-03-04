@@ -103,7 +103,7 @@
    (for-each-display (urlencode read-char))))
 
 ;;;; Data type, Interface
-(define-record-type url rtd/url
+(define-record-type url
   (make-url proto host port path parameters)
   url?
   (proto url-protocol)
@@ -112,7 +112,7 @@
   (path url-path)
   (parameters url-parameters))
 
-(define-record-discloser rtd/url
+(define-record-discloser url
   (lambda (url)
     `(url ,(url-protocol url)
           ,(url-host url)
