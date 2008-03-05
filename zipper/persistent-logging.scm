@@ -1,8 +1,12 @@
-(define-record-type log rtd/log
+(define-record-type log
   (make-log tag)
   log?
   (tag log-tag)
   (port log-port set-log-port!))
+
+(define-record-discloser log
+  (lambda (log)
+    `(log (log-tag log))))
 
 (define-fluid (*log* #f)
   current-log
