@@ -66,16 +66,34 @@
       (vector-id obj)
       obj))
 
-(define (replay-log)
+(define-fluid (*log* #f)
+  current-log
+  with-log)
+
+(define (set-log! port)
+  (set-fluid! *log* port))
+
+(define-syntax without-log
+  (syntax-rules ()
+    ((_ body ...)
+     (with-log #f (lambda () body ...)))))
+
+(define (reopen-log-port port)
+  (if (current-log)
+      (close-output-port (current-log)))
+  (set-log! port))
+
+(define (replay-log-port port)
   (without-log
    (port-fold (lambda (expr acc)
+                ;; (eval expr (interaction-environment))
                 (let ((head (car expr)) (tail (cdr expr)))
-                  (cond ((eq? 'v head)
-                         (apply replay-vector! tail))
-                        ((eq? '! head)
-                         (table-set! *cdr*
-                                     (car tail)
-                                     (exhume (cadr tail)))))))
+                 (cond ((eq? 'v head)
+                        (apply replay-vector! tail))
+                       ((eq? '! head)
+                        (table-set *cdr*
+                                   (car tail)
+                                   (exhume (cadr tail)))))))
               #f
               read
               port)))
@@ -108,13 +126,13 @@
                       vec)
      (disp ")"))))
 
+(define (persistent-symbol sym)
+  (table-ref *cdr* sym))
+
 (define (persistent-symbol-set! sym val)
   (write-log
    (lambda ()
      (write (list '! sym (disclose-object val))))))
-
-(define (persistent-symbol sym)
-  (table-ref *cdr* sym))
 
 (define (list-replay-test)
   (replay-log-port (open-input-file "/tmp/log")))
