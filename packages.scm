@@ -339,7 +339,10 @@
 
 (define-structure uuidgen
   (export uuidgen)
-  (open scheme srfi-27 bitwise)
+  (open scheme srfi-27 bitwise
+        assert
+        ykk-ports
+        srfi-1)
   (files http/uuid))
 
 (define-structure http http-interface
