@@ -338,11 +338,12 @@
   (files (http curl)))
 
 (define-structure uuidgen
-  (export uuidgen)
+  (export uuidgen-v1->hex-string)
   (open scheme srfi-27 bitwise
         assert
         ykk-ports
-        srfi-1)
+        srfi-1
+        srfi-13)
   (files http/uuid))
 
 (define-structure http http-interface

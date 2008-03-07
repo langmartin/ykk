@@ -84,8 +84,8 @@
    (lambda (n)
      (let ((rand (random-integer 256)))
        (case n
-         ((6) (bitwise-ior #b01000000 rand))
-         ((8) (bitwise-ior #b01000000 rand))
+         ((6) (bitwise-ior #b10000000 (bitwise-xor #b10111111 rand)))
+         ((8) (bitwise-ior #b01000000 (bitwise-xor #b01001111 rand)))
          (else rand))))
    16))
 
@@ -97,33 +97,67 @@
               '()
               (string->list format)))
 
-(define (format) (make-display-rules "0000-00-00-00-00000"))
+(define hex
+  '#(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9 #\A #\B #\C #\D #\E #\F))
+
+(define format (make-display-rules "0000-00-00-00-000000"))
+
+(define vref vector-ref)
 
 (define (num->hex n)
   (u4fold (lambda (n acc)
-            (display (number->string n 16)))
+            (display (vref hex n)))
           #f
           n))
 
-(define (uuid->hex uuid)
+(define (uuid-number-display uuid)
   (u8fold (lambda (byte dashes)
             (if (car dashes)
                 (display (car dashes)))
             (num->hex byte)
-            (cdr dashes)
-            )
-           (format)
-           uuid))
+            (cdr dashes))
+          format
+          uuid))
 
-(define (uuid->hex-string uuid)
+(define (uuid-number->string uuid)
   (let-string-output-port
-   (uuid->hex uuid)))
+   (uuid-number-display uuid)))
 
-(uuid->hex-string (uuidgen))
+(define (string-uuid->number string)
+  (with-string-input-port
+      (string-append "#x" (string-delete #\- string))
+    read))
+
+;; (let ((uuid (uuidgen-v1->hex-string)))
+;;   (assert uuid => (uuid-number->string (uuid-string->number uuid))))
+
+(define (uuid-string? s)
+  (uuid-number?
+   (string-uuid->number s)))
+
+(define (uuid-number? n)
+  (and ;; (= #b01 (extract-bit-field 2 (+ 1 (* 8 8)) n))
+   (= #b01   (extract-bit-field 2
+                                (- (- 128 (* 8 8)) 2)
+                                n))
+   (= #b0100 (extract-bit-field 4
+                                (- (- 128 (* 8 6)) 4)
+                                n))))
+
+;; (uuid->hex-string (uuidgen))
+
+;; (extract-bit-field
+;;  4
+;;  ;; (- (- 128 (* 8 8)) 2)
+;;  (- (- 128 (* 8 6)) 4)
+;;  (uuidgen)
+;;  ;; (string-uuid->number
+;; ;;   (uuidgen-v1->hex-string)
+;; ;;   ;; "6AAF975E-5D43-4E4A-9CEF-32C8408C9C2A"
+;; ;;   )
+;;  )
 
 (define (uuidgen-v1->hex-string)
-  (define hex
-    '#(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9 #\A #\B #\C #\D #\E #\F))
   (let ((n1 (random-integer 65536))
         (n2 (random-integer 65536))
         (n3 (random-integer 65536))
@@ -133,7 +167,6 @@
         (n7 (random-integer 65536))
         (n8 (random-integer 65536)))
     (string
-     #\u
      ;; time_lo
      (vector-ref hex (extract-bit-field 4 12 n1))
      (vector-ref hex (extract-bit-field 4  8 n1))
