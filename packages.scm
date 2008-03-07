@@ -103,7 +103,12 @@
           define-record-discloser)
   (open scheme-level-2
 	(s48 define-record-types))
-  (files (utility srfi-9+)))
+  (begin
+    (define define-record-discloser s48:define-record-discloser)
+    (define-syntax define-record-type
+      (syntax-rules ()
+        ((define-record-type type-name . stuff)
+         (s48:define-record-type type-name type-name . stuff))))))
 
 (define-structure ykk-parsing
   ykk-parsing-interface
@@ -374,31 +379,20 @@
   (open scheme srfi-9)
   (files (zipper zipper)))
 
-(define-structure meta-packages-to-include-in-heap
-  (export)
-  (open srfi-1+
-        red/black))
-
 (define-structures
-  ((persistent-immutable
-    (compound-interface
-     vector-interface
-     persistent-symbol-interface))
+  ((persistent-immutable vector-interface)
    (persistent-logging persistent-logging-interface))
-  (open scheme
-        signals
-        srfi-9+
+  (open scheme+
         (r5 scheme)
         (r5 srfi-1)
         tables
         write-images
-        meta-packages-to-include-in-heap
+        usual-resumer
+        posix-files
+        posix-time
+        proposals
         fluids+
-        uuidgen
-        ykk-ports
-        monad-style-output
-        ykk-parsing
-        language-ext)
+        uuidgen)
   (files (zipper persistent-immutable)))
 
 (define-structure persistent-immutable-equal
@@ -413,18 +407,15 @@
 (define-structure persistent-records
   (export
    (define-record-type :syntax)
+   define-record-discloser
    vector?)
   (for-syntax (open scheme assert))
   (open persistent-immutable
         scheme
-        signals)
+        signals
+        tables
+        methods)
   (files (zipper functional-records)))
-
-(define-structure zrecords
-  (interface-of srfi-9+)
-  (open scheme-level-2
-        (s48 persistent-records))
-  (files (utility srfi-9+)))
 
 (define-structure zlist
   (compound-interface
@@ -432,12 +423,12 @@
    tiny-srfi-1-interface
    tiny-srfi-43-interface)
   (open zassert
+        persistent-records
         extra-scheme
         (r5 scheme)
         (r5 srfi-1)
-        zrecords
         language-ext)
-  (files (zipper lists)))
+  (files (zipper zlist)))
 
 ;;; Types
 (define-structures ((ykk/types ykk/types-interface)

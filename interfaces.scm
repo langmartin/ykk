@@ -416,18 +416,15 @@
    z-curr-node
    zip-all-the-way-up))
 
-(define-interface persistent-symbol-interface
-  (export
-   persistent-symbol
-   persistent-symbol-set!))
-
 (define-interface persistent-logging-interface
   (export
-   initialize-log
-   current-log
-   rotate-log
-   replay-log
-   (without-log :syntax)))
+   initialize-logging
+   rotate-log-and-store-heap
+   persistent-symbol
+   persistent-symbol-set!
+   direct-make-vector
+   direct-memory-ref
+   direct-memory-set!))
 
 (define-interface list-interface
   (export

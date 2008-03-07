@@ -103,6 +103,21 @@
           (record-ref thing index)
           (error "accessor applied to bad value" type tag thing)))))
 
+;;;; disclosure
+(define (define-record-discloser type receiver)
+  (table-set! *disclosers*
+              (record-type-name type)
+              receiver))
+
+(define *disclosers* (make-symbol-table))
+
+(define-simple-type :functional-record-type (:vector) record?)
+
+(define-method &disclose ((obj :functional-record-type))
+  ((table-ref *disclosers*
+              (record-type-name obj))
+   obj))
+
 ;;;; testing
 (define-record-type foo
   (make-foo one two)
