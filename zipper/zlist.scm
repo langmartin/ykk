@@ -142,14 +142,11 @@
    vector))
 
 ;;;; stress testing
-;; (define (list-creation-test)
-;;   (reopen-log-port (open-output-file "/tmp/log"))
-;;   (fold-numbers (lambda (n acc)
-;;                   (cons n acc))
-;;                 '()
-;;                 0
-;;                 100000
-;;                 1)
-;;   (reopen-log-port #f))
-;; 22.79 seconds 1st run
-;; 18.12
+(define (creation-test . n)
+  (let-optionals* n ((n 10e6))
+    (fold-numbers (lambda (n acc)
+                    (cons n acc))
+                  '()
+                  0
+                  n
+                  1)))

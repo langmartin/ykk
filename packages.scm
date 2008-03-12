@@ -14,6 +14,11 @@
   (files utility/octothorpe-extensions))
 
 ;;;; core utilites
+(define-structure optional-arguments
+  optional-arguments-interface
+  (open scheme)
+  (files utility/optional-arguments))
+
 (define-structure ykk-ports
   ykk-ports-interface
   (open scheme
@@ -78,11 +83,6 @@
         ykk-ports)
   (files utility/assert))
 
-(define-structure optional-arguments
-  optional-arguments-interface
-  (open scheme
-        assert)
-  (files utility/optional-arguments))
 
 (define-structure language-ext
   language-ext-interface
@@ -381,19 +381,28 @@
 
 (define-structures
   ((persistent-immutable vector-interface)
-   (persistent-logging persistent-logging-interface))
+   (persistent-internal (export *log* log-set! replay-log-port)))
   (open scheme+
         (r5 scheme)
         (r5 srfi-1)
         tables
+        proposals
+        fluids+
+        uuidgen)
+  (files (zipper persistent-immutable)))
+
+(define-structure heap-rotate
+  (export rotate-log-and-store-heap
+          initialize-logging)
+  (open scheme+
         write-images
         usual-resumer
         posix-files
         posix-time
         proposals
-        fluids+
-        uuidgen)
-  (files (zipper persistent-immutable)))
+        os-strings
+        persistent-internal)
+  (files (zipper heap-rotate)))
 
 (define-structure persistent-immutable-equal
   (export equal?)
@@ -427,7 +436,8 @@
         extra-scheme
         (r5 scheme)
         (r5 srfi-1)
-        language-ext)
+        language-ext
+        optional-arguments)
   (files (zipper zlist)))
 
 ;;; Types

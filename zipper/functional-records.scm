@@ -104,19 +104,21 @@
           (error "accessor applied to bad value" type tag thing)))))
 
 ;;;; disclosure
+(define *disclosers* (make-symbol-table))
+
 (define (define-record-discloser type receiver)
   (table-set! *disclosers*
               (record-type-name type)
               receiver))
 
-(define *disclosers* (make-symbol-table))
-
 (define-simple-type :functional-record-type (:vector) record?)
 
 (define-method &disclose ((obj :functional-record-type))
-  ((table-ref *disclosers*
-              (record-type-name obj))
-   obj))
+  (let ((disp (table-ref *disclosers*
+                         (record-type-name (record-type obj)))))
+    (if disp
+        (disp obj)
+        `(Zv ,(record-type-name (record-type obj))))))
 
 ;;;; testing
 (define-record-type foo
@@ -124,5 +126,9 @@
   foo?
   (one foo-one)
   (two foo-two))
+
+(define-record-discloser foo
+  (lambda (foo)
+    `(foo ,(foo-one foo) ,(foo-two foo))))
 
 (define bar (make-foo 1 2))
