@@ -160,12 +160,15 @@
 (define-interface alists-interface
   (export
    fold-two
+   plist->alist
    list->alist
    update-alist
    update-force-alist
    cons-alist
    (let-foldr* :syntax)
-   alist-tree-insert))
+   alist-tree-insert
+   alist-ref
+   alist-key-index))
 
 (define-interface assert-interface
   (export

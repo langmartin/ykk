@@ -69,3 +69,26 @@
         comp/structure comp/structure-reflection
         comp/s48-dependencies)
   (files (comp module-language)))
+
+(define-structure identifier identifier-interface
+  (open extra-scheme
+        uuidgen)
+  (files (comp identifier)))
+
+(define-structure store store-interface
+  (open extra-scheme
+        identifier
+        tables
+        proc-def)
+  (files (comp store)))
+
+(define-structures ((low-stob low-stob-interface)
+                    (stob-type stob-type-interface)
+                    (stob stob-interface))
+  (open extra-scheme
+        store
+        conditions+
+        methods
+        alists
+        proc-def)
+  (files (comp stob)))

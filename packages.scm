@@ -147,6 +147,7 @@
   (open scheme
         srfi-1+
         big-util
+        exceptions
         assert)
   (files utility/alists))
 
