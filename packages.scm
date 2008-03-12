@@ -533,11 +533,10 @@
 
 ;;; Types
 (define-structures ((ykk/types ykk/types-interface)
-                    (type-reflection ykk/type-reflection-interface)
-                    (type-destructuring type-destructuring-interface))
+                    (type-reflection ykk/type-reflection-interface))  
 
   ;; for destructuring
-  (for-syntax (open scheme type-structure-parser srfi-1))
+  (for-syntax (open scheme srfi-1))
   (open extra-scheme
         (modify sharing (rename (shared:share share)) (prefix shared:))
         methods meta-methods
@@ -545,17 +544,8 @@
         proc-def
         conditions+
         primitives
-        type-structure-parser
         (subset record-types (record-type?)))
-  (files types type-destructuring))
-
-(define-structure type-structure-parser type-structure-parser-interface
-  (open scheme
-        srfi-1 srfi-8
-        conditions+
-        assert
-        fluids+)
-  (files type-structure-parser))
+  (files types))
 
 ;;;; Graph
 
