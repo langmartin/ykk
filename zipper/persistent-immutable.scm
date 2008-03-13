@@ -72,12 +72,12 @@
   (table-ref *symbol* sym))
 
 (define (persistent-symbol-set! sym val)
+  (obtain-lock symbol-lock)
   (write-log
    (lambda ()
-     (write (list '! sym (disclose-object val))))
-   (call-ensuring-atomicity!
-    (lambda ()
-      (table-set! *symbol* sym val)))))
+     (write (list '! sym (disclose-object val)))))
+  (table-set! *symbol* sym val)
+  (release-lock symbol-lock))
 
 ;;;; logging, "memory" store
 (define (e-unkown-type obj)
@@ -85,7 +85,11 @@
 
 (define *cdr* (make-string-table))
 
+(define cdr-lock (make-lock))
+
 (define *symbol* (make-symbol-table))
+
+(define symbol-lock (make-lock))
 
 (define (direct-memory-ref id)
   (if (not (string? id))
@@ -93,9 +97,9 @@
       (table-ref *cdr* id)))
 
 (define (direct-memory-set! id datum)
-  (call-ensuring-atomicity!
-   (lambda ()
-     (table-set! *cdr* id datum))))
+  (obtain-lock cdr-lock)
+  (table-set! *cdr* id datum)
+  (release-lock cdr-lock))
 
 (define (disclose-object obj)
   (if (vector? obj)
@@ -104,8 +108,9 @@
 
 (define *log* #f)
 
-(define (log-set! port)
-  (set! *log* port))
+(define (log-port) *log*)
+
+(define (log-set! port) (set! *log* port))
 
 (define-syntax let-list
   (syntax-rules ()
@@ -114,34 +119,35 @@
               body ...)
             lst))))
 
-(define (replay-log-port port)
-  (call-ensuring-atomicity!
-   (lambda ()
-     (port-fold (lambda (expr acc)
-                  ;; (eval expr (interaction-environment))
-                  (let-list ((head id . tail) expr)
-                    (case head
-                      ((v) (table-set!
-                            *cdr*
-                            id
-                            (direct-make-vector id (recover-vector-body tail))))
-                      ((!) (table-set!
-                            *symbol*
-                            id
-                            (direct-memory-ref (car tail)))))))
-                #f
-                read
-                port))))
+(define replay-lock (make-lock))
 
+(define (replay-log-port port)
+  (obtain-lock replay-lock)
+  (port-fold (lambda (expr acc)
+               ;; (eval expr (interaction-environment))
+               (let-list ((head id . tail) expr)
+                 (case head
+                   ((v) (table-set!
+                         *cdr*
+                         id
+                         (direct-make-vector id (recover-vector-body tail))))
+                   ((!) (table-set!
+                         *symbol*
+                         id
+                         (direct-memory-ref (car tail)))))))
+             #f
+             read
+             port)
+  (release-lock replay-lock))
+
+;; assumes port thread-safety
 (define (write-log thunk)
   (or (not *log*)
-      (with-current-output-port
-          *log*
-        (call-ensuring-atomicity!
-         thunk))))
-
-(define (list-replay-test)
-  (replay-log-port (open-input-file "/tmp/log")))
+      (begin
+        (with-current-output-port
+           *log*
+          thunk)
+        (newline *log*))))
 
 (define (cdr-table-count)
   (let ((count 0))
