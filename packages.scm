@@ -342,6 +342,15 @@
         srfi-13)
   (files http/uuid))
 
+(define-structure csv
+  (export read-csv-record
+          display-as-csv-field
+          display-as-csv-row
+          display-as-csv-table)
+  (open scheme
+        signals)
+  (files (http csv)))
+
 (define-structure http http-interface
   (open scheme+
         fluids
