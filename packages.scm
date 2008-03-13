@@ -50,39 +50,6 @@
         big-util
         (modify checking (rename (define-checked define))))
   (files (utility extra-scheme)))
-
-;;;; Meta-structure for convenience
-(define-syntax define-meta-structure
-  (syntax-rules ()
-    ((_ struct (package ...) body ...)
-     (define-structure struct
-       (compound-interface
-        (interface-of package)
-        ...)
-       (open package ...)
-       body ...))))
-
-(define-meta-structure scheme+
-  (extra-scheme
-   assert
-   ykk-ports
-   ykk-parsing
-   monad-style-output
-   language-ext
-   optional-arguments
-   srfi-1+
-   srfi-2
-   srfi-9+
-   srfi-13))
-
-(define-structure zassert
-  (compound-interface assert-interface (export equal?))
-  (open persistent-immutable-equal
-        scheme
-        signals
-        ykk-ports)
-  (files utility/assert))
-
 
 (define-structure language-ext
   language-ext-interface
@@ -128,6 +95,36 @@
         optional-arguments
         ykk-ports)
   (files utility/monad-style-output))
+
+;;;; Meta-structure for convenience
+(define-syntax define-meta-structure
+  (syntax-rules ()
+    ((_ struct (package ...) body ...)
+     (define-structure struct
+       (compound-interface
+        (interface-of package)
+        ...)
+       (open package ...)
+       body ...))))
+
+(define-meta-structure scheme+
+  (extra-scheme
+   assert
+   ykk-ports
+   ykk-parsing
+   monad-style-output
+   language-ext
+   optional-arguments
+   srfi-1+
+   srfi-2
+   srfi-9+
+   srfi-13))
+
+;;;; further core, not part of scheme+, though
+(define-structure fluids+ fluids+-interface
+  (for-syntax (open scheme fluids))
+  (open scheme fluids)
+  (files utility/fluids))
 
 (define-structure conditions+ conditions+-interface
   (open scheme
@@ -193,12 +190,6 @@
          (utility vset)))
 
 (define set rb-set)
-
-;;;; Fluids
-(define-structure fluids+ fluids+-interface
-  (for-syntax (open scheme fluids))
-  (open scheme fluids)
-  (files utility/fluids))
 
 ;;;; Primitive
 (define-structures ((ykk/bindings ykk/bindings-interface)
@@ -381,13 +372,13 @@
 
 (define-structures
   ((persistent-immutable vector-interface)
-   (persistent-internal (export *log* log-set! replay-log-port)))
-  (open scheme+
+   (persistent-internal (export log-port log-set! replay-log-port)))
+  (open (modify
+         scheme+
+         (hide make-vector vector vector? vector-length vector-ref))
         (r5 scheme)
-        (r5 srfi-1)
         tables
-        proposals
-        fluids+
+        locks
         uuidgen)
   (files (zipper persistent-immutable)))
 
@@ -399,7 +390,7 @@
         usual-resumer
         posix-files
         posix-time
-        proposals
+        locks
         os-strings
         persistent-internal)
   (files (zipper heap-rotate)))
@@ -412,6 +403,14 @@
         language-ext
         alists)
   (files (zipper equal)))
+
+(define-structure zassert
+  (compound-interface assert-interface (export equal?))
+  (open persistent-immutable-equal
+        scheme
+        signals
+        ykk-ports)
+  (files utility/assert))
 
 (define-structure persistent-records
   (export
@@ -426,15 +425,24 @@
         methods)
   (files (zipper functional-records)))
 
+(define-structure zscheme+
+  (interface-of scheme+)
+  (open (modify
+         scheme+
+         (hide equal? assert
+               make-vector vector vector? vector-ref vector-set! vector-length
+               define-record-type define-record-discloser))
+        zassert
+        persistent-records))
+
 (define-structure zlist
   (compound-interface
    list-interface
    tiny-srfi-1-interface
    tiny-srfi-43-interface)
-  (open zassert
-        persistent-records
-        extra-scheme
-        (r5 scheme)
+  (open persistent-records
+        zassert
+        scheme+
         (r5 srfi-1)
         language-ext
         optional-arguments)
