@@ -101,6 +101,16 @@
   (table-set! *cdr* id datum)
   (release-lock cdr-lock))
 
+(define (static-allocate id thunk)
+  (or (and-let* ((obj (direct-memory-ref id)))
+        (values #f obj (vector-r5 obj)))
+      (let* ((val (thunk))
+             (zvec
+              (direct-memory-set!
+               id
+               (direct-make-vector id val))))
+        (values #t zvec val))))
+
 (define (disclose-object obj)
   (if (vector? obj)
       (vector-id obj)

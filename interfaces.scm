@@ -422,9 +422,7 @@
    rotate-log-and-store-heap
    persistent-symbol
    persistent-symbol-set!
-   direct-make-vector
-   direct-memory-ref
-   direct-memory-set!))
+   static-allocate))
 
 (define-interface list-interface
   (export
