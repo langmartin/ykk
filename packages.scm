@@ -351,6 +351,13 @@
         signals)
   (files (http csv)))
 
+(define-structure json
+  (export read-json-record
+          alist->json)
+  (open scheme+
+        ducts)
+  (files (http json)))
+
 (define-structure http http-interface
   (open scheme+
         fluids
