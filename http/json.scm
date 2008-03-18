@@ -1,3 +1,15 @@
+(define (alphanumeric? ch)
+  (or (and (char>=? ch #\a) (char<=? ch #\z))
+      (and (char>=? ch #\A) (char<=? ch #\Z))
+      (and (char>=? ch #\0) (char<=? ch #\9))))
+
+(define (numeric? ch)
+  (and (char>=? ch #\0) (char<=? ch #\9)))
+
+(define (alphabetic? ch)
+  (or (and (char>=? ch #\a) (char<=? ch #\z))
+      (and (char>=? ch #\A) (char<=? ch #\Z))))
+
 (define (backslash-escape quote string)
   (let-string-output-port
    (display quote)
@@ -8,12 +20,16 @@
                     string)
    (display quote)))
 
-(define (json-escape string)
-  (backslash-escape #\' string))
-
 (define (alist? obj)
   (and (pair? obj)
        (pair? (car obj))))
+
+(define (duct-null? ch)
+  (and (string? ch) (string-null? ch)))
+
+;;;; json output
+(define (json-escape string)
+  (backslash-escape #\' string))
 
 (define (json-atom val)
   (cond ((symbol? val) val)
@@ -67,13 +83,14 @@
 
 (define (json-str-esc duct)
   (let ((ch (duct-read duct)))
-    (if (string-null? ch)
-        #f
-        (case ch
+    (or (case ch
           ((n) #\newline)
           ((r) #\return)
           ((t) #\tab)
-          (else ch)))))
+          (else #f))
+        (if (duct-null? ch)
+            #f
+            ch))))
 
 (define (json-str duct)
   (define (next)
@@ -96,7 +113,7 @@
 
 (define (json-key duct)
   (and-let* ((key (json-scalar))
-             ((not (string-null? key)))
+             ((not (duct-null? key)))
              ((char=? #\: (duct-peek duct)))
              ((duct-read duct)))
     key))
@@ -114,15 +131,22 @@
           (lambda (seed)
             (json-any duct cons unfold))))
 
-(define (json-any duct . kons-unfolt)
-  (let-optionals* kons-unfolt ((kons cons) (unfolt unfold))
-
+(define (json-any duct . obj-pair-cons/unfold)
+  (let-optionals* obj-pair-cons/unfold ((kons cons) (unfolt unfold))
     (and-let* ((cur (duct-peek duct))
-               ((not (string-null? cur))))
-      (or (and-let* ((proc (case cut
+               ((not (duct-null? cur))))
+      (or (and-let* ((proc (case cur
                              ((#\{) json-obj)
                              ((#\[) json-arr)
                              (else #f))))
             (duct-read)
             (proc duct kons unfolt))
           (json-scalar duct)))))
+
+(assert
+ (let-string-input-port
+     "{success:{a:2,b:3},failure:{a:1}}"
+   (let ((in ((d/ascii)
+              (port->duct (current-input-port)))))
+     (json-any in)))
+ )
