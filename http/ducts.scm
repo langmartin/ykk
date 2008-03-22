@@ -164,17 +164,19 @@
                (set! buffer
                      (byte-vector-output-port-output write-port)))))))
 
-
 (define (d/ascii* name0 ascii->char char->ascii)
   (lambda (parent)
+    (define (r/p duct-read)
+      (lambda ()
+        (let ((ch (duct-read parent)))
+          (or (and (eof-object? ch) ch)
+              (and (char? ch) ch)
+              (ascii->char ch)))))
     (duct-extend*
      parent
      (name name0)
-     (reader (lambda ()
-               (let ((ch (duct-read parent)))
-                 (or (and (eof-object? ch) ch)
-                     (and (char? ch) ch)
-                     (ascii->char ch)))))
+     (reader (r/p duct-read))
+     (peeker (r/p duct-peek))
      (writer (lambda (ch)
                (duct-write
                 parent
