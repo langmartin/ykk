@@ -1,0 +1,29 @@
+#! /bin/sh
+
+## Paths -----------------------------------------
+
+working_path=`pwd -P`
+
+script_path_maybe=`which $0`
+script_path_maybe=${script_path_maybe%\/*}
+
+cd "$script_path_maybe"
+
+script_path=`pwd -P`
+
+cd "$working_path"
+
+## Commands --------------------------------------
+
+cmd="$1"
+shift
+
+cd "$script_path/.."
+
+make
+
+if [ "$cmd" == "batch" ]; then
+    args="-a batch"
+fi
+    
+scheme48 -i ykk-development.img $args

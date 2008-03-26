@@ -45,6 +45,12 @@
         big-util
         (modify checking (rename (define-checked define))))
   (files (utility extra-scheme)))
+
+(define-structure more-regexps more-regexps-interface
+  (open scheme
+        regexps
+        posix-regexps)
+  (files (utility regexps)))
 
 ;;;; Meta-structure for convenience
 (define-syntax define-meta-structure
@@ -160,6 +166,19 @@
   (open extra-scheme
         methods)
   (files (utility data-def)))
+
+;;;; Dates
+(define-structure dates dates-interface
+  (open scheme+
+        load-dynamic-externals
+        external-calls
+        ffi-extensions
+        posix-time
+        regexps
+        more-regexps
+        conditions+
+        srfi-26)
+  (files utility/dates))
 
 ;;;; Red/Black Trees
 (define-structures ((red/black red/black-interface)
@@ -283,6 +302,36 @@
         time)
   (files (zipper diffing)))
 
+;;;; forms
+(define-structure forms forms-interface
+  (open scheme+
+        more-regexps
+        url
+        posix-regexps
+        dispatch-server
+        http
+        htmlprag
+        exceptions)
+  (files forms/forms))
+
+;;;; dispatching web server
+(define-structure dispatch-server dispatch-server-interface
+  (open scheme+
+        fluids
+        sockets
+        byte-vectors
+        tables
+        threads
+        http
+        srfi-40
+        srfi-8
+        srfi-71
+        mime
+        url
+        ducts
+        posix)
+  (files dispatch-server))
+
 ;;;; ducts
 (define-structure duct-internal duct-interface
   (open scheme+
@@ -291,7 +340,7 @@
         text-codecs
         byte-vectors)
   (files http/duct-internal))
-
+
 (define-structure ducts ducts-interface
   (open scheme+
         byte-vectors
