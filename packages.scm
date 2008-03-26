@@ -172,7 +172,6 @@
   (open scheme+
         load-dynamic-externals
         external-calls
-        ffi-extensions
         posix-time
         regexps
         more-regexps
