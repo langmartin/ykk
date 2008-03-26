@@ -1,0 +1,13 @@
+#! /bin/sh
+
+run() {
+   cat form-server.s48 | ykk batch
+}
+
+cd ..
+
+run
+
+while [ $? -eq 1 ]; do
+   run
+done

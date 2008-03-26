@@ -110,6 +110,12 @@
           intersection
           difference))
 
+;;;; Dates
+(define-interface dates-interface
+  (export date->time
+          smart/date->time
+          time->date))
+
 ;;;; ykk methods
 (define-interface ykk/methods-interface
   (export (define-generic :syntax)
@@ -203,7 +209,8 @@
    make-not
    (case-equal :syntax)
    fold-numbers
-   fold-right-numbers))
+   fold-right-numbers
+   (if-bind :syntax)))
 
 (define-interface conditions+-interface
   (export (define-condition :syntax)
@@ -316,6 +323,10 @@
           map-while
           remove
           map2))
+
+(define-interface more-regexps-interface
+  (export (case-regex :syntax)
+          (case-posix-regex :syntax)))
 
 ;;;; ducts
 (define-interface duct-interface
@@ -532,6 +543,14 @@
           instance-values
 
           has-init-form?))
+
+;;;; forms
+(define-interface forms-interface
+  (export form-server))
+
+;;;; dispatch server
+(define-interface dispatch-server-interface
+  (export dispatch-server))
 
 ;;;; Graph
 
