@@ -61,11 +61,11 @@
       (output "output-debug\n" body "\n\n"))))
 
 ;;;; Server
-(define (http-server-exec thunk)
-  (cons http-server-exec?
-        thunk))
+(define (http-server-exec thunk . out)
+  (list http-server-exec? thunk (if out (car out) #f)))
 
-(define exec-thunk cdr)
+(define exec-thunk cadr)
+(define exec-output caddr)
 
 (define (http-server-close)
   (http-server-exec (lambda () #t)))
@@ -109,7 +109,15 @@
      (lambda (method path version)
        (let ((res (handler version method path input-port)))
          (if (http-server-exec? res)
-             res
+             (begin
+               (if (exec-output res)
+                   (output-response output-port version
+                      (let-http-response
+                       (220 "ok")
+                       (let-headers ((content-type "text/html"))
+                          (let-content-length
+                           (exec-output res))))))
+               res)
              (begin
               (output-response output-port version res)
               (force-output output-port)

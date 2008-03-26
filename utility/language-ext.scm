@@ -73,3 +73,11 @@
              (+ start step)
              stop
              step))))
+
+(define-syntax if-bind
+  (syntax-rules ()
+    ((_ bind expr then else ...)
+     (let ((bind expr))
+       (if bind
+           then
+           else ...)))))
