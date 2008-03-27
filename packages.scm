@@ -351,6 +351,28 @@
         signals)
   (files (http csv)))
 
+(define-structure crappy-snow-layer
+  (export
+   (define-macro :syntax)
+   (cond-expand :syntax)
+   (define* :syntax)
+   (define-macro* :syntax)
+   (package* :syntax))
+  (open scheme
+        ascii)
+  (files (utility compat-scheme48)))
+
+(define-structure lalr-parser-generator
+  (export
+   (lalr-parser :syntax))
+  (open
+   scheme
+   signals
+   crappy-snow-layer
+   pp
+   bitwise)
+  (files (lalr-2.3.0 lalr)))
+
 (define-structure json
   (export alist->json-obj
           list->json-arr
