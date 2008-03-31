@@ -112,11 +112,11 @@
              (begin
                (if (exec-output res)
                    (output-response output-port version
-                      (let-http-response
-                       (220 "ok")
-                       (let-headers ((content-type "text/html"))
-                          (let-content-length
-                           (exec-output res))))))
+                     (let-http-response
+                      (220 "ok")
+                      (let-headers ((content-type "text/html"))
+                        (let-content-length
+                         (exec-output res))))))
                res)
              (begin
               (output-response output-port version res)

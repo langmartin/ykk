@@ -1,10 +1,10 @@
 #! /bin/sh
 
 run() {
-   cat form-server.s48 | ykk batch
+   cat bin/form-server.s48 | bin/ykk batch
 }
 
-cd ..
+cd `dirname $0`; cd ..
 
 run
 
