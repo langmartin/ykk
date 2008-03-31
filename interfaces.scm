@@ -346,6 +346,7 @@
    duct-foldr
    duct-for-each
    duct->string
+   whitespace?
    duct-next-chunk-for-each
    duct-next-chunk))
 
