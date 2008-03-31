@@ -352,8 +352,10 @@
   (files (http csv)))
 
 (define-structure json
-  (export read-json-record
-          alist->json)
+  (export alist->json-obj
+          list->json-arr
+          json-fold-right               ; cons nil duct . ocons opair
+          )
   (open scheme+
         ducts)
   (files (http json)))

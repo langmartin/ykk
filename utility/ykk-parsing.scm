@@ -94,7 +94,7 @@
     (if (eof-object? current)
         nil
         (cons current
-              (port-fold-right cons nil reader)))))
+              (apply port-fold-right cons nil reader port)))))
 
 (define (read-all . rest)
   (let-optionals* rest ((reader read)
