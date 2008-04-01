@@ -61,18 +61,19 @@
       (output "output-debug\n" body "\n\n"))))
 
 ;;;; Server
+(define (http-server-exec? obj)
+  (and (pair? obj)
+       (eq? http-server-exec? (car obj))))
+
 (define (http-server-exec thunk . out)
-  (list http-server-exec? thunk (if out (car out) #f)))
+  (let-optionals* out ((out #f))
+    (list http-server-exec? thunk out)))
 
 (define exec-thunk cadr)
 (define exec-output caddr)
 
 (define (http-server-close)
   (http-server-exec (lambda () #t)))
-
-(define (http-server-exec? obj)
-  (and (pair? obj)
-       (eq? http-server-exec? (car obj))))
 
 (define (http-server ip port handler)
   (let ((handler (handle-handler handler))
@@ -89,40 +90,21 @@
               ((exec-thunk result)))
             (lp))))))
 
-(define (http-multithreaded-server ip port handler)
-  (let ((handler (handle-handler handler))
-        (socket (open-socket port)))
-    (socket-port-number socket)         ; make sure it's open
-    (let lp ()
-      (call-with-values
-          (lambda () (socket-accept socket))
-        (lambda (input output)
-          (spawn
-           (lambda ()
-             (handler input output)))))
-      (lp))))
-
 (define (handle-handler handler)
   (lambda (input-port output-port)
     (call/http-version
      input-port
      (lambda (method path version)
-       (let ((res (handler version method path input-port)))
-         (if (http-server-exec? res)
-             (begin
-               (if (exec-output res)
-                   (output-response output-port version
-                     (let-http-response
-                      (220 "ok")
-                      (let-headers ((content-type "text/html"))
-                        (let-content-length
-                         (exec-output res))))))
-               res)
-             (begin
-              (output-response output-port version res)
-              (force-output output-port)
-              (close-output-port output-port)
-              (close-input-port input-port))))))))
+       (let ((result (handler version method path input-port)))
+         (cond ((http-server-exec? result)
+                (if (exec-output result)
+                    (output-response output-port version (exec-output result)))
+                result)
+               (else
+                (output-response output-port version result)
+                (force-output output-port)
+                (close-output-port output-port)
+                (close-input-port input-port))))))))
 
 (define (output-response output-port version response)
   (let-current-output-port
@@ -239,7 +221,8 @@
   (syntax-rules ()
     ((_ body ...)
      (lambda ()
-       (output-content-length body ...)))))
+       (output-content-length
+        (list body ...))))))
 
 (define-syntax let-header-data
   (syntax-rules ()
@@ -336,6 +319,81 @@ Some text goes here.")
    (begin1
     (read-line p #f)
     (close-input-port p))))
+
+;;;; richer standard dispatch
+(define *fixed-pages* (make-string-table))
+
+(define (http-register-page! path thunk))
+
+(define-fluid (request #f)
+  current-request
+  with-request)
+
+(define-record-type request
+  make-request
+  request?
+  (version req-version)
+  (method req-method)
+  (url req-url)
+  (mime req-mime))
+
+(define (request-version) (req-version (current-request)))
+(define (request-method) (req-method (current-request)))
+(define (request-url) (req-url (current-request)))
+(define (request-mime) (req-mime (current-request)))
+
+(define (standard-handler version method path port)
+  (let ((url (parse-url path)))
+   (with-request
+    (make-request version
+                  method
+                  url
+                  (proxy-mime port))
+    (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
+          (page))
+        (standard-404)))))
+
+(define (standard-404)
+  (let-http-response (404 "Not Found")
+    (let-headers ((content-type "text/plain"))
+      (let-content-length
+       "404\n The path "
+       (url-path (request-url (current-request)))
+       " is not registered."))))
+
+(define-syntax let-multithreaded
+  (syntax-rules ()
+    ((_ handler)
+     (lambda args
+       (spawn
+        (lambda ()
+          (apply handler args)))))))
+
+(define (standard-http-server . ip/port/threaded)
+  (let-optionals* ip/port ((ip 'ip) (port 3130) (threaded #f))
+    (http-server ip port
+                 (if threaded
+                     (let-multithreaded standard-handler)
+                     standard-handler))))
+
+(define-fluid (query #f)
+  current-query
+  with-query*)
+
+(define (with-query thunk)
+  (let* ((mime (request-mime))
+         (headers (mime-headers mime))
+         (content (content-type headers)))
+    (with-query*
+     (case (content-type-type content)
+       ((=x-application/url-form-encoded)
+        (url-foldr-parameters cons '() (mime-port mime))))
+     thunk)))
+
+(define-syntax let-current-query
+  (syntax-rules ()
+    ((_ body ...)
+     (with-query (lambda () body ...)))))
 
 ;;;; proxy
 (define *client-keep-alive* (make-string-table))
@@ -468,8 +526,13 @@ Some text goes here.")
 ;;     (proxy-handler
 ;;      "HTTP/1.1" "GET" "/index" (current-input-port)))))
 
-(define (proxy-server)
-  (http-server 'ip 3128 proxy-handler))
+(define (proxy-server . debugging-flag)
+  (http-server
+   'ip
+   3128
+   (if (null? debugging-flag)
+       proxy-handler
+       (let-multithreaded proxy-handler))))
 
 ;; (output '(("GET" " " "/css/t.css" #f " " "HTTP/1.1" "\r\n")
 ;;           ((accept ": " "*" "\r\n")

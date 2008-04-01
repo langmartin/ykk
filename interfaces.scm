@@ -408,8 +408,7 @@
    http-server-exec
    http-server-exec?
    http-server-close
-   call/http-version
-   proxy-client
+   (let-multithreaded :sytax)
    (let-http-response :syntax)
    (let-http-request :syntax)
    (let-headers :syntax)
@@ -417,7 +416,16 @@
    (let-header-data :syntax)
    header-reduce
    http-keepalive?
-   proxy-server))
+   http-register-page!
+   standard-404
+   standard-http-server
+   request-version
+   request-method
+   request-url
+   request-mime
+   current-query
+   with-query
+   (let-current-query :syntax)))
 
 ;;;; zippers, kernel
 (define-interface zipper-interface

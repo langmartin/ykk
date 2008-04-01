@@ -363,7 +363,7 @@
         url
         ducts
         posix)
-  (files dispatch-server))
+  (files (http dispatch-server)))
 
 ;;;; ducts
 (define-structure duct-internal duct-interface
@@ -373,7 +373,7 @@
         text-codecs
         byte-vectors)
   (files http/duct-internal))
-
+
 (define-structure ducts ducts-interface
   (open scheme+
         byte-vectors
