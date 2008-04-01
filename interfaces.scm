@@ -368,6 +368,7 @@
    ;; record-type
    mime-headers
    mime-content-type
+   mime-content-type-type
    mime-port
    mime->byte-duct
    mime->duct
@@ -408,7 +409,7 @@
    http-server-exec
    http-server-exec?
    http-server-close
-   (let-multithreaded :sytax)
+   (let-multithreaded :syntax)
    (let-http-response :syntax)
    (let-http-request :syntax)
    (let-headers :syntax)
