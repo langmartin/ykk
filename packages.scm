@@ -57,44 +57,7 @@
         posix-regexps)
   (files (utility regexps)))
 
-;;;; Meta-structure for convenience
-(define-syntax define-meta-structure
-  (syntax-rules ()
-    ((_ struct (package ...) body ...)
-     (define-structure struct
-       (compound-interface
-        (interface-of package)
-        ...)
-       (open package ...)
-       body ...))))
-
-(define-meta-structure scheme+
-  (extra-scheme
-   assert
-   ykk-ports
-   ykk-parsing
-   monad-style-output
-   language-ext
-   optional-arguments
-   srfi-1+
-   srfi-2
-   srfi-9+
-   srfi-13))
-
-(define-structure zassert
-  (compound-interface assert-interface (export equal?))
-  (open persistent-immutable-equal
-        scheme
-        signals
-        ykk-ports)
-  (files utility/assert))
-
-(define-structure optional-arguments
-  optional-arguments-interface
-  (open scheme
-        assert)
-  (files utility/optional-arguments))
-
+;;;; fundamental utils
 (define-structure language-ext
   language-ext-interface
   (open scheme
@@ -206,8 +169,7 @@
   (open extra-scheme
         methods)
   (files (utility data-def)))
-
-;;;; Dates
+
 (define-structure dates dates-interface
   (open scheme+
         load-dynamic-externals
@@ -448,7 +410,6 @@
 
 (define-structure http http-interface
   (open scheme+
-        fluids
         sockets
         byte-vectors
         tables
@@ -456,10 +417,22 @@
         srfi-40
         srfi-8
         exceptions
+        simple-signals
         mime
         url
-        ducts)
+        ducts
+        json
+        ssax-vanilla)
     (files http/http))
+
+(define-structure standard-test
+  (export)
+  (open scheme+
+        http
+        mime
+        url
+        json)
+  (files (http standard-test)))
 
 ;;;; zipper
 (define-structure shift-reset

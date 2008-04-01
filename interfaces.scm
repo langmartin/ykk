@@ -394,6 +394,7 @@
    url-parameters?
    parse-url
    url=?
+   url-foldr-parameters
    url-parameter-string
    urldecode
    urldecode-string
@@ -423,10 +424,7 @@
    request-version
    request-method
    request-url
-   request-mime
-   current-query
-   with-query
-   (let-current-query :syntax)))
+   request-query))
 
 ;;;; zippers, kernel
 (define-interface zipper-interface
