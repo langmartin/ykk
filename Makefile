@@ -18,7 +18,7 @@ TAGS: $(files)
 	etags $(files)
 
 bin/ykk-development.img: bin/ykk-development.s48 \
-interfaces.scm ssax-5.1/packages.scm packages.scm runtime-packages.scm
+interfaces.scm ssax-5.1/packages.scm packages.scm
 	{ cat $<; echo ",dump $@"; } | scheme48 -a batch
 
 $(CLIB_DIR)/dates.so: $(CLIB_DIR)/dates.c
