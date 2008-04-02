@@ -222,7 +222,7 @@
     ((_ body ...)
      (lambda ()
        (output-content-length
-        (list body ...))))))
+        body ...)))))
 
 (define-syntax let-header-data
   (syntax-rules ()
@@ -323,43 +323,69 @@ Some text goes here.")
 ;;;; richer standard dispatch
 (define *fixed-pages* (make-string-table))
 
-(define (http-register-page! path thunk))
-
-(define-fluid (request #f)
-  current-request
-  with-request)
+(define (http-register-page! path request-receiver)
+  (table-set! *fixed-pages* path request-receiver))
 
 (define-record-type request
-  make-request
+  (make-request version method url query)
   request?
-  (version req-version)
-  (method req-method)
-  (url req-url)
-  (mime req-mime))
+  (version request-version)
+  (method request-method)
+  (url request-url)
+  (query request-query set-request-query!))
 
-(define (request-version) (req-version (current-request)))
-(define (request-method) (req-method (current-request)))
-(define (request-url) (req-url (current-request)))
-(define (request-mime) (req-mime (current-request)))
-
-(define (standard-handler version method path port)
-  (let ((url (parse-url path)))
-   (with-request
-    (make-request version
-                  method
-                  url
-                  (proxy-mime port))
-    (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
-          (page))
-        (standard-404)))))
-
-(define (standard-404)
+(define (standard-404 R)
   (let-http-response (404 "Not Found")
     (let-headers ((content-type "text/plain"))
       (let-content-length
        "404\n The path "
-       (url-path (request-url (current-request)))
-       " is not registered."))))
+       (url-path (request-url R))
+       " is not registered.\n\n"
+       (request-version R) newline
+       (request-method R) newline
+       (request-url R) newline
+       (request-query R)))))
+
+;; (with-request
+;;  (make-request "http/1.0" "GET" "http://coptix.com")
+;;  (let-content-length
+;;   "404\n The path "
+;;   (url-path (request-url))
+;;   " is not registered."))
+
+(define (catch-query mime port)
+  (case (mime-content-type-type mime)
+    ((application/x-www-form-urlencoded)
+     (url-foldr-parameters cons '() port))
+    ((application/jsonrequest)
+     (json-fold-right cons '() port))
+    ((text/xml)
+     (ssax:xml->sxml port))
+    (else
+     mime)))
+
+(define *standard-host* "localhost")
+
+(define (set-standard-host! hostname)
+  (set! *standard-host* hostname))
+
+(define (standard-handler version method path port)
+  (call-with-values
+      (lambda () (parse-url-path path))
+   (lambda (path param)
+     (let* ((mime (proxy-mime))
+            (head (mime-headers mime))
+            (host (or (header-assoc 'host head)
+                      *standard-host*)))
+       (let* ((url (make-url 'http host 80 path param))
+              (R (make-request version
+                               method
+                               url
+                               (catch-query mime port))))
+         (note "url" (url-path (request-url R)))
+         (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
+               (page R))
+             (standard-404 R)))))))
 
 (define-syntax let-multithreaded
   (syntax-rules ()
@@ -370,30 +396,11 @@ Some text goes here.")
           (apply handler args)))))))
 
 (define (standard-http-server . ip/port/threaded)
-  (let-optionals* ip/port ((ip 'ip) (port 3130) (threaded #f))
+  (let-optionals* ip/port/threaded ((ip 'ip) (port 3130) (threaded #f))
     (http-server ip port
                  (if threaded
                      (let-multithreaded standard-handler)
                      standard-handler))))
-
-(define-fluid (query #f)
-  current-query
-  with-query*)
-
-(define (with-query thunk)
-  (let* ((mime (request-mime))
-         (headers (mime-headers mime))
-         (content (content-type headers)))
-    (with-query*
-     (case (content-type-type content)
-       ((=x-application/url-form-encoded)
-        (url-foldr-parameters cons '() (mime-port mime))))
-     thunk)))
-
-(define-syntax let-current-query
-  (syntax-rules ()
-    ((_ body ...)
-     (with-query (lambda () body ...)))))
 
 ;;;; proxy
 (define *client-keep-alive* (make-string-table))

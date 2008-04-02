@@ -120,6 +120,11 @@
           ,(url-path url)
           ,(url-parameters url))))
 
+(define (parse-url-path* param-proc nil)
+  (values
+   (next-chunk "?")
+   (maybe-parameters param-proc nil)))
+
 (define (parse-url-port param-proc nil . port)
   (let-maybe-current-input-port
       port
@@ -130,15 +135,16 @@
            (_ (consume-chars pred))
            (host (next-chunk pred))
            (port (or (inline-port)
-                     (default-port protocol)))
-           (path (next-chunk "?"))
-           (parameters (maybe-parameters param-proc nil)))
-      (make-url
-       protocol
-       host
-       port
-       path
-       parameters))))
+                     (default-port protocol))))
+      (call-with-values
+          (lambda () (parse-url-path* param-proc nil))
+        (lambda (path parameters)
+         (make-url
+          protocol
+          host
+          port
+          path
+          parameters))))))
 
 (define (parse-url-string param-proc nil url-string)
   (parse-url-port param-proc nil (make-string-input-port url-string)))
@@ -147,10 +153,20 @@
   (cons (cons k v) tail))
 
 (define (parse-url url-string)
-  (parse-url-string
-   cons-alist
-   '()
-   url-string))
+  ;; (note "parse-url" url-string)
+  (let ((url
+         (parse-url-string
+          cons-alist
+          '()
+          url-string)))
+    (note "parse-url" url-string url)
+    url))
+
+(define (parse-url-path url-path-string)
+  (let-string-input-port
+      url-path-string
+   (lambda ()
+     (parse-url-path* cons-alist '()))))
 
 (define (inline-port)
   (let ((ch (peek-char)))
@@ -225,6 +241,10 @@
   (parse-url "http://coptix.com:81/foo/page.php?foo=bar%20baz&thing=5;bz=blip")
   (make-url 'http "coptix.com" 81 "/foo/page.php"
             '(("foo" . "bar baz") ("thing" . "5") ("bz" . "blip")))))
+
+(assert
+ (url=? (parse-url "http://coptix.com:3140/"))
+ (make-url 'http "coptix.com" 3140 "/" '()))
 
 (define (url-parameter-string url)
   (define (show key val)

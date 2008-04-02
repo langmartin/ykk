@@ -393,6 +393,7 @@
    url-parameters
    url-parameters?
    parse-url
+   parse-url-path
    url=?
    url-foldr-parameters
    url-parameter-string

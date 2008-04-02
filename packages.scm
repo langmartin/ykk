@@ -116,6 +116,7 @@
 
 (define-meta-structure scheme+
   (extra-scheme
+   simple-signals
    assert
    ykk-ports
    ykk-parsing
@@ -417,7 +418,6 @@
         srfi-40
         srfi-8
         exceptions
-        simple-signals
         mime
         url
         ducts

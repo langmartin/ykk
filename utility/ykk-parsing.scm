@@ -90,11 +90,12 @@
         (apply port-fold cons (cons current nil) reader port))))
 
 (define (port-fold-right cons nil reader . port)
-  (let ((current (apply reader port)))
-    (if (eof-object? current)
-        nil
-        (cons current
-              (apply port-fold-right cons nil reader port)))))
+  (let-optionals* port ((port (current-input-port)))
+    (let lp ()
+      (let ((current (reader port)))
+        (if (eof-object? current)
+            nil
+            (cons current (lp)))))))
 
 (define (read-all . rest)
   (let-optionals* rest ((reader read)

@@ -440,3 +440,14 @@ aGVsbG8gdGhlcmUsIGZvb2Jhcg==\r
 ;; (call-with-string-input-port
 ;;  "test: me\r\nfoo: bar"
 ;;  mime-read-all)
+
+(define (mime-content-type-type mime)
+  (let ((ctype (mime-content-type mime)))
+    (if ctype
+        (string->symbol (header-assoc '=mime-type ctype))
+        'text/empty)))
+
+(assert
+ (mime-content-type-type
+  (call-with-string-input-port *sample-message* port->mime)) =>
+  'text/plain)
