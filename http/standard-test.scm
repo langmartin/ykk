@@ -1,3 +1,15 @@
+(define (standard-404 R)
+  (let-http-response (404 "Not Found")
+    (let-headers ((content-type "text/plain"))
+      (let-content-length
+       "404\n The path "
+       (url-path (request-url R))
+       " is not registered.\n\n"
+       (request-version R) newline
+       (request-method R) newline
+       (request-url R) newline
+       (request-parameters R)))))
+
 (define-syntax http-mng
   (syntax-rules ()
     ((_ text body ...)
@@ -52,4 +64,4 @@
             ))))))))
 
 (define (go)
-  (standard-http-server))
+  (standard-http-server standard-404))

@@ -425,13 +425,13 @@
    header-reduce
    http-keepalive?
    http-register-page!
-   standard-404
    standard-http-server
    request-version
    request-method
    request-url
    request-parameters
-   standard-parameters))
+   standard-parameters
+   set-standard-host!))
 
 ;;;; zippers, kernel
 (define-interface zipper-interface

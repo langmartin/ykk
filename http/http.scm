@@ -334,18 +334,6 @@ Some text goes here.")
   (url request-url)
   (query request-parameters set-request-parameters!))
 
-(define (standard-404 R)
-  (let-http-response (404 "Not Found")
-    (let-headers ((content-type "text/plain"))
-      (let-content-length
-       "404\n The path "
-       (url-path (request-url R))
-       " is not registered.\n\n"
-       (request-version R) newline
-       (request-method R) newline
-       (request-url R) newline
-       (request-parameters R)))))
-
 (define (cons-form key val tail)
   (or (and-let* ((key (string-split key (string-or-chars->predicate "[],")))
                  ((pair? key)))
@@ -381,7 +369,7 @@ Some text goes here.")
   (cons (url-parameters (request-url R))
         (request-parameters R)))
 
-(define (standard-handler version method path port)
+(define (standard-handler standard-404 version method path port)
   (call-with-values
       (lambda () (parse-url-path path))
     (lambda (path param)
@@ -407,12 +395,14 @@ Some text goes here.")
         (lambda ()
           (apply handler args)))))))
 
-(define (standard-http-server . ip/port/threaded)
+(define (standard-http-server standard-404 . ip/port/threaded)
   (let-optionals* ip/port/threaded ((ip 'ip) (port 3130) (threaded #f))
-    (http-server ip port
-                 (if threaded
-                     (let-multithreaded standard-handler)
-                     standard-handler))))
+    (let ((handler (lambda (v m pa pt)
+                     (standard-handler standard-404 v m pa pt))))
+      (http-server ip port
+                   (if threaded
+                       (let-multithreaded handler)
+                       handler)))))
 
 ;;;; proxy
 (define *client-keep-alive* (make-string-table))
