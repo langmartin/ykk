@@ -332,7 +332,7 @@ Some text goes here.")
   (version request-version)
   (method request-method)
   (url request-url)
-  (query request-query set-request-query!))
+  (query request-parameters set-request-parameters!))
 
 (define (standard-404 R)
   (let-http-response (404 "Not Found")
@@ -344,48 +344,60 @@ Some text goes here.")
        (request-version R) newline
        (request-method R) newline
        (request-url R) newline
-       (request-query R)))))
+       (request-parameters R)))))
 
-;; (with-request
-;;  (make-request "http/1.0" "GET" "http://coptix.com")
-;;  (let-content-length
-;;   "404\n The path "
-;;   (url-path (request-url))
-;;   " is not registered."))
+(define (cons-form key val tail)
+  (or (and-let* ((key (string-split key (string-or-chars->predicate "[],")))
+                 ((pair? key)))
+        (alist-tree-insert key val tail))
+      (cons (cons key val)
+            tail)))
+
+(define (mime->form-parameters mime)
+  (let-string-input-port
+      (duct->string (mime->duct mime))
+    (url-foldr-parameters cons-form '() (current-input-port))))
 
 (define (catch-query mime port)
+  ;; (note "catch" (mime-content-type-type mime))
   (case (mime-content-type-type mime)
     ((application/x-www-form-urlencoded)
-     (url-foldr-parameters cons '() port))
+     (mime->form-parameters mime))
     ((application/jsonrequest)
-     (json-fold-right cons '() port))
-    ((text/xml)
-     (ssax:xml->sxml port))
+     (json-fold-right cons '() (mime->duct mime)))
+    ((text/xml application/xml)
+     (let-string-input-port
+         (duct->string (mime->duct))
+      (ssax:xml->sxml (current-input-port))))
     (else
-     mime)))
+     #f)))
 
 (define *standard-host* "localhost")
 
 (define (set-standard-host! hostname)
   (set! *standard-host* hostname))
 
+(define (standard-parameters R)
+  (cons (url-parameters (request-url R))
+        (request-parameters R)))
+
 (define (standard-handler version method path port)
   (call-with-values
       (lambda () (parse-url-path path))
-   (lambda (path param)
-     (let* ((mime (proxy-mime))
-            (head (mime-headers mime))
-            (host (or (header-assoc 'host head)
-                      *standard-host*)))
-       (let* ((url (make-url 'http host 80 path param))
-              (R (make-request version
-                               method
-                               url
-                               (catch-query mime port))))
-         (note "url" (url-path (request-url R)))
-         (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
-               (page R))
-             (standard-404 R)))))))
+    (lambda (path param)
+      (let* ((mime (proxy-mime port))
+             (head (mime-headers mime))
+             (host (or (header-assoc 'host head)
+                       *standard-host*)))
+        (let* ((url (make-url 'http host 80 path param))
+               (R (make-request version
+                                method
+                                url
+                                (catch-query mime port))))
+          ;; (note "url" (url-path (request-url R)))
+          (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
+                (page R))
+              (standard-404 R)))))))
 
 (define-syntax let-multithreaded
   (syntax-rules ()

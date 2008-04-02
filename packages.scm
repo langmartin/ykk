@@ -144,7 +144,8 @@
 (define-structure alists
   alists-interface
   (open scheme
-        srfi-1
+        srfi-1+
+        big-util
         assert)
   (files utility/alists))
 
@@ -357,7 +358,8 @@
         byte-vectors
         posix
         srfi-40
-        ducts)
+        ducts
+        url)
   (files http/mime))
 
 (define-structure url url-interface
@@ -422,12 +424,14 @@
         url
         ducts
         json
-        ssax-vanilla)
+        ssax-vanilla
+        alists)
     (files http/http))
 
 (define-structure standard-test
   (export)
   (open scheme+
+        htmlprag
         http
         mime
         url

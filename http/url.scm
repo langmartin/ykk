@@ -153,20 +153,18 @@
   (cons (cons k v) tail))
 
 (define (parse-url url-string)
-  ;; (note "parse-url" url-string)
   (let ((url
          (parse-url-string
           cons-alist
           '()
           url-string)))
-    (note "parse-url" url-string url)
+    ;; (note "parse-url" url-string url)
     url))
 
 (define (parse-url-path url-path-string)
   (let-string-input-port
       url-path-string
-   (lambda ()
-     (parse-url-path* cons-alist '()))))
+    (parse-url-path* cons-alist '())))
 
 (define (inline-port)
   (let ((ch (peek-char)))
@@ -227,6 +225,11 @@
    (fold two-ary-url=?
          (car urls)
          (cdr urls))))
+
+(assert
+ (call-with-values
+     (lambda () (parse-url-path "/"))
+   list) => '("/" ()))
 
 (assert
  (url=? (parse-url "http://coptix.com/foo/page.php")

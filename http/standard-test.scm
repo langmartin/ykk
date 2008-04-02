@@ -10,21 +10,46 @@
              text))))))))
 
 (http-register-page!
- "restart"
- (http-mng "server restarting" (standard-http-server)))
-
-(http-register-page!
- "stop"
+ "/stop"
  (http-mng "server stopping" #t))
 
+(define (text name)
+  `(input (@ (type "text")
+             (name ,name))))
+
+(define (code lst)
+  `(pre
+    ,(let-string-output-port
+      (newline)
+      (write lst)
+      (newline))))
+
 (http-register-page!
- "foo"
+ "/test"
  (lambda (R)
    (let-http-response (220 "Ok")
-     (let-headers ((content-type "text/plain"))
+     (let-headers ((content-type "text/html"))
        (let-content-length
-        "some text goes here\n"
-        "that's what I'm saying")))))
+        (shtml->html
+         `(html
+           (head (title "test"))
+           (body
+            
+            (div
+             (ul
+              (li "method: " ,(request-method R))
+              (li "parameters: "
+                  ,(code (standard-parameters R)))))
+            
+            (div
+             (form (@ (action "/test?foo=1&bar=2")
+                      (method "post"))
+                   ,(text "foo[bar]")
+                   ,(text "foo[baz]")
+                   (input (@ (type "submit")
+                             (name "submit")
+                             (value "hit me")))))
+            ))))))))
 
 (define (go)
   (standard-http-server))

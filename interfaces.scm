@@ -164,7 +164,8 @@
    update-alist
    update-force-alist
    cons-alist
-   (let-foldr* :syntax)))
+   (let-foldr* :syntax)
+   alist-tree-insert))
 
 (define-interface assert-interface
   (export
@@ -223,7 +224,10 @@
    (interface-of srfi-1)
    (export
     intersperse
-    fold-append)))
+    fold-append
+    fold-right-append
+    map/cons*
+    map*)))
 
 (define-interface the-interface-formerly-know-as-util
   (compound-interface
@@ -384,6 +388,7 @@
 
 (define-interface url-interface
   (export
+   cons-alist
    make-url
    url?
    url-protocol
@@ -425,7 +430,8 @@
    request-version
    request-method
    request-url
-   request-query))
+   request-parameters
+   standard-parameters))
 
 ;;;; zippers, kernel
 (define-interface zipper-interface

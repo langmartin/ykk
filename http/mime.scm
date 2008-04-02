@@ -409,9 +409,8 @@ body"
         (case-equal set
           (("us-ascii")
            ((d/ascii) duct))
-          (else
-           (e-unimplemented "no charset for" set))))
-      duct))
+          (else #f)))
+      ((d/ascii) duct)))
 
 #;
 (define (mimetype content-type duct)
