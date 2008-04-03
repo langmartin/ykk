@@ -351,7 +351,7 @@ Some text goes here.")
        (ssax:xml->sxml (current-input-port) 'xml)))
     (else #f)))
 
-(define (debug-catch-query mime port)
+(define (debug-catch-query mime)
   (let ((raw (duct->string (mime->duct mime))))
     (note "mime"
           (mime-content-type-type mime)
@@ -383,7 +383,7 @@ Some text goes here.")
                (R (make-request version
                                 method
                                 url
-                                (catch-query mime port))))
+                                (catch-query mime))))
           (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
                 (page R))
               (standard-404 R)))))))
