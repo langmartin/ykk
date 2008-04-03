@@ -334,31 +334,33 @@ Some text goes here.")
   (url request-url)
   (query request-parameters set-request-parameters!))
 
-(define (cons-form key val tail)
-  (or (and-let* ((key (string-split key (string-or-chars->predicate "[],")))
-                 ((pair? key)))
-        (alist-tree-insert key val tail))
-      (cons (cons key val)
-            tail)))
-
 (define (mime->form-parameters mime)
   (let-string-input-port
       (duct->string (mime->duct mime))
-    (url-foldr-parameters cons-form '() (current-input-port))))
+    (url-foldr-parameters cons-parameter '() (current-input-port))))
 
-(define (catch-query mime port)
-  ;; (note "catch" (mime-content-type-type mime))
+(define (catch-query mime)
   (case (mime-content-type-type mime)
     ((application/x-www-form-urlencoded)
      (mime->form-parameters mime))
-    ((application/jsonrequest)
+    ((application/jsonrequest application/x-json application/json)
      (json-fold-right cons '() (mime->duct mime)))
     ((text/xml application/xml)
      (let-string-input-port
-         (duct->string (mime->duct))
-      (ssax:xml->sxml (current-input-port))))
-    (else
-     #f)))
+         (duct->string (mime->duct mime))
+       (ssax:xml->sxml (current-input-port) 'xml)))
+    (else #f)))
+
+(define (debug-catch-query mime port)
+  (let ((raw (duct->string (mime->duct mime))))
+    (note "mime"
+          (mime-content-type-type mime)
+          raw)
+    (call-with-string-input-port
+     raw
+     (lambda (port)
+       (set-mime-port! mime port)
+       (catch-query mime)))))
 
 (define *standard-host* "localhost")
 
@@ -382,7 +384,6 @@ Some text goes here.")
                                 method
                                 url
                                 (catch-query mime port))))
-          ;; (note "url" (url-path (request-url R)))
           (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
                 (page R))
               (standard-404 R)))))))

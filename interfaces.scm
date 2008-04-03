@@ -374,6 +374,7 @@
    mime-content-type
    mime-content-type-type
    mime-port
+   set-mime-port!
    mime->byte-duct
    mime->duct
    ;; interface
@@ -388,7 +389,7 @@
 
 (define-interface url-interface
   (export
-   cons-alist
+   cons-parameter
    make-url
    url?
    url-protocol

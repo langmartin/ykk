@@ -326,7 +326,7 @@ body"
   mime?
   (head mime-headers)
   (content-type mime-content-type)
-  (port mime-port))
+  (port mime-port set-mime-port!))
 
 (define-record-discloser mime
   (lambda (mime)

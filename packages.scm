@@ -126,7 +126,8 @@
    srfi-1+
    srfi-2
    srfi-9+
-   srfi-13))
+   srfi-13
+   alists))
 
 ;;;; further core, not part of scheme+, though
 (define-structure fluids+ fluids+-interface
@@ -332,7 +333,6 @@
 ;;;; ducts
 (define-structure duct-internal duct-interface
   (open scheme+
-        alists
         ascii
         text-codecs
         byte-vectors)
@@ -424,8 +424,7 @@
         url
         ducts
         json
-        ssax-vanilla
-        alists)
+        ssax-vanilla)
     (files http/http))
 
 (define-structure standard-test

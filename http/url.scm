@@ -152,6 +152,14 @@
 (define (cons-alist k v tail)
   (cons (cons k v) tail))
 
+(define (cons-parameter key val tail)
+  (or (and-let* ((key (string-split key (string-or-chars->predicate "[],")))
+                 ((pair? key))
+                 (key (map string->symbol key)))
+        (alist-tree-insert key val tail))
+      (cons (cons (string->symbol key) val)
+            tail)))
+
 (define (parse-url url-string)
   (let ((url
          (parse-url-string
@@ -164,7 +172,7 @@
 (define (parse-url-path url-path-string)
   (let-string-input-port
       url-path-string
-    (parse-url-path* cons-alist '())))
+    (parse-url-path* cons-parameter '())))
 
 (define (inline-port)
   (let ((ch (peek-char)))
