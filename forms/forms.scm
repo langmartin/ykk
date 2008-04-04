@@ -1,5 +1,7 @@
 
-;; Web Server (thanks Lang)  ----------
+;; Web Server
+
+(define at-repl? #t)
 
 (define-syntax page-response
   (syntax-rules ()
@@ -16,50 +18,93 @@
        (let-headers ((content-type type))
          (let-content-length content))))))
 
-(define (dispatch url)
-  (let ((host (url-host url))
-        (path (url-path url))
-        (query (url-parameters url)))
-    (with-exception-catcher
-     (lambda ()
-       (handle-500 host path query))
-     (lambda ()
-       ((case-posix-regex path
-          (".css$" load-file)
-          ("^/forms/test" forms/test)
-          ("^/forms/*" forms)
-          ("^/$" home)
-          (".*" handle-404))
-        host path query)))))
+(define request-path url-path)
+(define request-query url-parameters)
+(define request-host url-host)
+
+(define (dispatch req)
+  (let ((go (lambda ()
+              ((case-posix-regex (request-path req)
+                 (".css$" load-file)
+                 ("^/forms/test" forms/test)
+                 ("^/forms/*" forms)
+                 ("^/$" home)
+                 (".*" handle-404)) req))))
+    (if at-repl?
+        (go)
+        (with-exception-catcher
+            (lambda (e p)
+              (handle-500 req e))
+          (lambda ()
+            (go))))))
 
 (define (form-server)
   (dispatch-server dispatch 4128))
 
-(define (handle-404 host path query)
-  (page-response (404 "Not Found") (string-append "page not found: " path)))
+(define (handle-404 req)
+  (page-response (404 "Not Found") (string-append "page not found: " (request-path req))))
 
-(define (handle-500 host path query)
-  (page-response (500 "Internal Server Error") "An Internal Error Occurred"))
+(define (handle-500 req error)
+  (page-response (500 "Internal Server Error")
+                 (string-append "An Internal Error Occurred: "
+                                (let-string-output-port
+                                 (display-condition error (current-output-port))))))
 
-;; Pages -------------------------------
-
-(define *root* "/Users/james/projects/scheme/ykk/forms")
-
-(define-syntax page-fragment
-  (syntax-rules ()
-    ((_ form)
-     `form)))
+;; HTML
 
 (define-syntax page
   (syntax-rules ()
-    ((_ host path query body-forms ...)
+    ((_ req body-forms ...)
      (page-response
-      (page-fragment
-       (html ,(header)
+      `(html ,(header)
              (body (div (@ (class "outer"))
-                        ,(bread-crumb host path)
+                        ,(bread-crumb req)
                         body-forms ...
-                        ,(footer)))))))))
+                        ,(footer))))))))
+
+;; Templates
+
+(define *root* "/Users/james/projects/scheme/ykk/forms")
+
+(define (bread-crumb req)
+  (let* ((anchors (cons `(a (@ (href "/")) ,(request-host req))
+                        (map-path (lambda (name path)
+                                    `(a (@ (href ,path)) ,name)) (request-path req)))))
+    `(div (@ (class "breadcrumb"))
+         ,@(intersperse " - " anchors))))
+
+(define (header . title)
+  `(head (title ,(if-car title "ykk devel"))
+         (link (@ (rel "stylesheet") (type "text/css") (href "/forms.css")))))
+
+(define (footer)
+  `(div (@ (class "footer")) "served by ykk"))
+
+;; Pages
+
+(define (home req)
+  (page req (h3 "YKK Playground")
+        (ul (li (a (@ (href "/forms")) "forms")))))
+
+(define (forms req)
+  (page req (h3 "Forms")
+        (ul (li "test form"))))
+
+(define (forms/test req)
+  (page req "yay"))
+
+;; Util
+
+(define (load-file req)
+  (let ((path (string-trim (request-path req) #\/)))
+    (with-exception-catcher
+     (lambda (c prop)
+       (handle-404))
+     (lambda ()
+       (page-response
+        (with-input-from-file (string-append *root* "/" (request-path req))
+          (lambda ()
+            (list->string (read-all read-char)))))))))
 
 (define (map-path fn path)
   (reverse
@@ -72,45 +117,6 @@
            (loop (cdr lst)
                  (cons (fn (car lst) new-path) acc)
                  new-path))))))
-
-(define (bread-crumb host path)  
-  (let* ((anchors (map-path (lambda (name path)
-                              (page-fragment (a (@ (href ,path)) ,name))) path)))
-    (page-fragment (div (@ (class "breadcrumb"))
-                        (a (@ (href "/")) ,host)
-                        ,@anchors))))
-
-(define (header . title)
-  (page-fragment
-   (head (title ,(if-car title "ykk devel"))
-         (link (@ (rel "stylesheet") (type "text/css") (href "forms.css"))))))
-
-(define (footer)
-  (page-fragment (div (@ (class "footer")) "served by ykk")))
-
-(define (home host path query)
-  (page host path query
-        (ul (li (a (@ (href "/forms")) "forms")))))
-
-(define (forms host path query)
-  (page host path query
-        (h1 "Forms")))
-
-(define (forms/test)
-  "yay")
-
-(define (load-file host path query)
-  (let ((path (string-trim path #\/)))
-    (with-exception-catcher
-     (lambda (c prop)
-       (handle-404 host path query))
-     (lambda ()
-       (page-response
-        (with-input-from-file (string-append *root* "/" path)
-          (lambda ()
-            (list->string (read-all read-char)))))))))
-
-;; Util --------------------------------
 
 ;; String
 (define (string-substitute s1 s2 str)

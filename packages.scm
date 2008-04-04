@@ -309,7 +309,10 @@
         dispatch-server
         http
         htmlprag
-        exceptions)
+        exceptions
+        fluids+
+        display-conditions
+        simple-signals)
   (files forms/forms))
 
 ;;;; dispatching web server
