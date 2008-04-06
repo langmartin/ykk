@@ -159,13 +159,28 @@
 
 (define-interface alists-interface
   (export
+   cons-alist
    fold-two
    list->alist
+   unfold-list->alist
    update-alist
    update-force-alist
-   cons-alist
+   merge-alists/template
+   merge-alists
    (let-foldr* :syntax)
-   alist-tree-insert))
+   alist-tree-insert
+   alist-key-index
+   map-car
+   project-alist-onto
+   partition-alist
+   keyword-projector/defaults
+   keyword-partitioner/defaults
+   alist-has-keys?
+   alist-has-only-keys?
+   alist-has-exactly-keys?
+   alist-ref
+   (unalist :syntax)
+   unalist-proc))
 
 (define-interface assert-interface
   (export
@@ -200,7 +215,8 @@
            neq?
            n=
            identity
-           no-op)))
+           no-op
+           concatenate-symbol)))
 
 (define-interface language-ext-interface
   (export
@@ -431,11 +447,12 @@
    standard-http-server
    make-request
    with-request
-   req-version
-   req-method
-   req-url
-   req-parameters
-   req-path
+   request-version
+   request-method
+   request-url
+   request-parameters
+   request-path
+   request-path->list
    standard-parameters
    set-standard-host!))
 
@@ -468,11 +485,14 @@
 
 (define-interface vector-interface
   (export
+   :vector
    make-vector
    vector
+   primitive-vector
    vector?
    vector-length
-   vector-ref))
+   vector-ref
+   vector-set!))
 
 (define-interface tiny-srfi-1-interface
   (export
@@ -512,28 +532,7 @@
    fold-blocked
    fold-running))
 
-;;; Types
-(define-interface type-structure-parser-interface
-  (export parse
-          structure->grouped-bindings
-          alias-everything
-
-          scheme-binding?
-          identifier?
-          nested?
-          aliased?
-          anonymous-aliased?
-
-          type-structure-syntax-error
-          type-structure-syntax-error?
-          parse-error
-          (descend :syntax)
-          pretty-path))
-
-(define-interface type-destructuring-interface
-  (export (destructure :syntax)
-          (with-destructured :syntax)))
-
+;;;; Types
 (define-interface ykk/types-interface
   (export (type-definition :syntax)
           (define-type :syntax)

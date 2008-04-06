@@ -144,11 +144,13 @@
 
 (define-structure alists
   alists-interface
-  (open scheme
+  (open extra-scheme
         srfi-1+
         big-util
+        exceptions
         assert
-        ;srfi-71
+        proc-def
+        conditions+
         optional-arguments)
   (files utility/alists))
 
@@ -419,6 +421,7 @@
         srfi-40
         srfi-8
         exceptions
+        posix-files
         mime
         url
         ducts
@@ -428,7 +431,7 @@
     (files http/http))
 
 (define-structure standard-test
-  (export standard-404)
+  (export)
   (open scheme+
         htmlprag
         http
@@ -451,7 +454,9 @@
   (files (zipper zipper)))
 
 (define-structures
-  ((persistent-immutable vector-interface)
+  ((persistent-immutable (compound-interface
+                          vector-interface
+                          (export allocate)))
    (persistent-internal (export log-port log-set! replay-log-port)))
   (open (modify
          scheme+
@@ -513,16 +518,16 @@
                make-vector vector vector? vector-ref vector-set! vector-length
                define-record-type define-record-discloser))
         zassert
-        persistent-records))
+        persistent-records
+        persistent-immutable))
 
-(define-structure zlist
-  (compound-interface
-   list-interface
-   tiny-srfi-1-interface
-   tiny-srfi-43-interface)
+(define-structures ((zlist (compound-interface
+                             list-interface
+                             tiny-srfi-1-interface))
+                    (zvector-utils tiny-srfi-43-interface))  
   (open persistent-records
         zassert
-        scheme+
+        zscheme+
         (r5 srfi-1)
         language-ext
         optional-arguments)
@@ -530,11 +535,10 @@
 
 ;;; Types
 (define-structures ((ykk/types ykk/types-interface)
-                    (type-reflection ykk/type-reflection-interface)
-                    (type-destructuring type-destructuring-interface))
+                    (type-reflection ykk/type-reflection-interface))  
 
   ;; for destructuring
-  (for-syntax (open scheme type-structure-parser srfi-1))
+  (for-syntax (open scheme srfi-1))
   (open extra-scheme
         (modify sharing (rename (shared:share share)) (prefix shared:))
         methods meta-methods
@@ -542,17 +546,8 @@
         proc-def
         conditions+
         primitives
-        type-structure-parser
         (subset record-types (record-type?)))
-  (files types type-destructuring))
-
-(define-structure type-structure-parser type-structure-parser-interface
-  (open scheme
-        srfi-1 srfi-8
-        conditions+
-        assert
-        fluids+)
-  (files type-structure-parser))
+  (files types))
 
 ;;;; Graph
 
