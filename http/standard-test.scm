@@ -1,4 +1,3 @@
-
 (define-syntax let-server-command-page
   (syntax-rules ()
     ((_ text body ...)
@@ -12,17 +11,17 @@
 
 (http-register-code-handler!
  404
- (lambda (R)
+ (lambda ()
    (let-http-response (404 "Not Found")
     (let-headers ((content-type "text/plain"))
       (let-content-length
        "404\n The path "
-       (req-path)
+       (request-path)
        " is not registered.\n\n"
-       (req-version) newline
-       (req-method) newline
-       (req-url) newline
-       (req-parameters))))))
+       (request-version) newline
+       (request-method) newline
+       (request-url) newline
+       (request-parameters))))))
 
 (http-register-page!
  "/stop"

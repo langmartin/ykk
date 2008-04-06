@@ -431,11 +431,12 @@
    standard-http-server
    make-request
    with-request
-   req-version
-   req-method
-   req-url
-   req-parameters
-   req-path
+   request-version
+   request-method
+   request-url
+   request-parameters
+   request-path
+   request-path->list
    standard-parameters
    set-standard-host!))
 
