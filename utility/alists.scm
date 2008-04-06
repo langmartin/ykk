@@ -7,7 +7,7 @@
               (lp (cddr lst))))))
 
 (assert (list->alist '(1 2 3 4)) => '((1 . 2) (3 . 4)))
-
+ 
 
 (define (update-alist orig update)
   (map (lambda (old)
@@ -102,3 +102,10 @@
 (assert
  (alist-tree-insert '(foo bar) 3 '((baz . 4)))
  => '((foo . ((bar . 3))) (baz . 4)))
+
+;; (assert
+;;  (let ((entry rest (alist-remove 'one '((one 1)
+;;                                         (two 2)
+;;                                         (three 3)))))
+;;    (list entry rest))
+;;  => '((one 1) ((two 2) (three 3))))

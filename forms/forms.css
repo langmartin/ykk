@@ -1,4 +1,13 @@
 
 .breadcrumb, .footer {
+    border: 1px solid;
+    padding: 5px;
+}
+
+.inner {
+    padding: 10px;
+}
+
+.breadcrumb, .footer {
     font-size: .7em;
 }

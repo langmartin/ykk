@@ -198,6 +198,15 @@
       (list get ...)
       body ...))))
 
+;; (letrec ((key val) ...)
+;;        (list
+;;         (let-headers "headers" (key val) ...)
+;;         body ...)))
+;;     ((_ "headers") '())
+;;     ((_ "headers" (key val) (key1 val1) ...)
+;;      (cons (list 'key ": " val crlf)
+;;            (let-headers "headers" (key1 val1) ...)))
+
 (define-syntax let-headers
   (syntax-rules ()
     ((_ () body ...)
@@ -303,6 +312,111 @@ Some text goes here.")
      port
      (lambda (version code text)
        (stream-car (port->mime-stream port))))))
+
+(define (test-get-coptix)
+ (let ((p (http-get "http://coptix.com")))
+   (begin1
+    (read-line p #f)
+    (close-input-port p))))
+
+;;;; richer standard dispatch
+(define *fixed-pages* (make-string-table))
+(define *fixed-code-handlers* (make-integer-table))
+
+(define (http-register-page! path request-receiver)
+  (table-set! *fixed-pages* path request-receiver))
+
+(define (http-register-code-handler! code handler)
+  (table-set! *fixed-code-handlers* code handler))
+
+(define (handle-status-code code . params)
+  (and-let* ((h (table-ref *fixed-code-handlers* code)))
+    (apply h params)))
+
+(define-record-type request
+  (make-request version method url query)
+  request?
+  (version request-version)
+  (method request-method)
+  (url request-url)
+  (query request-parameters set-request-parameters!))
+
+(define (mime->form-parameters mime)
+  (let-string-input-port
+      (duct->string (mime->duct mime))
+    (url-foldr-parameters cons-parameter '() (current-input-port))))
+
+(define (catch-query mime)
+  (case (mime-content-type-type mime)
+    ((application/x-www-form-urlencoded)
+     (mime->form-parameters mime))
+    ((application/jsonrequest application/x-json application/json)
+     (json-fold-right cons '() (mime->duct mime)))
+    ((text/xml application/xml)
+     (let-string-input-port
+         (duct->string (mime->duct mime))
+       (ssax:xml->sxml (current-input-port) 'xml)))
+    (else #f)))
+
+(define (debug-catch-query mime)
+  (let ((raw (duct->string (mime->duct mime))))
+    (note "mime"
+          (mime-content-type-type mime)
+          raw)
+    (call-with-string-input-port
+     raw
+     (lambda (port)
+       (set-mime-port! mime port)
+       (catch-query mime)))))
+
+(define *standard-host* "localhost")
+
+(define (set-standard-host! hostname)
+  (set! *standard-host* hostname))
+
+(define (standard-parameters R)
+  (cons (url-parameters (request-url R))
+        (request-parameters R)))
+
+(define (standard-handler version method path port)
+  (call-with-values
+      (lambda () (parse-url-path path))
+    (lambda (path param)
+      (let* ((mime (proxy-mime port))
+             (head (mime-headers mime))
+             (host (or (header-assoc 'host head)
+                       *standard-host*)))
+        (let* ((url (make-url 'http host 80 path param))
+               (R (make-request version
+                                method
+                                url
+                                (catch-query mime))))
+          (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
+                (with-exception-catcher
+                  (lambda (e p)
+                    (if (not (handle-status-code 500 R e))
+                        (p)))
+                  (lambda ()
+                    (page R))))
+              (handle-status-code 404 R)))))))
+
+(define-syntax let-multithreaded
+  (syntax-rules ()
+    ((_ handler)
+     (lambda args
+       (spawn
+        (lambda ()
+          (apply handler args)))))))
+
+(define (standard-http-server . ip/port/threaded)
+  (let-optionals* ip/port/threaded ((ip 'ip) (port 3130) (threaded #f))
+    (let ((handler (lambda (v m pa pt)
+                     (standard-handler v m pa pt))))
+      (http-server ip port
+                   (if threaded
+                       (let-multithreaded handler)
+                       handler)))))
+
 
 ;;;; proxy
 (define *client-keep-alive* (make-string-table))

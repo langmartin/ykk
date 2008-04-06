@@ -147,7 +147,9 @@
   (open scheme
         srfi-1+
         big-util
-        assert)
+        assert
+        ;srfi-71
+        optional-arguments)
   (files utility/alists))
 
 (define-structure exceptions
@@ -305,33 +307,26 @@
   (open scheme+
         more-regexps
         url
+        posix-processes
         posix-regexps
-        dispatch-server
+        pages
         http
         htmlprag
+        sxml-tree-trans
+        sxpath
         exceptions
+        conditions+
         fluids+
         display-conditions
         simple-signals)
   (files forms/forms))
 
-;;;; dispatching web server
-(define-structure dispatch-server dispatch-server-interface
+;;;; pages
+(define-structure pages pages-interface
   (open scheme+
-        fluids
-        sockets
-        byte-vectors
-        tables
-        threads
         http
-        srfi-40
-        srfi-8
-        srfi-71
-        mime
-        url
-        ducts
-        posix)
-  (files (http dispatch-server)))
+        htmlprag)
+  (files http/page))
 
 ;;;; ducts
 (define-structure duct-internal duct-interface
