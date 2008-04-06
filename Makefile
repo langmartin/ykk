@@ -3,8 +3,6 @@ http \
 persisted-graph.scm \
 prim \
 repl.scm \
-type-destructuring.scm \
-type-structure-parser.scm \
 types.scm \
 utility \
 zipper \
