@@ -103,9 +103,9 @@
                       #f
                       self-size
                       (partial-initializer initialize name self self-size instance (length instance))
-                      (compose verify (cut consistent-static-type <> name self instance)))))
+                      (compose verify (cut consistent-static-type? <> name self instance)))))
 
-(define (consistent-static-type stob name self slots)
+(define (consistent-static-type? stob name self slots)
   (let ((orig-name (%stob-type-name stob))
         (orig-self (%stob-type-self stob))
         (orig-slots (%stob-type-slots stob)))     

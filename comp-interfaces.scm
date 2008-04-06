@@ -57,13 +57,18 @@
           interface-name
           (let-interface-name :syntax)))
 
+
+(define-interface primitive-types-interface
+  (export :maybe-symbol))
+
 (define-interface identifier-interface
   (export identifier
           identifier?
           new-identifier))
 
 (define-interface store-interface
-  (export allocate))
+  (export allocate
+          stob-data))
 
 (define-interface low-stob-interface
   (export stob-ref
@@ -91,3 +96,198 @@
           make-stob
           stob-identifier
           stob-type))
+
+(define-interface stob-utility-interface
+  (export make-stob
+          stob-ref
+          stob-set!
+          stob?
+          allocate->stob
+          allocate/verify
+          (define-stob-accessors :syntax)
+          stob->list))
+
+(define-interface syntax-util-procedural-interface
+  (export self-evaluating?
+          quotation?
+          literal?
+          macro-use?
+          procedure-call?
+          keyword?
+          
+          quote-non-literal
+          remove-keyword-indication
+          keywords->alist
+
+          continue
+          continue/values
+          continue-into
+          continue-into/values
+
+          define-now!
+          force-up!
+          up-one-tower-level
+          for-syntax-environment
+          definition-value
+
+          expand
+          map-expand
+          apply-macro-transformer
+          transformer-procedure
+          ))
+
+(define-interface srfi-89-procedural-interface
+  (export srfi-89:require-positionals
+          srfi-89:optional-positionals
+          srfi-89:named-parameters
+          srfi-89:parse-formals
+          srfi-89:stack->k
+          beta-substitute))
+
+(define-interface srfi-89-syntax-interface
+  (export define-syntax*
+          srfi-89/required-parameters
+          srfi-89/optional-parameters
+          srfi-89/named-parameters
+          srfi-89/rest
+          srfi-89/no-rest))
+
+(define-interface syntax-util-interface
+  (compound-interface
+   syntax-util-procedural-interface
+   (export (syntax-k :syntax)
+           (syntax-k/values :syntax)
+           (syntax-k-into :syntax)
+           (syntax-k-into/values :syntax)
+           (define/expansion :syntax)
+           (define/force-up :syntax)
+           (syntax/eval :syntax)
+           (define-syntax/applicative-order :syntax)
+           (define-syntax* :syntax)
+           (syntax/quote-non-literal :syntax))))
+
+(define-interface description-procedural-interface
+  (export :description description?
+          make-description
+          list->description
+          unfold-list->description-source
+
+          specification?
+          make-specification
+          list->specification
+          unfold-list->specification-source
+
+          attribute?
+          make-attribute
+
+          description-specifications
+          description-length
+          description-specification-index
+          specification-names
+          specification-of
+          specification-name
+          specification-attributes
+          specification-length
+          get-specification-attribute
+          attribute-name
+          attribute-value
+
+          descriptions-equal?
+          map-specification-attributes          
+          project-description
+          project-specifications
+          project-specification
+          descriptions-consistent?
+          combine-descriptions-by-name
+          ))
+
+(define-interface description-interface
+  (compound-interface
+   description-procedural-interface
+   (export (syntax/normalize-description :syntax)
+           (syntax/normalize-specification :syntax)
+           (syntax/update-attribute-values :syntax)
+           (syntax/quote-non-literal :syntax)
+           (syntax/make-description :syntax))))
+
+(define-interface type-inspection-interface
+  (export strict-subtype?
+          identical-type?
+          direct-descendant?
+          ancestors
+          ancestors-and-self
+          more-specific-type?))
+
+(define-interface type-implementation-utility-interface
+  (compound-interface
+   type-inspection-interface
+   (export compute-priority)))
+
+(define-interface type-description-interface
+  (export specification-type
+          (define-specification-attribute-accessors :syntax)
+          (type-description :syntax)
+          invalid
+          values-consistent/description?
+          value-consistent/specification?))
+
+(define-interface ykk/record-procedural-interface
+  (export make-protocol-driver
+          basic-driver
+          extending-driver
+          length-validator
+          verifier
+
+          generative-allocator
+          generative-make
+          generative-make-self-described
+          generative-composer
+          basic-generative-constructor
+          default-generative-protocol
+
+          nongenerative-allocator
+          nongenerative-make
+          nongenerative-make-self-described
+          nongenerative-composer
+          basic-nongenerative-constructor
+          default-nongenerative-protocol
+
+          type-slot-index &type-slot-index
+
+          stob-type
+          make-record-predicate
+          make-record-accessor
+
+          (description :syntax)
+
+          :maybe-rtd
+          :rtd-type
+          rtd-type?
+          rtd-consistent?
+          rtd-type-protocol
+          rtd-type-driver
+          make-rtd-type
+          
+          rtd-id
+          rtd-name
+          rtd-parent
+          rtd-nongenerative
+          rtd-sealed?
+          rtd-opaque?
+          rtd-slots         
+          rtd-slot-count
+          rtd-environment
+          rtd-predicate
+          rtd-priority
+
+          define-name->name
+          rtd->predicate-name
+          rtd->protocol-name
+          rtd->driver-name
+          rtd->constructor-name
+          rtd-accessor-name))
+
+(define-interface ykk/record-syntax-interface
+  (export (unrecord :syntax)
+          (record-update :syntax)
+          (define-record-type/primitive :syntax)))
