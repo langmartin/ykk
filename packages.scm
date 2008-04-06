@@ -421,6 +421,7 @@
         srfi-40
         srfi-8
         exceptions
+        posix-files
         mime
         url
         ducts
@@ -430,7 +431,7 @@
     (files http/http))
 
 (define-structure standard-test
-  (export standard-404)
+  (export)
   (open scheme+
         htmlprag
         http
