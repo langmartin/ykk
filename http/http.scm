@@ -1,55 +1,4 @@
-;;;; Utility
-;; (define-syntax let-list
-;;   (syntax-rules ()
-;;     ((_ (bindings expr) body ...)
-;;      (apply expr (lambda bindings body ...)))))
-
-;; (define-syntax thunk
-;;   (syntax-rules ()
-;;     ((_ body ...)
-;;      (lambda () body ...))))
-
-;; (define (extend this by)
-;;   (lambda ()
-;;     (this)
-;;     (by)))
-
-;; (define (for-each-pair proc lst)
-;;   (for-each (lambda (pair)
-;;               (proc (car pair)
-;;                     (cdr pair)))
-;;             lst))
-
-(define (alist-iterator proc)
-  (lambda (x)
-    (proc (car x) (cdr x))))
-
-;; (define (crlf . port)
-;;   (apply disp
-;;          (append port
-;;                  '(#\return #\newline))))
-
 (define crlf "\r\n")
-
-(define-syntax or-filter
-  (syntax-rules ()
-    ((_ test?) #f)
-    ((_ test? thing else ...)
-     (let ((tmp thing))
-       (if (test? tmp)
-           tmp
-           (or-filter test? else ...))))))
-
-(assert (or-filter string? 'foo 'bar 'baz) => #f)
-
-(define-syntax quoted-alist
-  (syntax-rules ()
-    ((_) '())
-    ((_ (key val) (key1 val1) ...)
-     (cons (cons 'key val)
-           (quoted-alist (key1 val1) ...)))))
-
-(assert (quoted-alist (foo 4) (bar 6)) => '((foo . 4) (bar . 6)))
 
 (define (output-debug . args)
   (let ((real (current-output-port))
@@ -59,8 +8,7 @@
     (let-current-output-port
         (current-error-port)
       (output "output-debug\n" body "\n\n"))))
-
-;;;; Server
+
 (define (http-server-exec? obj)
   (and (pair? obj)
        (eq? http-server-exec? (car obj))))
@@ -114,38 +62,12 @@
                 " "
                 response))))
 
-;; (define (output-head head)
-;;   (for-each-pair (lambda (key val)
-;;                    (disp key ": ")
-;;                    (if (procedure? val)
-;;                        (val)
-;;                        (display val))
-;;                    (crlf))
-;;                  head)
-;;   (crlf))
-
-;; (assert
-;;  (let-string-ports
-;;   "" (output-head '((host . coptix.com) (content-length . 456)))) =>
-;;   "host: coptix.com\r\ncontent-length: 456\r\n\r\n")
-
-
-;; (define merge-headers update-alist)
-
-;; (define headers list)
-
-;; (define (content-length body)
-;;   `(content-length . ,(byte-vector-length body)))
-
 (define (call/http-version port proc)
   (let* ((lst (string-split (read-crlf-line port) whitespace? 3))
          (lst (if (< (length lst) 3)
                   (list (car lst) (cadr lst) #f)
                   lst)))
     (apply proc lst)))
-
-;; (define (http-status code text)
-;;   (concat code " " text))
 
 ;;;; HTTP Client
 (define (body->byte-vector body)
@@ -165,17 +87,7 @@
  (let-string-output-port (output-content-length "some stuff" "goes here")) =>
  "content-length: 19\r\n\r\nsome stuffgoes here")
 
-;; (quoted-alist (foo 1) (bar 2))
-
 (assert (let-header-data (foo 1) (bar foo)) => '((foo . 1) (bar . 1)))
-
-;; (define-gambit-style-parameter current-headers '() $current-headers)
-
-;; (define (inject-header-alist alist)
-;;   (current-headers
-;;    (header-reduce (current-headers)
-;;                    alist))
-;;   #f)
 
 (define-syntax let-http-response
   (syntax-rules ()
@@ -190,16 +102,6 @@
      (list
       (list get ...)
       body ...))))
-
-
-;; (letrec ((key val) ...)
-;;        (list
-;;         (let-headers "headers" (key val) ...)
-;;         body ...)))
-;;     ((_ "headers") '())
-;;     ((_ "headers" (key val) (key1 val1) ...)
-;;      (cons (list 'key ": " val crlf)
-;;            (let-headers "headers" (key1 val1) ...)))
 
 (define-syntax let-headers
   (syntax-rules ()
@@ -235,9 +137,9 @@
              (let-header-data (key1 val1) ...))))))
 
 (define (header-reduce . header-lists)
-  (map (alist-iterator
-        (lambda (sym val)
-          (list sym ": " val crlf)))
+  (map (lambda (pair)
+         (let ((sym val) (uncons pair))
+           (list sym ": " val crlf)))
        (reverse
         (apply fold-append
                (lambda (pair acc)
@@ -246,20 +148,6 @@
                      (cons pair acc)))
                '()
                header-lists))))
-
-;; (header-reduce
-;;  '((accept . "*")
-;;    (connection . "close")
-;;    (host . "www.google-analytics.com")
-;;    )
-;;  '((cache-control . "no-cache")
-;;    (pragma . "no-cache")
-;;    (referer . "http://coptix.com/")
-;;    (proxy-connection . "keep-alive")
-;;    (keep-alive . "300")
-;;    (accept-charset . "ISO-8859-1,utf-8;q=0.7,*;q=0.7")
-;;    (accept-encoding . "gzip,deflate")
-;;    (accept-language . "en-us,en;q=0.5")))
 
 (define (http-keepalive? headers)
   (or (and-let* ((conn (header-assoc 'connection headers)))
@@ -313,6 +201,13 @@ Some text goes here.")
 
 (define (http-get url)
   (http-get/method "GET" url))
+
+(define (http-get->mime url)
+  (let ((port (http-get/method "GET" url)))
+    (call/http-version
+     port
+     (lambda (version code text)
+       (stream-car (mime-stream port))))))
 
 (define (test-get-coptix)
  (let ((p (http-get "http://coptix.com")))
@@ -516,26 +411,6 @@ Some text goes here.")
                        (close-output-port output)
                        (close-input-port input))))))))))))))
 
-;; (lambda ()
-;;   (output-debug
-;;    "reply"
-;;    (header-reduce *proxy-reply-headers* head)))
-
-;; (define *request* "Host: coptix.com\r
-;; Content-type: text/plain\r
-;; content-length: 34\r
-;; \r
-;; dddddddddddddddddddddddddddddddd\r\n")
-
-;; (define (test-proxy)
-;;   (let-string-ports
-;;      *request*
-;;    (output-response
-;;     (current-output-port)
-;;     "HTTP/1.1"
-;;     (proxy-handler
-;;      "HTTP/1.1" "GET" "/index" (current-input-port)))))
-
 (define (proxy-server . debugging-flag)
   (http-server
    'ip
@@ -543,7 +418,28 @@ Some text goes here.")
    (if (null? debugging-flag)
        proxy-handler
        (let-multithreaded proxy-handler))))
+
+;;;; Manual tests (they have side effects, and rely on url content
+(define (test-proxy)
+  (let-string-ports
+     *request*
+   (output-response
+    (current-output-port)
+    "HTTP/1.1"
+    (proxy-handler
+     "HTTP/1.1" "GET" "/index" (current-input-port)))))
 
-;; (output '(("GET" " " "/css/t.css" #f " " "HTTP/1.1" "\r\n")
-;;           ((accept ": " "*" "\r\n")
-;;            (host ": " "coptix.com" "\r\n")) #f))
+(define (test-rss-parser . url)
+  (let-optionals* url ((url "http://okmij.org/ftp/rss.xml"))
+    (let ((mime (http-get->mime url)))
+      (call-with-string-input-port
+          (duct->string (mime->duct mime))
+        (lambda (port)
+          (if #f
+              (read-line port #f)
+              (ssax:xml->sxml port '())))))))
+
+(define (rss-eg)
+  (call-with-output-file
+      "parsed-rss.scm"
+    (lambda (file) (p (test-rss-parser) file))))

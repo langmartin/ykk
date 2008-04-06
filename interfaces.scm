@@ -427,6 +427,7 @@
    http-keepalive?
    http-register-page!
    standard-http-server
+   make-request
    request-version
    request-method
    request-url

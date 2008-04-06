@@ -411,7 +411,8 @@
         ducts)
   (files (http json)))
 
-(define-structure http http-interface
+(define-structure http
+  (compound-interface http-interface (interface-of url))
   (open scheme+
         sockets
         byte-vectors
@@ -428,7 +429,7 @@
     (files http/http))
 
 (define-structure standard-test
-  (export)
+  (export standard-404)
   (open scheme+
         htmlprag
         http
@@ -646,3 +647,12 @@
   (primitive primitive-scanned-graph)
   scanned-traversal
   scanned-path)
+
+;;;; Server
+(define-structure server
+  (export)
+  (open scheme+
+        htmlprag
+        http
+        standard-test)
+  (files (server path)))
