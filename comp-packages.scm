@@ -79,28 +79,10 @@
         uuidgen)
   (files (comp identifier)))
 
-(define-structure store store-interface
-  (open extra-scheme
-        identifier
-        tables
-        proc-def)
-  (files (comp store)))
-
-(define-structures ((stob stob-interface)
-                    (low-stob low-stob-interface)
-                    (stob-type stob-type-interface))  
-  (open extra-scheme
-        store
-        conditions+
-        methods ; for DISCLOSE
-        alists
-        proc-def)
-  (files (comp stob)))
-
 (define-structure stob-utility stob-utility-interface
-  (open extra-scheme
-        records
-        store)
+  (open extra-scheme        
+        (with-prefix persistent-immutable z)
+        zvector-utils)
   (files (comp stob-util)))
 
 (define-structures ((syntax-procedural syntax-util-procedural-interface)
@@ -185,11 +167,12 @@
         description
         primitive-types
         type-description type-inspection
-        store stob-utility records
+        stob-utility
+        records
         assert
         syntax-util
         methods meta-methods
-        uuidgen
+        identifier
         pp
         simple-signals
         (subset packages (:package)))  
@@ -203,7 +186,7 @@
                     environments
                     alists
                     description
-                    uuidgen))  
+                    syntax-util))  
   (open extra-scheme
         environments
         ykk/record-procedural
@@ -221,6 +204,6 @@
         proc-def
         methods
         simple-signals
-        store stob-utility records
-        uuidgen)  
+        stob-utility
+        identifier)  
   (files (comp types)))

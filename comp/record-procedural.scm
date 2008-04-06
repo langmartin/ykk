@@ -69,7 +69,6 @@
 (define (collect-null c) (c))
 
 (define (make-nongenerative-stob type . rest)
-  (p `(nongenerative-type: ,type))
   (apply make-stob (list->vector type) rest))
 
 (define (nongenerative-allocator static-identifier collect verify? commit)
@@ -207,13 +206,16 @@
     (stob-set! s 10 (make-record-predicate v)))
   s)
 
+(define-stob-accessors
+  (unchecked-rtd-parent 3))
+
 (define :rtd-type
   ((lambda (static-id slots)
      (nongenerative-allocator
       static-id
       (lambda (c)
         (c '(type-goes-here)
-           (uuidgen)
+           (new-identifier)
            'rtd-type
            #f
            static-id
@@ -228,7 +230,7 @@
       describe/predicate-self))   
    'uEA03CFAC-FB21-41AD-896D-321BA9DD9870
    (description
-    ((id            (type :symbol)        (init (uuidgen)))
+    ((id            (type :symbol)        (init (new-identifier)))
      (name          (type :symbol)        (equal eq?))
      (parent        (type :maybe-rtd)     (equal eq?))
      (nongenerative (type :maybe-symbol))
@@ -260,9 +262,6 @@
   (rtd-predicate     10)
   (rtd-priority      11))
 
-(define-stob-accessors
-  (unchecked-rtd-parent 3))
-
 ;; --------------------
 ;; MOP Integration
 
@@ -270,7 +269,7 @@
 ;; This is simpler than manipulating the method-info tables
 ;; &TYPE-PRIORITY and &TYPE-PREDICATE directly.
   
-(define-simple-type :simple-rtd-type (:simple-type :record-type) rtd-type?)
+(define-simple-type :simple-rtd-type (:simple-type :record-type :stob) rtd-type?)
 
 (define-method &type-predicate ((rtd :simple-rtd-type))
   (rtd-predicate rtd))
@@ -299,6 +298,18 @@
 ;; rtd-fields.
 (define (index-offset i)
   (+ i 1))
+
+(define-method &disclose ((obj :rtd-type))
+  `(record-type ,(rtd-name obj) in ,(rtd-environment obj)))
+
+(define (instance? foo)
+  (and (stob? foo)
+       (vector? (stob-type foo))))
+
+(define-simple-type :instance (:stob) instance?)
+
+(define-method &disclose ((obj :instance))
+  `(record))
 
 ;; --------------------
 ;; MOP un-integration
@@ -349,7 +360,7 @@
   (lambda (name parent uid sealed? opaque? slots)
     (p uid
        (lambda (c)
-         (c (uuidgen)
+         (c (new-identifier)
             name parent uid sealed? opaque?
             (inherit-slots parent slots)
             (description-length slots)
@@ -394,8 +405,8 @@
             more
             (error 'incompatible-slot-descriptions
                    `(,more is-not-a-subtype-of ,less)
-                   `(original-spec: ,(description-specification d-a))
-                   `(extended-by: ,(description-specification d-b)))))))
+                   `(original-spec: ,(description-specifications d-a))
+                   `(extended-by: ,(description-specifications d-b)))))))
 
 (define (more-specific-type? t1 t2)
   (> (type-priority t1) (type-priority t2)))

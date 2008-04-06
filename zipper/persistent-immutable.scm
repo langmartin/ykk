@@ -1,11 +1,11 @@
 ;;;; vectors
-(define-record-type rtd/zvector
+(define-record-type :vector
   (direct-make-vector id vector)
   vector?
   (id vector-id)
   (vector r5-vector))
 
-(define-record-discloser rtd/zvector
+(define-record-discloser :vector
   (lambda (vec)
     `(zv ,(r5-vector vec))))
 
@@ -23,11 +23,16 @@
 (define (vector . elements)
   (apply make-vector-with-r5 r5:vector elements))
 
+(define primitive-vector r5:vector)
+
 (define (vector-length obj)
   (r5:vector-length (r5-vector obj)))
 
 (define (vector-ref vector k)
   (r5:vector-ref (r5-vector vector) k))
+
+(define (vector-set! vector k value)
+  (r5:vector-set! (r5-vector vector) k value))
 
 (define (list->vector lst)
   (apply vector lst))
@@ -101,15 +106,14 @@
   (table-set! *cdr* id datum)
   (release-lock cdr-lock))
 
-(define (static-allocate id thunk)
-  (or (and-let* ((obj (direct-memory-ref id)))
-        (values #f obj (vector-r5 obj)))
-      (let* ((val (thunk))
-             (zvec
-              (direct-memory-set!
-               id
-               (direct-make-vector id val))))
-        (values #t zvec val))))
+(define (allocate id thunk commit)
+  (cond ((and id (direct-memory-ref id))
+         => (lambda (o) (values o #f)))
+        (else
+         (let* ((id (or id (uuidgen-v1->hex-string)))
+                (zvec (commit (direct-make-vector id (thunk)))))
+           (direct-memory-set! id zvec)
+           (values zvec #t)))))
 
 (define (disclose-object obj)
   (if (vector? obj)

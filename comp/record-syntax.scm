@@ -120,8 +120,8 @@
 
       ;; see DEFAULT-NONGENERATIVE-PROTOCOL
       (define (reify-nongenerative)
-        (let* ((%p (rename (uuidgen)))
-               (%c (rename (uuidgen)))
+        (let* ((%p (rename (gensym 'p)))
+               (%c (rename (gensym 'c)))
                (init (these-initializers))
                (description (rtd-slots type))
                (formals (uninitialized description)))
@@ -169,7 +169,7 @@
         (let ((verifiers (attributes slots '(equal))))
           (if (null? verifiers)
               %always?
-              (let ((%r (rename (uuidgen))))
+              (let ((%r (rename (gensym 'r))))
                 `(,%lambda (,%r)
                   (,%and
                    ,@(map-in-order
@@ -180,7 +180,7 @@
 
       ;; see DEFAULT-GENERATIVE-PROTOCOL
       (define (reify-generative)
-        (let* ((%p (rename (uuidgen)))
+        (let* ((%p (rename (gensym 'p)))
                (init (these-initializers))
                (description (rtd-slots type))
                (formals (uninitialized description)))
@@ -286,3 +286,6 @@
 
 ;;;; DEFINE-RECORD-TYPE
 ;; FIXME
+
+(define-record-type/primitive foo
+  a b c)

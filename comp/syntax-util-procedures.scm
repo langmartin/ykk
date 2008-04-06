@@ -30,6 +30,15 @@
          (char=? #\: (string-ref s (- (string-length s) 1))))))
 
 ;;;; Utility
+(define gensym
+  (let ((i 0))
+    (lambda name
+      (set! i (+ i 1))      
+      (concatenate-symbol
+       (if (null? name) 'gensym (car name))
+       "##"
+       i))))
+
 (define (quote-non-literal foo)
   (if (literal? foo)
       foo

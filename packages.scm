@@ -456,7 +456,9 @@
   (files (zipper zipper)))
 
 (define-structures
-  ((persistent-immutable vector-interface)
+  ((persistent-immutable (compound-interface
+                          vector-interface
+                          (export allocate)))
    (persistent-internal (export log-port log-set! replay-log-port)))
   (open (modify
          scheme+
@@ -518,16 +520,16 @@
                make-vector vector vector? vector-ref vector-set! vector-length
                define-record-type define-record-discloser))
         zassert
-        persistent-records))
+        persistent-records
+        persistent-immutable))
 
-(define-structure zlist
-  (compound-interface
-   list-interface
-   tiny-srfi-1-interface
-   tiny-srfi-43-interface)
+(define-structures ((zlist (compound-interface
+                             list-interface
+                             tiny-srfi-1-interface))
+                    (zvector-utils tiny-srfi-43-interface))  
   (open persistent-records
         zassert
-        scheme+
+        zscheme+
         (r5 srfi-1)
         language-ext
         optional-arguments)

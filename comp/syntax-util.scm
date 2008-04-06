@@ -79,7 +79,7 @@
 (define-syntax srfi-89/define
   (lambda (form rename compare)
     
-    (define %A (rename (uuidgen)))
+    (define %A (rename (gensym 'a)))
     (define %define-syntax (rename 'define-syntax))
     (define %rules (rename 'syntax-rules))
     (define %syntax-k (rename 'syntax-k))

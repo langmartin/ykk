@@ -66,42 +66,13 @@
           identifier?
           new-identifier))
 
-(define-interface store-interface
-  (export allocate
-          stob-data))
-
-(define-interface low-stob-interface
-  (export stob-ref
-          stob-set!
-          stob-size))
-
-(define-interface stob-type-interface
-  (export stob-type?
-          make-stob-type
-          merge-type-descriptions
-          stob-type-slot-index
-          stob-type-self-index
-          make-monomorphic-stob-predicate
-          partial-initializer
-          stob-type-name
-          stob-type-self
-          stob-type-self-size
-          stob-type-slots
-          stob-type-slots-size))
-
-(define-interface stob-interface
-  (export stob-error
-          stob-error?
-          stob?
-          make-stob
-          stob-identifier
-          stob-type))
-
 (define-interface stob-utility-interface
-  (export make-stob
+  (export :stob
+          make-stob
           stob-ref
           stob-set!
           stob?
+          stob-length
           allocate->stob
           allocate/verify
           (define-stob-accessors :syntax)
@@ -114,7 +85,8 @@
           macro-use?
           procedure-call?
           keyword?
-          
+
+          gensym
           quote-non-literal
           remove-keyword-indication
           keywords->alist
@@ -240,14 +212,12 @@
 
           generative-allocator
           generative-make
-          generative-make-self-described
           generative-composer
           basic-generative-constructor
           default-generative-protocol
 
           nongenerative-allocator
           nongenerative-make
-          nongenerative-make-self-described
           nongenerative-composer
           basic-nongenerative-constructor
           default-nongenerative-protocol

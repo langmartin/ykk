@@ -1,6 +1,10 @@
 ;;; ; Identifiers
 ;; Identifiers are represented as symbols.
 
+(define (uuidgen)
+  (concatenate-symbol
+   'u (uuidgen-v1->hex-string)))
+
 (define (identifier foo)
   (cond ((string? foo) (string->symbol foo))
         ((symbol? foo) foo)

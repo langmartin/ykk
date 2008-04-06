@@ -1,22 +1,16 @@
-;; Temporary stuff
-(define zrecord record)
-
-(define (zrecord-ref stob i)
-  (record-ref (stob-data stob) i))
-
-(define (zrecord-set! stob i value)
-  (record-set! (stob-data stob) i value))
-
-(define (zrecord? foo)
-  (and (pair? foo)       
-       (record? (stob-data foo))))
-
-(define make-stob zrecord)
-(define stob-ref zrecord-ref)
-(define stob-set! zrecord-set!)
-(define stob? zrecord?)
+(define :stob z:vector)
+(define make-stob zprimitive-vector)
+(define stob-ref zvector-ref)
+(define stob-set! zvector-set!)
+(define stob? zvector?)
+(define stob-length zvector-length)
 
 ;;;; Allocation
+(define (allocate static-identifier . rest)
+  (apply zallocate
+         (and static-identifier (symbol->string static-identifier))
+         rest))
+
 (define (allocate->stob static-identifier thunk)
   (proj-0 (allocate static-identifier thunk identity)))
 
@@ -42,9 +36,10 @@
 
 ;;;; Inspection
 (define (stob->list stob)
-  (let* ((r (cdr stob))
-         (size (record-length r)))
-    (let loop ((i (- size 1)) (acc '()))
-      (if (= i -1)
-          acc
-          (loop (- i 1) (cons (record-ref r i) acc))))))
+  (vector-fold-right
+   cons
+   '()
+   stob))
+
+(assert (stob->list (allocate/verify #f (lambda () (make-stob 1 2 3)) always? identity))
+        => '(1 2 3))

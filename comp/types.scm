@@ -20,7 +20,7 @@
    (list->description '(type identifier name slots))
    (lambda (description construct)
      (construct description
-                (uuidgen)
+                (new-identifier)
                 'record-type-descriptor                  
                 (list->description '(type identifier name parents annotation schemes slots defined-schemes defined-slots priority))))))
 
@@ -33,7 +33,7 @@
    (lambda ()
      (initialize
       (lambda args
-        (apply record (append (list type (uuidgen)) args)))))   
+        (apply record (append (list type (new-identifier)) args)))))   
    verify))
 
 (define (make-type-scheme ))
@@ -48,7 +48,7 @@
            (actual-schemes (inherit-schemes parent schemes)))       
        (assert-slots-consistent/schemes! actual-slots actual-schemes)
        (record (polymorphic-type :record-type-descriptor type)
-               (uuidgen)
+               (new-identifier)
                name
                (if parent (list parent) '())
                actual-schemes

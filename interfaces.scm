@@ -483,11 +483,14 @@
 
 (define-interface vector-interface
   (export
+   :vector
    make-vector
    vector
+   primitive-vector
    vector?
    vector-length
-   vector-ref))
+   vector-ref
+   vector-set!))
 
 (define-interface tiny-srfi-1-interface
   (export
