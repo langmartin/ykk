@@ -648,12 +648,3 @@
   (primitive primitive-scanned-graph)
   scanned-traversal
   scanned-path)
-
-;;;; Server
-(define-structure server
-  (export)
-  (open scheme+
-        htmlprag
-        http
-        standard-test)
-  (files (server path)))
