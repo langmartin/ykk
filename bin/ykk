@@ -11,5 +11,5 @@ make
 if [ "$cmd" == "batch" ]; then
     args="-a batch"
 fi
-    
+
 scheme48 -i bin/ykk-development.img $args

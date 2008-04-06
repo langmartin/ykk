@@ -17,9 +17,9 @@ all: TAGS bin/ykk-development.img $(CLIB_DIR)/dates.so
 TAGS: $(files)
 	etags $(files)
 
-bin/ykk-development.img: bin/ykk-development.s48 \
-interfaces.scm ssax-5.1/packages.scm packages.scm
-	{ cat $<; echo ",dump $@"; } | scheme48 -a batch
+bin/ykk-development.img: bin/ykk-development.s48 bin/cached-packages.s48 \
+			 interfaces.scm ssax-5.1/packages.scm packages.scm
+	{ cat bin/ykk-development.s48 bin/cached-packages.s48; echo ",dump $@"; } | scheme48 -a batch
 
 $(CLIB_DIR)/dates.so: $(CLIB_DIR)/dates.c
 	MACOS_DEPLOYMENT_TARGET='10.3' && export MACOS_DEPLOYMENT_TARGET
