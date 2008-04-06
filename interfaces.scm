@@ -378,14 +378,15 @@
    mime->byte-duct
    mime->duct
    ;; interface
-   mime-stream
-   mime-read-all
+   port->mime-stream
+   port->mime-list
    header-cons
    header-assoc
    header-filter
    header-split
-   xfer-chunked?
-   null-header))
+   header-null
+   header-null?
+   xfer-chunked?))
 
 (define-interface url-interface
   (export
@@ -428,10 +429,12 @@
    http-register-page!
    standard-http-server
    make-request
-   request-version
-   request-method
-   request-url
-   request-parameters
+   with-request
+   req-version
+   req-method
+   req-url
+   req-parameters
+   req-path
    standard-parameters
    set-standard-host!))
 

@@ -24,8 +24,7 @@
   (http-server-exec (lambda () #t)))
 
 (define (http-server ip port handler)
-  (let ((handler (handle-handler handler))
-        (socket (open-socket port)))
+  (let ((socket (open-socket port)))
     (socket-port-number socket)         ; make sure it's open
     (let lp ()
       (let ((result
@@ -37,23 +36,8 @@
               (close-socket socket)
               ((exec-thunk result)))
             (lp))))))
-
-(define (handle-handler handler)
-  (lambda (input-port output-port)
-    (call/http-version
-     input-port
-     (lambda (method path version)
-       (let ((result (handler version method path input-port)))
-         (cond ((http-server-exec? result)
-                (if (exec-output result)
-                    (output-response output-port version (exec-output result)))
-                result)
-               (else
-                (output-response output-port version result)
-                (force-output output-port)
-                (close-output-port output-port)
-                (close-input-port input-port))))))))
-
+
+;;;; richer standard dispatch
 (define (output-response output-port version response)
   (let-current-output-port
       output-port
@@ -68,6 +52,117 @@
                   (list (car lst) (cadr lst) #f)
                   lst)))
     (apply proc lst)))
+
+(define (perform-standard-output result version input-port output-port)
+  (begin1
+   (cond ((http-server-exec? result)
+          (if (exec-output result)
+              (output-response output-port version (exec-output result)))
+          result)
+         (else
+          (output-response output-port version result)))
+   (force-output output-port)
+   (close-output-port output-port)
+   (close-input-port input-port)))
+
+(define *fixed-pages* (make-string-table))
+
+(define (http-register-page! path request-receiver)
+  (table-set! *fixed-pages* path request-receiver))
+
+(define-record-type request
+  (make-request version method url query)
+  request?
+  (version request-version)
+  (method request-method)
+  (url request-url)
+  (query request-parameters set-request-parameters!))
+
+(define-fluid ($request #f)
+  current-request
+  with-request)
+
+(define (req-version) (request-version (current-request)))
+(define (req-method) (request-method (current-request)))
+(define (req-url) (request-url (current-request)))
+(define (req-path) (url-path (req-url)))
+(define (req-parameters) (request-parameters (current-request)))
+
+(define (mime->form-parameters mime)
+  (let-string-input-port
+      (duct->string (mime->duct mime))
+    (url-foldr-parameters cons-parameter '() (current-input-port))))
+
+(define (catch-query mime)
+  (case (mime-content-type-type mime)
+    ((application/x-www-form-urlencoded)
+     (mime->form-parameters mime))
+    ((application/jsonrequest application/x-json application/json)
+     (json-fold-right cons '() (mime->duct mime)))
+    ((text/xml application/xml)
+     (let-string-input-port
+         (duct->string (mime->duct mime))
+       (ssax:xml->sxml (current-input-port) 'xml)))
+    (else #f)))
+
+(define (debug-catch-query mime)
+  (let ((raw (duct->string (mime->duct mime))))
+    (note "mime"
+          (mime-content-type-type mime)
+          raw)
+    (call-with-string-input-port
+     raw
+     (lambda (port)
+       (set-mime-port! mime port)
+       (catch-query mime)))))
+
+(define *standard-host* "localhost")
+
+(define (set-standard-host! hostname)
+  (set! *standard-host* hostname))
+
+(define (standard-parameters)
+  (cons (url-parameters (req-url))
+        (req-parameters)))
+
+(define (standard-handler default-page input-port output-port)
+  (call/http-version
+   input-port
+   (lambda (method path version)
+     (call-with-values
+         (lambda () (parse-url-path path))
+       (lambda (path param)
+         (let* ((mime (stream-car (port->mime-stream input-port)))
+                (head (mime-headers mime))
+                (host (or (header-assoc 'host head) *standard-host*)))
+           (let ((url (make-url 'http host 80 path param)))
+             (with-request
+              (make-request version method url (catch-query mime))
+              (lambda ()
+                (perform-standard-output
+                 (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
+                       (page))
+                     (default-page))
+                 version
+                 input-port
+                 output-port))))))))))
+
+(define-syntax let-multithreaded
+  (syntax-rules ()
+    ((_ handler)
+     (lambda args
+       (spawn
+        (lambda ()
+          (apply handler args)))))))
+
+(define (standard-http-server standard-404 . ip/port/threaded)
+  (let-optionals* ip/port/threaded ((ip 'ip) (port 3130) (threaded #f))
+    (let ((handler (lambda (in out)
+                     (standard-handler standard-404 in out))))
+      (http-server ip port
+                   (if threaded
+                       (let-multithreaded handler)
+                       handler)))))
 
 ;;;; HTTP Client
 (define (body->byte-vector body)
@@ -138,7 +233,7 @@
 
 (define (header-reduce . header-lists)
   (map (lambda (pair)
-         (let ((sym val) (uncons pair))
+         (let ((sym val (uncons pair)))
            (list sym ": " val crlf)))
        (reverse
         (apply fold-append
@@ -194,7 +289,7 @@ Some text goes here.")
    (input output)
    (proxy-client
     "HTTP/1.1" method url
-    (header-cons 'accept "*" null-header)
+    (header-cons 'accept "*" header-null)
     crlf)
    (close-output-port output)
    input))
@@ -207,98 +302,7 @@ Some text goes here.")
     (call/http-version
      port
      (lambda (version code text)
-       (stream-car (mime-stream port))))))
-
-(define (test-get-coptix)
- (let ((p (http-get "http://coptix.com")))
-   (begin1
-    (read-line p #f)
-    (close-input-port p))))
-
-;;;; richer standard dispatch
-(define *fixed-pages* (make-string-table))
-
-(define (http-register-page! path request-receiver)
-  (table-set! *fixed-pages* path request-receiver))
-
-(define-record-type request
-  (make-request version method url query)
-  request?
-  (version request-version)
-  (method request-method)
-  (url request-url)
-  (query request-parameters set-request-parameters!))
-
-(define (mime->form-parameters mime)
-  (let-string-input-port
-      (duct->string (mime->duct mime))
-    (url-foldr-parameters cons-parameter '() (current-input-port))))
-
-(define (catch-query mime)
-  (case (mime-content-type-type mime)
-    ((application/x-www-form-urlencoded)
-     (mime->form-parameters mime))
-    ((application/jsonrequest application/x-json application/json)
-     (json-fold-right cons '() (mime->duct mime)))
-    ((text/xml application/xml)
-     (let-string-input-port
-         (duct->string (mime->duct mime))
-       (ssax:xml->sxml (current-input-port) 'xml)))
-    (else #f)))
-
-(define (debug-catch-query mime)
-  (let ((raw (duct->string (mime->duct mime))))
-    (note "mime"
-          (mime-content-type-type mime)
-          raw)
-    (call-with-string-input-port
-     raw
-     (lambda (port)
-       (set-mime-port! mime port)
-       (catch-query mime)))))
-
-(define *standard-host* "localhost")
-
-(define (set-standard-host! hostname)
-  (set! *standard-host* hostname))
-
-(define (standard-parameters R)
-  (cons (url-parameters (request-url R))
-        (request-parameters R)))
-
-(define (standard-handler standard-404 version method path port)
-  (call-with-values
-      (lambda () (parse-url-path path))
-    (lambda (path param)
-      (let* ((mime (proxy-mime port))
-             (head (mime-headers mime))
-             (host (or (header-assoc 'host head)
-                       *standard-host*)))
-        (let* ((url (make-url 'http host 80 path param))
-               (R (make-request version
-                                method
-                                url
-                                (catch-query mime))))
-          (or (and-let* ((page (table-ref *fixed-pages* (url-path url))))
-                (page R))
-              (standard-404 R)))))))
-
-(define-syntax let-multithreaded
-  (syntax-rules ()
-    ((_ handler)
-     (lambda args
-       (spawn
-        (lambda ()
-          (apply handler args)))))))
-
-(define (standard-http-server standard-404 . ip/port/threaded)
-  (let-optionals* ip/port/threaded ((ip 'ip) (port 3130) (threaded #f))
-    (let ((handler (lambda (v m pa pt)
-                     (standard-handler standard-404 v m pa pt))))
-      (http-server ip port
-                   (if threaded
-                       (let-multithreaded handler)
-                       handler)))))
+       (stream-car (port->mime-stream port))))))
 
 ;;;; proxy
 (define *client-keep-alive* (make-string-table))
@@ -350,7 +354,7 @@ Some text goes here.")
          (values input-port output-port))))))
 
 (define (proxy-mime port)
-  (stream-car (mime-stream port)))
+  (stream-car (port->mime-stream port)))
 
 (define (proxy-req-body mime)
   (list crlf
@@ -411,23 +415,40 @@ Some text goes here.")
                        (close-output-port output)
                        (close-input-port input))))))))))))))
 
+(define (proxy-handler-wrapper)
+  (lambda (input-port output-port)
+    (call/http-version
+     input-port
+     (lambda (method path version)
+       (perform-standard-output
+        (proxy-handler version method path input-port)
+        version
+        input-port
+        output-port)))))
+
 (define (proxy-server . debugging-flag)
   (http-server
    'ip
    3128
    (if (null? debugging-flag)
-       proxy-handler
+       proxy-handler-wrapper
        (let-multithreaded proxy-handler))))
 
 ;;;; Manual tests (they have side effects, and rely on url content
-(define (test-proxy)
-  (let-string-ports
-     *request*
-   (output-response
-    (current-output-port)
-    "HTTP/1.1"
-    (proxy-handler
-     "HTTP/1.1" "GET" "/index" (current-input-port)))))
+;; (define (test-get-coptix)
+;;  (let ((p (http-get "http://coptix.com")))
+;;    (begin1
+;;     (read-line p #f)
+;;     (close-input-port p))))
+
+;; (define (test-proxy)
+;;   (let-string-ports
+;;      *request*
+;;    (output-response
+;;     (current-output-port)
+;;     "HTTP/1.1"
+;;     (proxy-handler
+;;      "HTTP/1.1" "GET" "/index" (current-input-port)))))
 
 (define (test-rss-parser . url)
   (let-optionals* url ((url "http://okmij.org/ftp/rss.xml"))
@@ -439,7 +460,7 @@ Some text goes here.")
               (read-line port #f)
               (ssax:xml->sxml port '())))))))
 
-(define (rss-eg)
-  (call-with-output-file
-      "parsed-rss.scm"
-    (lambda (file) (p (test-rss-parser) file))))
+;; (define (rss-eg)
+;;   (call-with-output-file
+;;       "parsed-rss.scm"
+;;     (lambda (file) (p (test-rss-parser) file))))

@@ -302,7 +302,9 @@ body"
 (define (header-cons key val cdr)
   (cons (cons key val) cdr))
 
-(define null-header '())
+(define header-null '())
+
+(define header-null? null?)
 
 (define (semi-colon-separate . lst)
   (for-each display
@@ -367,6 +369,8 @@ body"
        (stream-cons (port->mime port)
                     (mime-stream port)))))
 
+(define port->mime-stream mime-stream)
+
 (define (stream-map->list proc stream)
   (let lp ((stream stream))
     (if (stream-null? stream)
@@ -383,6 +387,8 @@ body"
            (let-string-output-port
             (duct-for-each display (mime->duct mime)))))
    (mime-stream port)))
+
+(define port->mime-list mime-read-all)
 
 (define (xfer-chunked? headers)
   (and-let* ((xf (header-assoc 'transfer-encoding headers))

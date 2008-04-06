@@ -1,19 +1,19 @@
-(define (standard-404 R)
+(define (standard-404)
   (let-http-response (404 "Not Found")
     (let-headers ((content-type "text/plain"))
       (let-content-length
        "404\n The path "
-       (url-path (request-url R))
+       (req-path)
        " is not registered.\n\n"
-       (request-version R) newline
-       (request-method R) newline
-       (request-url R) newline
-       (request-parameters R)))))
+       (req-version) newline
+       (req-method) newline
+       (req-url) newline
+       (req-parameters)))))
 
-(define-syntax http-mng
+(define-syntax let-server-command-page
   (syntax-rules ()
     ((_ text body ...)
-     (lambda (R)
+     (lambda ()
        (http-server-exec
         (lambda () body ...)
         (let-http-response (220 "ok")
@@ -23,7 +23,27 @@
 
 (http-register-page!
  "/stop"
- (http-mng "server stopping" #t))
+ (let-server-command-page
+  "server stopping"
+  #t))
+
+(define-syntax let-content-type-page
+  (syntax-rules ()
+    ((_ type body ...)
+     (let-http-response (220 "ok")
+       (let-headers ((content-type type))
+         (let-content-length
+          body ...))))))
+
+(define-syntax let-html-page
+  (syntax-rules ()
+    ((_ body ...)
+     (let-content-type-page "text/html" body ...))))
+
+(define-syntax let-text-page
+  (syntax-rules ()
+    ((_ body ...)
+     (let-content-type-page "text/plain" body ...))))
 
 (define (text name)
   `(input (@ (type "text")
@@ -44,47 +64,44 @@
 
 (http-register-page!
  "/test"
- (lambda (R)
-   (let-http-response (220 "Ok")
-     (let-headers ((content-type "text/html"))
-       (let-content-length
-        (shtml->html
-         `(html
-           (head
-            (title "test")
-            (script
-             (@ (src "http://webtools.php5.iago/js/jquery-1.2.2.min.js")))
-            (script
-             (@ (src "http://rco.abla2/secure/checkout/js-ext/jquery.json.js"))))
-           (body
-            (div ,(code (standard-parameters R)))
-            (div (form (@ (action "/test?foo=1&bar=2")
-                          (method "post"))
-                       ,(text "foo[bar]")
-                       ,(text "foo[baz]")
-                       (input
-                        (@ (type "submit") (name "submit") (value "hit me")))))
+ (lambda ()
+   (let-html-page
+    (shtml->html
+     `(html
+       (head
+        (title "test")
+        (script
+         (@ (src "http://webtools.php5.iago/js/jquery-1.2.2.min.js")))
+        (script
+         (@ (src "http://rco.abla2/secure/checkout/js-ext/jquery.json.js"))))
+       (body
+        (div ,(code (standard-parameters)))
+        (div (form (@ (action "/test?foo=1&bar=2")
+                      (method "post"))
+                   ,(text "foo[bar]")
+                   ,(text "foo[baz]")
+                   (input
+                    (@ (type "submit") (name "submit") (value "hit me")))))
 
-            (div (@ (onclick "javascript:ajaxTest('json')")
-                    (id "json"))
-                 "json")
+        (div (@ (onclick "javascript:ajaxTest('json')")
+                (id "json"))
+             "json")
 
-            (div (@ (onclick "javascript:xmlTest()")
-                    (id "xml"))
-                 "xml")
+        (div (@ (onclick "javascript:xmlTest()")
+                (id "xml"))
+             "xml")
 
-            (script (@ (type "text/javascript"))
-                    ,(include-file "http/standard-test.js"))
-            ))))))))
+        (script (@ (type "text/javascript"))
+                ,(include-file "http/standard-test.js"))
+        ))))))
 
 (http-register-page!
  "/ajax"
- (lambda (R)
-   (let-http-response (220 "Ok")
-     (let-headers ((content-type "text/plain"))
-       (let-content-length
-        (lambda ()
-          (write (standard-parameters R))))))))
+ (lambda ()
+   (let-text-page
+    (let-headers ((content-type "text/plain"))
+      (lambda ()
+        (write (standard-parameters)))))))
 
 (define (go)
   (standard-http-server standard-404))

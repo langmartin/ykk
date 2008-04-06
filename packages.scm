@@ -425,7 +425,8 @@
         url
         ducts
         json
-        ssax-vanilla)
+        ssax-vanilla
+        fluids+)
     (files http/http))
 
 (define-structure standard-test
