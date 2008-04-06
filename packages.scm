@@ -144,11 +144,13 @@
 
 (define-structure alists
   alists-interface
-  (open scheme
+  (open extra-scheme
         srfi-1+
         big-util
         exceptions
-        assert)
+        assert
+        proc-def
+        conditions+)  
   (files utility/alists))
 
 (define-structure exceptions

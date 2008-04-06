@@ -7,7 +7,7 @@
        (define (name . args)
          (apply signal (cons 'name args)))))))
 
-(define-fluid ($condition #f)
+(define-fluid ($condition error)
   really-raise
   with-condition
   let-condition)

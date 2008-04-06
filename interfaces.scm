@@ -159,16 +159,28 @@
 
 (define-interface alists-interface
   (export
+   cons-alist
    fold-two
-   plist->alist
    list->alist
+   unfold-list->alist
    update-alist
    update-force-alist
-   cons-alist
+   merge-alists/template
+   merge-alists
    (let-foldr* :syntax)
    alist-tree-insert
+   alist-key-index
+   map-car
+   project-alist-onto
+   partition-alist
+   keyword-projector/defaults
+   keyword-partitioner/defaults
+   alist-has-keys?
+   alist-has-only-keys?
+   alist-has-exactly-keys?
    alist-ref
-   alist-key-index))
+   (unalist :syntax)
+   unalist-proc))
 
 (define-interface assert-interface
   (export
@@ -203,7 +215,8 @@
            neq?
            n=
            identity
-           no-op)))
+           no-op
+           concatenate-symbol)))
 
 (define-interface language-ext-interface
   (export
