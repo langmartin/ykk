@@ -310,4 +310,4 @@
 	srfi-23) ; ERROR
   (begin
     (define pretty-print p))
-  (files "SXPath-old-code.scm"))
+  (files "SXPath.scm"))

@@ -443,6 +443,7 @@
    header-reduce
    http-keepalive?
    http-register-page!
+   http-register-code-handler!
    standard-http-server
    make-request
    with-request
@@ -567,8 +568,8 @@
   (export form-server))
 
 ;;;; dispatch server
-(define-interface dispatch-server-interface
-  (export dispatch-server))
+(define-interface pages-interface
+  (export (page-response :syntax)))
 
 ;;;; Graph
 

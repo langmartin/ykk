@@ -1,14 +1,3 @@
-(define (standard-404)
-  (let-http-response (404 "Not Found")
-    (let-headers ((content-type "text/plain"))
-      (let-content-length
-       "404\n The path "
-       (req-path)
-       " is not registered.\n\n"
-       (req-version) newline
-       (req-method) newline
-       (req-url) newline
-       (req-parameters)))))
 
 (define-syntax let-server-command-page
   (syntax-rules ()
@@ -20,6 +9,20 @@
           (let-headers ((content-type "text/plain"))
             (let-content-length
              text))))))))
+
+(http-register-code-handler!
+ 404
+ (lambda (R)
+   (let-http-response (404 "Not Found")
+    (let-headers ((content-type "text/plain"))
+      (let-content-length
+       "404\n The path "
+       (req-path)
+       " is not registered.\n\n"
+       (req-version) newline
+       (req-method) newline
+       (req-url) newline
+       (req-parameters))))))
 
 (http-register-page!
  "/stop"
@@ -104,4 +107,4 @@
         (write (standard-parameters)))))))
 
 (define (go)
-  (standard-http-server standard-404))
+  (standard-http-server))

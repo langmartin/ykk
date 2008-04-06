@@ -1,65 +1,258 @@
 
-;; Web Server (thanks Lang)  ----------
+;;;; Web Server
 
-(define-syntax page-response
+(define-syntax http-mng
   (syntax-rules ()
-    ((_ item)
-     (page-response (220 "ok") item))
-    ((_ code item)
-     (page-response code "text/html" item))
-    ((_ code type (expr ...))
-     (page-response "construct" code type (shtml->html (expr ...))))
-    ((_ code type content)
-     (page-response "construct" code type content))
-    ((_ "construct" code type content)
-     (let-http-response code
-       (let-headers ((content-type type))
-         (let-content-length content))))))
+    ((_ text body ...)
+     (lambda (R)
+       (http-server-exec
+        (lambda () body ...)
+        (let-http-response (220 "ok")
+          (let-headers ((content-type "text/plain"))
+            (let-content-length
+             text))))))))
 
-(define (dispatch url)
-  (let ((host (url-host url))
-        (path (url-path url))
-        (query (url-parameters url)))
-    (with-exception-catcher
-     (lambda ()
-       (handle-500 host path query))
-     (lambda ()
-       ((case-posix-regex path
-          (".css$" load-file)
-          ("^/forms/test" forms/test)
-          ("^/forms/*" forms)
-          ("^/$" home)
-          (".*" handle-404))
-        host path query)))))
+(define at-repl? #t)
+
+(define (handle-404 R)
+  (page-response (404 "Not Found") (string-append "page not found: " (url-path (request-url R)))))
+
+(define (handle-500 R error)
+  (if at-repl?
+      (signal-condition error)
+      (page-response (500 "Internal Server Error")
+                     (string-append "An Internal Error Occurred: "
+                                    (let-string-output-port
+                                     (display-condition error (current-output-port)))))))
+
+(http-register-code-handler! 404 handle-404)
+(http-register-code-handler! 500 handle-500)
 
 (define (form-server)
-  (dispatch-server dispatch 4128))
+  (display "Starting server on port 3130 [/stop to stop, /restart to restart]...\n")
+  (standard-http-server))
 
-(define (handle-404 host path query)
-  (page-response (404 "Not Found") (string-append "page not found: " path)))
+(http-register-page!
+ "/stop"
+ (http-mng "stopping server..." (exit 0)))
 
-(define (handle-500 host path query)
-  (page-response (500 "Internal Server Error") "An Internal Error Occurred"))
+(http-register-page!
+ "/restart"
+ (http-mng "restart server..." (exit 1)))
 
-;; Pages -------------------------------
+;;;; Templates
 
 (define *root* "/Users/james/projects/scheme/ykk/forms")
 
-(define-syntax page-fragment
-  (syntax-rules ()
-    ((_ form)
-     `form)))
-
 (define-syntax page
   (syntax-rules ()
-    ((_ host path query body-forms ...)
+    ((_ R body-forms ...)
      (page-response
-      (page-fragment
-       (html ,(header)
+      `(html ,(header)
              (body (div (@ (class "outer"))
-                        ,(bread-crumb host path)
-                        body-forms ...
-                        ,(footer)))))))))
+                        ,(bread-crumb R)
+                        (div (@ (class "inner"))
+                             body-forms ...)
+                        ,(footer))))))))
+
+(define (bread-crumb R)
+  (let* ((anchors (cons `(a (@ (href "/")) ,(url-host (request-url R)))
+                        (map-path (lambda (name path)
+                                    `(a (@ (href ,path)) ,name))
+                                  (url-path (request-url R))))))
+    `(div (@ (class "breadcrumb"))
+         ,@(intersperse " - " anchors))))
+
+(define (header . title)
+  `(head (title ,(if-car title "ykk devel"))
+         (link (@ (rel "stylesheet") (type "text/css") (href "/forms.css")))))
+
+(define (footer)
+  `(div (@ (class "footer")) "served by ykk"))
+
+;;;; Forms
+
+(define (forms/prototype)
+  (form->shtml
+   `(form
+      (text (@ (class "foo-text")
+               (name "name")
+               ;(match "blank email")
+               (default "hello")))
+      (text (@ (name "question")))
+      (textarea (@ (name "paragraph")))
+      (radio (@ (name "test")
+                (default "yes"))
+             (option (@ (value "yes")) "Yes")
+             (option (@ (value "no")) "No"))
+      ;(select (@ (name "state"))
+      ;        (option "TN")
+      ;        (option "VA"))
+      )))
+
+;; Input types
+
+(define (input attrs type name . value)
+  (let-optionals value ((value ""))
+    `(input (@ (type ,type)
+               (name ,name)
+               (value ,value)
+               ,@attrs))))
+
+(define (text attrs name . default)
+  (let-optionals default ((default ""))
+    (input attrs "text" name default)))
+
+(define (textarea attrs name . default)
+  (let-optionals default ((default ""))
+    `(textarea (@ (name ,name)
+                  ,@attrs)
+               ,default)))
+
+; options is a list of strings or pairs in
+; the form of (value text)
+(define (radio attrs name options . default)
+  (let-optionals default ((default ""))
+    `(div (@ ,@attrs)
+          ,@(map
+             (lambda (o)
+               (let ((text (if (pair? o)
+                               (cadr o)
+                               o))
+                     (value (if (pair? o)
+                                (car o)
+                                o)))
+                 `(div ,(input '() "radio" name value)
+                       ,text)))
+             options))))
+
+(define (sxml/text item)
+  (let* ((attrs (sxml-attlist item))
+         (name attrs (alist-remove-value 'name attrs))
+         (default attrs (alist-remove-value 'default attrs)))
+    (text attrs name (or default ""))))
+
+(define (sxml/textarea item)
+  (let* ((attrs (sxml-attlist item))
+         (name attrs (alist-remove-value 'name attrs))
+         (default attrs (alist-remove-value 'default attrs)))
+    (textarea attrs name (or default ""))))
+
+(define (sxml/radio item)
+  (let* ((attrs (sxml-attlist item))
+         (name attrs (alist-remove-value 'name attrs))
+         (default attrs (alist-remove-value 'default attrs))
+         (sxml/options (sxpath-run '(option) item))
+         (options (map (lambda (o)
+                         (let* ((text (sxml-first-text o))
+                                (value (sxml-attlist-ref "value" o text)))
+                           (list value text)))
+                       sxml/options)))
+    (radio attrs name options default)))
+
+(define (make-transformer f)
+  (lambda item
+    (f item)))
+
+(define (form->shtml tree)
+  (pre-post-order
+   tree
+   `((text *preorder* . ,(make-transformer sxml/text))
+     (textarea *preorder* . ,(make-transformer sxml/textarea))
+     (radio *preorder* . ,(make-transformer sxml/radio))
+     (*text* . ,(lambda (tag str) str))
+     (*default* . ,(lambda x x)))))
+
+;; SXML
+
+(define-condition sxml-transform-error (error) sxml-transform-error?)
+
+(define (sxpath-run expr nodes)
+  ((sxpath expr) nodes))
+
+(define (sxpath-first-result query)
+  (car query))
+
+(define (sxml-attlist node)
+  (sxpath-run `(@ *) node))
+
+(define (sxml-attlist-ref name node . default)
+  (let-optionals default ((default 'error))
+    (let* ((name (string->symbol name))
+           (xp-query (sxpath-run `(@ ,name) node)))
+      (if (and (null? xp-query) (eq? default 'error))
+          (sxml-transform-error "failed referencing attribute in nodeset" name node)
+          (if (null? xp-query)
+              default
+              (let ((el (cadr (sxpath-first-result xp-query))))
+                (if (and (pair? el) (eq? (car el) '*text*))
+                    (cadr el)
+                    el)))))))
+
+(define (sxml-first-text node)
+  (let ((xp-query (sxpath-run `(// *text*) node)))
+    (if (null? xp-query)
+        #f
+        (car xp-query))))
+
+;;;; Pages
+
+(http-register-page!
+ "/forms.css"
+ (lambda (R)
+   (load-file R)))
+
+(http-register-page!
+ "/"
+ (lambda (R)
+   (page R
+     (h3 "YKK Playground")
+     (ul (li (a (@ (href "/forms")) "forms"))))))
+
+(http-register-page!
+ "/forms"
+ (lambda (R)
+   (page R
+     (h3 "Forms")
+     (ul (li (a (@ (href "/forms/prototype")) "a prototype"))))))
+
+(http-register-page!
+ "/forms/prototype"
+ (lambda (R)
+   (page R
+     (h4 "forms/prototype")
+     ,(forms/prototype))))
+
+;;;; Util
+
+(define (alist-remove-value key alist . method)
+  (let-optionals method ((ass* assq))
+    (let ((entry alist (alist-remove key alist ass*)))
+      (values (if (pair? entry) (cadr entry) entry)
+              alist))))
+
+(define (alist-remove key alist . method)
+  (let-optionals method ((ass* assq))
+    (let ((entry (ass* key alist)))
+      (values entry
+              (reverse
+               (fold (lambda (el acc)
+                       (if (eq? el entry)
+                           acc
+                           (cons el acc)))
+                     '()
+                     alist))))))
+
+(define (load-file R)
+  (let ((path (string-trim (url-path (request-url R)) #\/)))
+    (with-exception-catcher
+     (lambda (c prop)
+       (handle-404 R))
+     (lambda ()
+       (page-response
+        (with-input-from-file (string-append *root* "/" (url-path (request-url R)))
+          (lambda ()
+            (list->string (read-all read-char)))))))))
 
 (define (map-path fn path)
   (reverse
@@ -73,46 +266,6 @@
                  (cons (fn (car lst) new-path) acc)
                  new-path))))))
 
-(define (bread-crumb host path)  
-  (let* ((anchors (map-path (lambda (name path)
-                              (page-fragment (a (@ (href ,path)) ,name))) path)))
-    (page-fragment (div (@ (class "breadcrumb"))
-                        (a (@ (href "/")) ,host)
-                        ,@anchors))))
-
-(define (header . title)
-  (page-fragment
-   (head (title ,(if-car title "ykk devel"))
-         (link (@ (rel "stylesheet") (type "text/css") (href "forms.css"))))))
-
-(define (footer)
-  (page-fragment (div (@ (class "footer")) "served by ykk")))
-
-(define (home host path query)
-  (page host path query
-        (ul (li (a (@ (href "/forms")) "forms")))))
-
-(define (forms host path query)
-  (page host path query
-        (h1 "Forms")))
-
-(define (forms/test)
-  "yay")
-
-(define (load-file host path query)
-  (let ((path (string-trim path #\/)))
-    (with-exception-catcher
-     (lambda (c prop)
-       (handle-404 host path query))
-     (lambda ()
-       (page-response
-        (with-input-from-file (string-append *root* "/" path)
-          (lambda ()
-            (list->string (read-all read-char)))))))))
-
-;; Util --------------------------------
-
-;; String
 (define (string-substitute s1 s2 str)
   (let loop ((str str))
     (let ((idx (string-contains str s1)))

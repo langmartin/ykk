@@ -14,6 +14,8 @@
           (else (lp (cddr lst)
                     (proc (car lst) (cadr lst) acc))))))
 
+(assert (list->alist '(1 2 3 4)) => '((1 . 2) (3 . 4)))
+ 
 (define (unfold-list->alist take-pair make-entry seed plist)
   (let loop ((lst plist) (acc seed))
     (cond ((null? lst)
@@ -372,3 +374,10 @@
          (a b (projector `((c 1) (d 2) (a 3) (e 4)))))    
     (assert a => '(3 #f))
     (assert b => '(1 2 4))))
+
+;; (assert
+;;  (let ((entry rest (alist-remove 'one '((one 1)
+;;                                         (two 2)
+;;                                         (three 3)))))
+;;    (list entry rest))
+;;  => '((one 1) ((two 2) (three 3))))
