@@ -101,9 +101,17 @@
  "/ajax"
  (lambda ()
    (let-text-page
-    (let-headers ((content-type "text/plain"))
-      (lambda ()
-        (write (standard-parameters)))))))
+    (lambda ()
+      (write (standard-parameters))))))
+
+(http-register-page!
+ "/path"
+ (lambda (foo bar)
+   (let-text-page
+    (lambda ()
+      (write (standard-parameters)))
+    newline
+    "my path is " foo " and " bar)))
 
 (define (go)
   (standard-http-server))
