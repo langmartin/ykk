@@ -454,10 +454,16 @@
   (open scheme srfi-9)
   (files (zipper zipper)))
 
+(define-interface persistent-immutable-interface
+  (export
+   allocate
+   persistent-symbol
+   persistent-symbol-set!))
+
 (define-structures
   ((persistent-immutable (compound-interface
                           vector-interface
-                          (export allocate)))
+                          persistent-immutable-interface))
    (persistent-internal (export log-port log-set! replay-log-port)))
   (open (modify
          scheme+

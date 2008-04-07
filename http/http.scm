@@ -97,13 +97,22 @@
 (define (request-path) (url-path (request-url)))
 (define (request-parameters) (request*-parameters (current-request)))
 
-(define (request-path->list)
-  (map (lambda (x)
-         (let ((sub (string-split x #\space)))
-           (if (pair? (cdr sub))
-               sub
-               x)))
-       (string-split (request-path) #\/)))
+(define (path->list path)
+  (let ((split
+         (map (lambda (x)
+                (let ((sub (string-split x #\space)))
+                  (if (and (pair? sub) (pair? (cdr sub)))
+                      sub
+                      x)))
+              (string-split path #\/))))
+    (if (equal? split '(""))
+        '("/")
+        (cons (string-append "/" (cadr split))
+              (cddr split)))))
+
+(assert (path->list "/path/foo/bar") => '("/path" "foo" "bar")
+        (path->list "/") => '("/")
+        (path->list "/path/foo bar/") => '("/path" ("foo" "bar")))
 
 (define (mime->form-parameters mime)
   (let-string-input-port
@@ -201,6 +210,9 @@
      (let ((path (request-path)))
        (or (and-let* ((page (table-ref *fixed-pages* path)))
              (page))
+           (and-let* ((path (path->list path))
+                      (page (table-ref *fixed-pages* (car path))))
+             (apply page (cdr path)))
            (handle-existing-file path)
            (handle-status-code 404))))))
 

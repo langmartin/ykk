@@ -455,7 +455,6 @@
    request-url
    request-parameters
    request-path
-   request-path->list
    standard-parameters
    set-standard-host!))
 
