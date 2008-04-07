@@ -162,6 +162,45 @@
                (memq (car pair) keys))
              alist))
 
+(define-syntax pluck-spec
+  (syntax-rules ()
+    ((_ (keys ...) alist)
+     (let* ((lst alist)
+            (found rest (partition-alist '(keys ...) lst))
+            (keys ... (apply values (map cadr found))))
+       (values keys ... rest)))))
+
+(define-syntax bind-spec*
+  (syntax-rules ()
+    ((_ proc (keys ...) alist)
+     (let ((mapped (project-alist-onto proc
+                                       (lambda (x) #f)
+                                       '(keys ...)
+                                       alist))
+           (rest (remove (lambda (item)
+                           (memq (car item) '(keys ...)))
+                         alist)))
+       (apply values (append mapped (list rest)))))))
+
+(define-syntax bind-spec
+  (syntax-rules ()
+    ((_ (keys ...) alist)
+     (bind-spec* cadr (keys ...) alist))))
+
+(define-syntax bind-alist
+  (syntax-rules ()
+    ((_ (keys ...) alist)
+     (bind-spec* cdr (keys ...) alist))))
+
+(define (values->list proc . args)
+  (call-with-values
+      (lambda () (apply proc args))
+    (lambda x (apply list x))))
+
+(assert (values->list (lambda ()
+                        (bind-spec (a b c) '((a 1) (b 2) (c 3)))))
+        => '(1 2 3 ()))
+
 (define (keyword-projector/defaults keys/defaults . project)
   (let* ((keys (map-in-order maybe-car keys/defaults))
          (normal (map-in-order keys->alist keys/defaults))
