@@ -113,5 +113,10 @@
     newline
     "my path is " foo " and " bar)))
 
+(http-register-page!
+ "/break"
+ (lambda ()
+   (error "broken")))
+
 (define (go)
   (standard-http-server))
