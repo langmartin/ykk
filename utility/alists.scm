@@ -31,20 +31,22 @@
                   lst)))))
 
 ;;;; Merging
-(define (update-alist orig update)
-  (map (lambda (old)
-         (or (assq (car old) update)
-             old))
-       orig))
+(define (update-alist orig update . assoc-method)
+  (let-optionals* assoc-method ((assq assq))
+    (map* (lambda (old)
+            (or (assq (car old) update)
+                old))
+          orig)))
 
-(define (update-force-alist orig update)
-  (fold (lambda (x acc)
-          (if (assq (car x) acc)
-              acc
-              (cons x acc)))
-        '()
-        (append (reverse update)
-                (reverse orig))))
+(define (update-force-alist orig update . assoc-method)
+  (let-optionals* assoc-method ((assq assq))
+   (fold (lambda (x acc)
+           (if (assq (car x) acc)
+               acc
+               (cons x acc)))
+         '()
+         (append (reverse update)
+                 (reverse orig)))))
 
 (define (merge-alists/template kons kdr template default . alists)
   (really-merge-alists
