@@ -4,7 +4,7 @@
 (define-syntax http-mng
   (syntax-rules ()
     ((_ text body ...)
-     (lambda (R)
+     (lambda ()
        (http-server-exec
         (lambda () body ...)
         (let-http-response (220 "ok")
@@ -14,10 +14,10 @@
 
 (define at-repl? #t)
 
-(define (handle-404 R)
-  (page-response (404 "Not Found") (string-append "page not found: " (url-path (request-url R)))))
+(define (handle-404)
+  (page-response (404 "Not Found") (string-append "page not found: " (request-url))))
 
-(define (handle-500 R error)
+(define (handle-500 error)
   (if at-repl?
       (signal-condition error)
       (page-response (500 "Internal Server Error")
@@ -46,20 +46,26 @@
 
 (define-syntax page
   (syntax-rules ()
-    ((_ R body-forms ...)
+    ((_ body-forms ...)
      (page-response
       `(html ,(header)
              (body (div (@ (class "outer"))
-                        ,(bread-crumb R)
+                        ,(bread-crumb)
                         (div (@ (class "inner"))
                              body-forms ...)
                         ,(footer))))))))
 
-(define (bread-crumb R)
-  (let* ((anchors (cons `(a (@ (href "/")) ,(url-host (request-url R)))
+(define-syntax form
+  (syntax-rules ()
+    ((_ expr ...)
+     (form->shtml
+      `(form expr ...)))))
+
+(define (bread-crumb)
+  (let* ((anchors (cons `(a (@ (href "/")) ,(url-host (request-url)))
                         (map-path (lambda (name path)
                                     `(a (@ (href ,path)) ,name))
-                                  (url-path (request-url R))))))
+                                  (url-path (request-url))))))
     `(div (@ (class "breadcrumb"))
          ,@(intersperse " - " anchors))))
 
@@ -73,22 +79,25 @@
 ;;;; Forms
 
 (define (forms/prototype)
-  (form->shtml
-   `(form
-      (text (@ (class "foo-text")
-               (name "name")
-               ;(match "blank email")
-               (default "hello")))
-      (text (@ (name "question")))
-      (textarea (@ (name "paragraph")))
-      (radio (@ (name "test")
-                (default "yes"))
-             (option (@ (value "yes")) "Yes")
-             (option (@ (value "no")) "No"))
-      ;(select (@ (name "state"))
-      ;        (option "TN")
-      ;        (option "VA"))
-      )))
+  (form
+    (div (text (@ (class "foo-text")
+                  (name "name")
+                  ;(match "blank email")
+                  (default "hello"))))
+    (div (text (@ (name "question"))))
+    (div (textarea (@ (name "paragraph"))))
+    (div (radio (@ (name "test")
+                   (default "no"))
+                (option (@ (value "yes")) "Yes")
+                (option (@ (value "no")) "No")))
+    (div (select (@ (name "state")
+                    (default "VA"))
+                 (option "TN")
+                 (option "VA")))
+    (div (checkbox (@ (name "notify")
+                      (default "true")
+                      (value "notify-on")))
+         "Does this work for you?")))
 
 ;; Input types
 
@@ -111,20 +120,45 @@
 
 ; options is a list of strings or pairs in
 ; the form of (value text)
+(define (map-options f lst)
+  (map (lambda (o)
+         (let ((value (if (pair? o) (car o) o))
+               (text (if (pair? o) (cadr o) o)))
+           (f value text)))
+       lst))
+
 (define (radio attrs name options . default)
   (let-optionals default ((default ""))
     `(div (@ ,@attrs)
-          ,@(map
-             (lambda (o)
-               (let ((text (if (pair? o)
-                               (cadr o)
-                               o))
-                     (value (if (pair? o)
-                                (car o)
-                                o)))
-                 `(div ,(input '() "radio" name value)
-                       ,text)))
+          ,@(map-options 
+             (lambda (value text)
+               `(div ,(input (if (equal? default value)
+                                 '((checked "checked"))
+                                 '())
+                             "radio" name value)
+                     ,text))
              options))))
+
+(define (select attrs name options . default)
+  (let-optionals default ((default ""))
+    `(select (@ (name ,name)
+                ,@attrs)
+             ,@(map-options
+                (lambda (value text)
+                  `(option (@ (value ,value)
+                              ,(if (equal? default value)
+                                   '(selected "true")
+                                   '()))
+                           ,text))
+                options))))
+
+(define (checkbox attrs name value . default)
+  (let-optionals default ((default #f))
+    (input (if (and default (or (boolean? default)
+                                (equal? default "true")))
+               (cons '(checked "checked") attrs)
+               attrs)
+           "checkbox" name value)))
 
 (define (sxml/text item)
   (let* ((attrs (sxml-attlist item))
@@ -138,7 +172,7 @@
          (default attrs (alist-remove-value 'default attrs)))
     (textarea attrs name (or default ""))))
 
-(define (sxml/radio item)
+(define (sxml/optioned type-maker item)
   (let* ((attrs (sxml-attlist item))
          (name attrs (alist-remove-value 'name attrs))
          (default attrs (alist-remove-value 'default attrs))
@@ -148,7 +182,19 @@
                                 (value (sxml-attlist-ref "value" o text)))
                            (list value text)))
                        sxml/options)))
-    (radio attrs name options default)))
+    (type-maker attrs name options default)))
+
+(define sxml/radio (cut sxml/optioned radio <>))
+(define sxml/select (cut sxml/optioned select <>))
+
+(define (sxml/checkbox item)
+  (let* ((attrs (sxml-attlist item))
+         (name attrs (alist-remove-value 'name attrs))
+         (default attrs (alist-remove-value 'default attrs))
+         (value attrs (alist-remove-value 'value attrs))
+         (text (or (sxml-first-text item)
+                   value)))
+    (checkbox attrs name text value default)))
 
 (define (make-transformer f)
   (lambda item
@@ -160,6 +206,8 @@
    `((text *preorder* . ,(make-transformer sxml/text))
      (textarea *preorder* . ,(make-transformer sxml/textarea))
      (radio *preorder* . ,(make-transformer sxml/radio))
+     (checkbox *preorder* . ,(make-transformer sxml/checkbox))
+     (select *preorder* . ,(make-transformer sxml/select))
      (*text* . ,(lambda (tag str) str))
      (*default* . ,(lambda x x)))))
 
@@ -199,27 +247,27 @@
 
 (http-register-page!
  "/forms.css"
- (lambda (R)
-   (load-file R)))
+ (lambda ()
+   (load-file (url-path (request-url)))))
 
 (http-register-page!
  "/"
- (lambda (R)
-   (page R
+ (lambda ()
+   (page
      (h3 "YKK Playground")
      (ul (li (a (@ (href "/forms")) "forms"))))))
 
 (http-register-page!
  "/forms"
- (lambda (R)
-   (page R
+ (lambda ()
+   (page
      (h3 "Forms")
      (ul (li (a (@ (href "/forms/prototype")) "a prototype"))))))
 
 (http-register-page!
  "/forms/prototype"
- (lambda (R)
-   (page R
+ (lambda ()
+   (page
      (h4 "forms/prototype")
      ,(forms/prototype))))
 
@@ -243,14 +291,14 @@
                      '()
                      alist))))))
 
-(define (load-file R)
-  (let ((path (string-trim (url-path (request-url R)) #\/)))
+(define (load-file path)
+  (let ((path (string-trim path #\/)))
     (with-exception-catcher
      (lambda (c prop)
-       (handle-404 R))
+       (handle-404))
      (lambda ()
        (page-response
-        (with-input-from-file (string-append *root* "/" (url-path (request-url R)))
+        (with-input-from-file (string-append *root* "/" path)
           (lambda ()
             (list->string (read-all read-char)))))))))
 

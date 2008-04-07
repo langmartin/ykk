@@ -308,6 +308,7 @@
 (define-structure forms forms-interface
   (open scheme+
         more-regexps
+        srfi-26
         url
         posix-processes
         posix-regexps
