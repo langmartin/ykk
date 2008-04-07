@@ -31,11 +31,47 @@
       (define %values (rename 'values))
       (define %unrecord (rename 'unrecord))
       (define %make (rename 'generative-make))
+      (define %rtd-type (rename 'stob-type))
 
       `(,%let*
         ((,@(map-in-order car slots) (,%values ,@(map-in-order cadr slots)))
          (,@keep-names (,%unrecord ,rec ,type-name ,@keep-names)))
-        (,%make ,@(specification-names (rtd-slots type))))
+        (,%make (,%rtd-type ,rec)
+                ,@(specification-names (rtd-slots type))))
+      )))
+
+(define-syntax sharing-record-update
+  (lambda (form rename compare)
+    (let* ((rec (cadr form))
+           (type-name (caddr form))
+           (type (environment-ref (interaction-environment) type-name))
+           (slots (map-car desyntaxify (cdddr form)))
+           (update-names (map-in-order car slots))
+           (keep-names (map-in-order
+                        specification-name
+                        (remove
+                         (lambda (spec)
+                           (assq (specification-name spec) slots))
+                         (description-specifications (rtd-slots type))))))
+
+      (define %let* (rename 'let*))
+      (define %let (rename 'let))
+      (define %values (rename 'values))
+      (define %unrecord (rename 'unrecord))
+      (define %make (rename 'generative-make))
+      (define %rtd-type (rename 'stob-type))
+      (define %share (rename 'share))
+      (define %lambda (rename 'lambda))
+      (define %r (rename (gensym 'r)))
+      (define %ignore (rename (gensym 'ignore)))
+      (define %record-update (rename 'record-update))
+
+      `(,%let ((,%r ,rec))              
+         (,%share ,%r
+           (,%lambda (,%r) (,%unrecord ,%r ,type-name ,@update-names))
+           (,%lambda ,%ignore (,%values ,@(map-in-order cadr slots)))
+           (,%lambda ,update-names
+             (,%record-update ,%r ,type-name ,@(zip update-names update-names)))))      
       )))
 
 ;;;; Primitive Syntactic Form
@@ -124,12 +160,12 @@
                (%c (rename (gensym 'c)))
                (init (these-initializers))
                (description (rtd-slots type))
-               (formals (uninitialized description)))
+               (formals (formal-parameters description)))
           `(,%lambda (,%p)
             (,%lambda ,formals
              ,(if parent
                   (let* ((parent-d (rtd-slots parent))
-                         (parent-formals (uninitialized parent-d))
+                         (parent-formals (formal-parameters parent-d))
                          (for-parent for-these (split-initializers parent-formals init))
                          (these (not-in-parent parent slots)))
                     (maybe-initialize
@@ -183,14 +219,14 @@
         (let* ((%p (rename (gensym 'p)))
                (init (these-initializers))
                (description (rtd-slots type))
-               (formals (uninitialized description)))
+               (formals (formal-parameters description)))
           `(,%lambda (,%p)
             (,%lambda ,formals
              ,(maybe-initialize
                init
                (if parent
                    (let* ((parent-d (rtd-slots parent))
-                          (parent-formals (uninitialized parent-d))
+                          (parent-formals (formal-parameters parent-d))
                           (these (not-in-parent parent slots)))
                      `((,%p ,@parent-formals) ,@these))
                    `(,%p ,@(specification-names description))))))))
@@ -213,17 +249,18 @@
       (define (anything? item)
         (any identity (cdr item)))
 
-      (define (uninitialized description)
-        (map-in-order car (uninitialized-specs description)))
+      (define (formal-parameters description)
+        (map-in-order car (formal-specs description)))
 
-      (define (uninitialized-specs description)
+      (define (formal-specs description)
         (project-description
           description
           (lambda (item)
-            (let ((name init commit type (unlist item)))
-              (not (or init commit))))
+            (let ((name init commit type formal (unlist item)))
+              (or formal
+                  (not (or init commit)))))
           project-specification
-          '(init commit type)))
+          '(init commit type formal)))
 
       (define (not-in-parent parent specs)
         (let ((in-parent (specification-names (rtd-slots parent)))
@@ -284,8 +321,16 @@
                  ,(type-slot-index type (specification-name spec))))
              names))))))
 
-;;;; DEFINE-RECORD-TYPE
-;; FIXME
-
-(define-record-type/primitive foo
-  a b c)
+;;;; Tests
+(begin
+  
+  ;; --------------------
+  ;; Sharing Updates
+  
+  (define-record-type/primitive foo a b)
+  (let* ((f1 (make-foo 1 2))
+         (f2 (sharing-record-update f1 foo (a 3)))
+         (f3 (sharing-record-update f1 foo (a 1))))
+    (assert (foo-a f2) => 3)    
+    (assert (neq? f1 f2))
+    (assert (eq? f1 f3))))

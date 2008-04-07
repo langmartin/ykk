@@ -137,7 +137,7 @@
 ;;;; Tests
 (begin
 
-  (define-type :foo () (a) (b))
+  (define-record-type/primitive :foo a b)
 
   (let* ((show-graph (cut map->list graph-name <>))
          (perform (lambda (z op) (zip-all-the-way-up (move 'up (op (z-item z)) z))))

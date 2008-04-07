@@ -59,7 +59,10 @@
 
 
 (define-interface primitive-types-interface
-  (export :maybe-symbol))
+  (export :maybe-symbol maybe-symbol?
+          :maybe-sexpr maybe-sexpr?
+          :sexpr sexpr?
+          :code-block code-block?))
 
 (define-interface identifier-interface
   (export identifier
@@ -260,4 +263,114 @@
 (define-interface ykk/record-syntax-interface
   (export (unrecord :syntax)
           (record-update :syntax)
+          (sharing-record-update :syntax)
           (define-record-type/primitive :syntax)))
+
+;;;; Graph
+
+;; --------------------
+;; General-pupose
+
+(define-interface graph-interface
+  (export
+
+   ;; constructors
+   (root :syntax)
+   (edge :syntax)
+   (node :syntax)
+   (children :syntax)
+   child-list
+   add-child
+
+   ;; types
+   :graph
+   :node
+   :edge
+   :children
+   :child
+
+   ;; predicates
+   graph?
+   root?
+   leaf?
+   child?
+   children?
+   null-children?
+
+   ;; accessors
+   graph-name
+   graph-edge
+   graph-node
+   graph-children
+   graph-type
+   child-name
+   child->graph
+   next-child
+
+   ;; children
+   end-of-children?
+   share-children
+   share-child
+   fold-children
+
+   ;; mutators
+   add-child
+   replace-node
+   replace-node-children
+   replace-children
+   rename
+   
+   ;; conditions
+   graph-error
+   graph-error?))
+
+(define-interface graph-traversal-interface
+  (export walk
+          map->list
+          traverse
+
+          :graph-zipper
+          graph-zipper?
+          z-dir
+          z-item
+          z-k
+          zip-graph
+          move
+          zip-all-the-way-up))
+
+(define-interface graph-path-interface
+  (export path->list
+          
+          absolute?
+          relative?
+          path-error
+          path-error?
+          
+          resolve
+          resolve-in
+          find-child
+
+          z-graph?
+          z-child?
+          z-end?
+          up down prev next parent first-child))
+
+(define-interface graph-access-interface
+  (export has-access?))
+
+;; --------------------
+;; Implementation-specific
+
+(define-interface scanned-graph-interface
+  (compound-interface
+   graph-interface
+   (export scan
+           graph-forms
+           graph-structures
+           has-access?)))
+
+;; --------------------
+;; Auxilliary
+
+(define-interface source-scan-interface
+  (export shallow-scan))
