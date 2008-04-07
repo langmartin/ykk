@@ -296,4 +296,18 @@
   (primitive primitive-scanned-graph)
   scanned-traversal
   scanned-path)
+
+;;;; Plist Demo
 
+(define-structure plist-demo
+  (export)
+  (open extra-scheme
+        srfi-1+
+        ykk/records
+        (with-prefix persisted-graph source:)
+        scanned-graph        
+        assert
+        methods
+        primitive-types
+        persistent-immutable
+        proc-def))

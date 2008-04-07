@@ -365,6 +365,7 @@
   (compound-interface
    graph-interface
    (export scan
+           scanned->source
            graph-forms
            graph-structures
            has-access?)))

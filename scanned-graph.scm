@@ -319,6 +319,9 @@
 
 (define (replace-children g children)
   (replace-node g (replace-node-children (graph-node g) children)))
+
+(define (scanned->source g)
+  (source-edge g))
 
 ;;;; Tests
 (begin
