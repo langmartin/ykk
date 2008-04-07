@@ -229,17 +229,11 @@
 ;;;; Tests
 (begin
 
-  (define-type :foo ()
-    (a)
-    (b))
+  (define-record-type/primitive :foo a b)
+  
+  (define-record-type/primitive :bar d e)
 
-  (define-type :bar ()
-    (d)
-    (e))
-
-  (define-type :baz ()
-    (f)
-    (g))
+  (define-record-type/primitive :baz f g)  
 
   (define *top*
     (root (node :foo

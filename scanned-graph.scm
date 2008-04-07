@@ -42,9 +42,10 @@
 ;; constructors
 
 (define-record-type :node
-  (make-scanned-node source forms children structures)
+  (make-scanned-node source type forms children structures)
   node?
   (source source-node)
+  (type scanned-type-promise)
   (forms scanned-forms-promise)
   (children scanned-children-promise)
   (structures scanned-structures-promise))
@@ -54,6 +55,7 @@
     `(node)))
 
 (define-forcers
+  (scanned-type scanned-type-promise)
   (scanned-forms scanned-forms-promise)
   (scanned-node-children scanned-children-promise)
   (scanned-structures scanned-structures-promise))
@@ -61,8 +63,9 @@
 (define (scan-node node)
   (if (node? node)
       node
-      (let ((implements code opens for-children children (unstructure node)))
+      (let ((implements code opens for-children children (unrecord node source::node implements code opens for-children children)))
         (make-scanned-node node
+                           (delay (environment-ref (interaction-environment) (car implements)))
                            (delay (let-condition scan-error (shallow-scan code)))
                            ;; FIXME: probably set up dynamic evaluation environment here
                            (delay (scan-children children))
@@ -80,6 +83,7 @@
       (let ((children (scan-children children)))
         (make-scanned-node (source:replace-node-children (source-node scanned-node)
                                                          (source-children children))
+                           (scanned-type-promise scanned-node)
                            (scanned-forms-promise scanned-node)
                            (delay children)
                            (scanned-structures-promise scanned-node)))))
@@ -115,7 +119,7 @@
 (define (scan-edge edge)
   (if (edge? edge)
       edge
-      (let ((name to access (unstructure edge)))
+      (let ((name to access (unrecord edge source::edge name to access)))
         (new-edge edge name to access))))
 
 (define (new-edge source name node access)
@@ -301,6 +305,9 @@
 
 (define graph-node scanned-to)
 
+(define (graph-type g)
+  (scanned-type (graph-node g)))
+
 (define (graph-children (g :graph))
   (scanned-node-children (scanned-to g)))
 
@@ -315,7 +322,7 @@
 
 ;;;; Tests
 (begin
-  (define-type :foo () (a) (b))
+  (define-record-type/primitive :foo a b)
 
   (let* ((tree (root (source:node :foo
                                   (plist (a 1) (b 2))
@@ -328,6 +335,7 @@
     (let ((node (scanned-to tree)))
       (assert (node? node))
       (assert (scanned-forms node) => '((a . 1) (b . 2)))
+      
 
       (let ((kids (scanned-node-children node)))
         (share-children

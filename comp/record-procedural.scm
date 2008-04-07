@@ -37,7 +37,10 @@
    commit))
 
 (define (generative-make type . rest)
-  (apply generative-allocator identity (list->vector type) rest))
+  (apply generative-allocator
+         identity
+         (if (vector? type) type (list->vector type))
+         rest))
 
 (define (generative-no-extension driver)
   (driver))
@@ -69,7 +72,9 @@
 (define (collect-null c) (c))
 
 (define (make-nongenerative-stob type . rest)
-  (apply make-stob (list->vector type) rest))
+  (apply make-stob
+         (if (vector? type) type (list->vector type))
+         rest))
 
 (define (nongenerative-allocator static-identifier collect verify? commit)
   (allocate/verify
@@ -236,7 +241,7 @@
      (nongenerative (type :maybe-symbol))
      (sealed?       (type :boolean)       (equal eq?))
      (opaque?       (type :boolean)       (equal eq?))
-     (slots         (type :description)   (init (inherit-slots parent slots)) (equal descriptions-equal?))
+     (slots         (type :description)   (init (inherit-slots parent slots)) (equal descriptions-equal?) (formal #t))
      (slot-count    (type :integer)       (init (length (description-specifications slots))))
      (env           (type :package)       (init (interaction-environment)))
      (predicate     (type :procedure)     (commit (make-record-predicate <>)))
