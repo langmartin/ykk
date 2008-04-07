@@ -36,7 +36,8 @@
 (define (update-scanned-top new-top)
   (persistent-symbol-set!
    'top
-   (scanned->source new-top)))
+   (scanned->source new-top))
+  new-top)
 
 (persist-once
  'top
@@ -61,16 +62,86 @@
    g
    (add-child child (graph-children g))))
 
-;; (perform/path
-;;  "/"
-;;  (cut insert <>
-;;       (edge 'first-person
-;;             (node :person (plist (name "Lang")
-;;                                  (age 31)
-;;                                  (gender 'male))))))
+
 
 ;; (map->list graph-name (scanned-top))
 
 ;; (graph-name (z-item (resolve (scanned-top) "/first-person")))
+
+(define-syntax insert-test
+  (syntax-rules ()
+    ((_ tech-name ?name ?age ?gender)
+     (perform/path
+      "/"
+      (cut insert <>
+           (edge tech-name
+                 (node :person (plist (name ?name)
+                                      (age ?age)
+                                      (gender ?gender)))))))))
+
+
+(define (source:update-source node new-source)
+  (sharing-record-update node source::node (code new-source)))
+
+(define (update-source g new-source)
+  (replace-node
+   g
+   (source:update-source
+    (source:graph-node (scanned->source g))
+    new-source)))
+
+#;
+(perform/path
+ "/james-long"
+ (cut update-source <>
+      `(plist (name "billy") (age 25) (gender 'poop))))
+
+#;
+(map->list graph-name (scanned-top))
+
+
+
+(define (plist-editor path)
+  (let* ((path (cons #f (map string->symbol path)))
+         (z (resolve (scanned-top) path))
+         (node (z-item z))
+         (type (graph-type node))
+         (slots (description-specifications (rtd-slots type)))
+         (values (graph-forms node))
+         (req (request-parameters)))
+    (if (string-ci= (request-method) "post")
+        (let ((name age gender tail (bind-alist (name age gender) req)))
+          (perform z
+                   (cut update-source <> `(plist (name ,name)
+                                                 (age ,age)
+                                                 (gender ,gender))))
+          `(ul (li "name " ,name)
+               (li "age " ,age)
+               (li "gender " ,gender)))
+        (form->shtml
+         `(form (@ (action ,(request-path))
+                   (method "post"))
+            (ul
+             ,(map (lambda (spec)
+                     (let ((type (cadr (assq 'type (cdr spec))))
+                           (field-name (symbol->string (car spec)))
+                           (field-value (concat (cdr (assq (car spec) values)))))
+                       `(li ,field-name
+                            ": "
+                            (text (@ (name ,field-name)
+                                     (default ,field-value)))
+                            )))
+                   slots)
+             (submit (@ (name "Name")
+                        (value "Go")))))))))
+
+;(insert-test 'james-long "James" 23 'male)
+
+(http-register-page!
+ "/forms-plist"
+ (lambda path
+   (page
+     (h4 "plist editor")
+     ,(plist-editor path))))
 
 

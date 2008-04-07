@@ -173,6 +173,9 @@
    map-car
    project-alist-onto
    partition-alist
+   pluck-spec
+   bind-spec
+   bind-alist
    keyword-projector/defaults
    keyword-partitioner/defaults
    alist-has-keys?
@@ -568,8 +571,10 @@
 
 ;;;; forms
 (define-interface forms-interface
-  (export form-server))
-
+  (export form-server
+          form->shtml
+          page))
+
 ;;;; dispatch server
 (define-interface pages-interface
   (export (page-response :syntax)))
