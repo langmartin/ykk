@@ -55,6 +55,12 @@
                              body-forms ...)
                         ,(footer))))))))
 
+(define-syntax form
+  (syntax-rules ()
+    ((_ expr ...)
+     (form->shtml
+      `(form expr ...)))))
+
 (define (bread-crumb)
   (let* ((anchors (cons `(a (@ (href "/")) ,(url-host (request-url)))
                         (map-path (lambda (name path)
@@ -73,25 +79,25 @@
 ;;;; Forms
 
 (define (forms/prototype)
-  (form->shtml
-   `(form
-      (text (@ (class "foo-text")
-               (name "name")
-               ;(match "blank email")
-               (default "hello")))
-      (text (@ (name "question")))
-      (textarea (@ (name "paragraph")))
-      (radio (@ (name "test")
-                (default "yes"))
-             (option (@ (value "yes")) "Yes")
-             (option (@ (value "no")) "No"))
-      (checkbox (@ (name "notify")
-                   (default "true")
-                   (value "notify-on")) "Notify?")
-      ;(select (@ (name "state"))
-      ;        (option "TN")
-      ;        (option "VA"))
-      )))
+  (form
+    (div (text (@ (class "foo-text")
+                  (name "name")
+                  ;(match "blank email")
+                  (default "hello"))))
+    (div (text (@ (name "question"))))
+    (div (textarea (@ (name "paragraph"))))
+    (div (radio (@ (name "test")
+                   (default "no"))
+                (option (@ (value "yes")) "Yes")
+                (option (@ (value "no")) "No")))
+    (div (select (@ (name "state")
+                    (default "VA"))
+                 (option "TN")
+                 (option "VA")))
+    (div (checkbox (@ (name "notify")
+                      (default "true")
+                      (value "notify-on")))
+         "Does this work for you?")))
 
 ;; Input types
 
@@ -126,7 +132,7 @@
     `(div (@ ,@attrs)
           ,@(map-options 
              (lambda (value text)
-               `(div ,(input (if (eq? default name)
+               `(div ,(input (if (equal? default value)
                                  '((checked "checked"))
                                  '())
                              "radio" name value)
@@ -139,10 +145,14 @@
                 ,@attrs)
              ,@(map-options
                 (lambda (value text)
-                  `(option (@ (value ,value))
-                           ,text))))))
+                  `(option (@ (value ,value)
+                              ,(if (equal? default value)
+                                   '(selected "true")
+                                   '()))
+                           ,text))
+                options))))
 
-(define (checkbox attrs name text value . default)
+(define (checkbox attrs name value . default)
   (let-optionals default ((default #f))
     (input (if (and default (or (boolean? default)
                                 (equal? default "true")))
@@ -196,6 +206,8 @@
    `((text *preorder* . ,(make-transformer sxml/text))
      (textarea *preorder* . ,(make-transformer sxml/textarea))
      (radio *preorder* . ,(make-transformer sxml/radio))
+     (checkbox *preorder* . ,(make-transformer sxml/checkbox))
+     (select *preorder* . ,(make-transformer sxml/select))
      (*text* . ,(lambda (tag str) str))
      (*default* . ,(lambda x x)))))
 
@@ -283,7 +295,7 @@
   (let ((path (string-trim path #\/)))
     (with-exception-catcher
      (lambda (c prop)
-       (handle-404 R))
+       (handle-404))
      (lambda ()
        (page-response
         (with-input-from-file (string-append *root* "/" path)
