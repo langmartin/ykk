@@ -1,4 +1,3 @@
-
 ;;;; Web Server
 
 (define-syntax http-mng
@@ -12,10 +11,10 @@
             (let-content-length
              text))))))))
 
-(define at-repl? #t)
+(define at-repl? #f)
 
 (define (handle-404)
-  (page-response (404 "Not Found") (string-append "page not found: " (request-url))))
+  (page-response (404 "Not Found") (string-append "page not found: " (request-path))))
 
 (define (handle-500 error)
   (if at-repl?
@@ -34,7 +33,7 @@
 
 (http-register-page!
  "/stop"
- (http-mng "stopping server..." (exit 0)))
+ (http-mng "stopping server..." #t))
 
 (http-register-page!
  "/restart"
@@ -79,7 +78,7 @@
 ;;;; Forms
 
 (define (forms/prototype)
-  (form
+  `(form
     (div (text (@ (class "foo-text")
                   (name "name")
                   ;(match "blank email")
@@ -97,7 +96,9 @@
     (div (checkbox (@ (name "notify")
                       (default "true")
                       (value "notify-on")))
-         "Does this work for you?")))
+         "Does this work for you?")
+    (div (submit (@ (name "Go")
+                    (value "Go"))))))
 
 ;; Input types
 
@@ -130,7 +131,7 @@
 (define (radio attrs name options . default)
   (let-optionals default ((default ""))
     `(div (@ ,@attrs)
-          ,@(map-options 
+          ,@(map-options
              (lambda (value text)
                `(div ,(input (if (equal? default value)
                                  '((checked "checked"))
@@ -160,41 +161,48 @@
                attrs)
            "checkbox" name value)))
 
-(define (sxml/text item)
-  (let* ((attrs (sxml-attlist item))
-         (name attrs (alist-remove-value 'name attrs))
-         (default attrs (alist-remove-value 'default attrs)))
-    (text attrs name (or default ""))))
+(define (submit attrs name value)
+  (input attrs "submit" name value))
 
-(define (sxml/textarea item)
-  (let* ((attrs (sxml-attlist item))
-         (name attrs (alist-remove-value 'name attrs))
-         (default attrs (alist-remove-value 'default attrs)))
-    (textarea attrs name (or default ""))))
+;; SXML -> SHTML
 
-(define (sxml/optioned type-maker item)
-  (let* ((attrs (sxml-attlist item))
-         (name attrs (alist-remove-value 'name attrs))
-         (default attrs (alist-remove-value 'default attrs))
-         (sxml/options (sxpath-run '(option) item))
-         (options (map (lambda (o)
-                         (let* ((text (sxml-first-text o))
-                                (value (sxml-attlist-ref "value" o text)))
-                           (list value text)))
-                       sxml/options)))
-    (type-maker attrs name options default)))
+(define-syntax define-sxml-input
+  (syntax-rules ()
+    ((_ (ident item attrs name default) body)
+     (define (ident item)
+       (let* ((attrs (sxml-attlist item))
+              (name default attrs (bind-spec (name default) attrs)))
+         body)))))
 
-(define sxml/radio (cut sxml/optioned radio <>))
-(define sxml/select (cut sxml/optioned select <>))
+(define (grab-options item)
+  (let ((sxml/options (sxpath-run '(option) item)))
+    (map (lambda (o)
+           (let* ((text (sxml-first-text o))
+                  (value (sxml-attlist-ref "value" o text)))
+             (list value text)))
+         sxml/options)))
 
-(define (sxml/checkbox item)
-  (let* ((attrs (sxml-attlist item))
-         (name attrs (alist-remove-value 'name attrs))
-         (default attrs (alist-remove-value 'default attrs))
-         (value attrs (alist-remove-value 'value attrs))
-         (text (or (sxml-first-text item)
-                   value)))
-    (checkbox attrs name text value default)))
+(define-sxml-input (sxml/text item attrs name default)
+  (text attrs name (or default "")))
+
+(define-sxml-input (sxml/textarea item attrs name default)
+  (textarea attrs name (or default "")))
+
+(define-sxml-input (sxml/radio item attrs name default)
+  (let ((options (grab-options item)))
+    (radio attrs name options (or default ""))))
+
+(define-sxml-input (sxml/select item attrs name default)
+  (let ((options (grab-options item)))
+    (select attrs name options (or default ""))))
+
+(define-sxml-input (sxml/checkbox item attrs name default)
+  (let ((value attrs (bind-spec (value) attrs)))
+    (checkbox attrs name text value (or default ""))))
+
+(define-sxml-input (sxml/submit item attrs name default)
+  (let ((value attrs (bind-spec (value) attrs)))
+    (submit attrs name value)))
 
 (define (make-transformer f)
   (lambda item
@@ -203,11 +211,12 @@
 (define (form->shtml tree)
   (pre-post-order
    tree
-   `((text *preorder* . ,(make-transformer sxml/text))
-     (textarea *preorder* . ,(make-transformer sxml/textarea))
-     (radio *preorder* . ,(make-transformer sxml/radio))
-     (checkbox *preorder* . ,(make-transformer sxml/checkbox))
-     (select *preorder* . ,(make-transformer sxml/select))
+   `((text . ,(make-transformer sxml/text))
+     (textarea . ,(make-transformer sxml/textarea))
+     (radio . ,(make-transformer sxml/radio))
+     (checkbox . ,(make-transformer sxml/checkbox))
+     (select . ,(make-transformer sxml/select))
+     (submit . ,(make-transformer sxml/submit))
      (*text* . ,(lambda (tag str) str))
      (*default* . ,(lambda x x)))))
 
@@ -272,24 +281,6 @@
      ,(forms/prototype))))
 
 ;;;; Util
-
-(define (alist-remove-value key alist . method)
-  (let-optionals method ((ass* assq))
-    (let ((entry alist (alist-remove key alist ass*)))
-      (values (if (pair? entry) (cadr entry) entry)
-              alist))))
-
-(define (alist-remove key alist . method)
-  (let-optionals method ((ass* assq))
-    (let ((entry (ass* key alist)))
-      (values entry
-              (reverse
-               (fold (lambda (el acc)
-                       (if (eq? el entry)
-                           acc
-                           (cons el acc)))
-                     '()
-                     alist))))))
 
 (define (load-file path)
   (let ((path (string-trim path #\/)))

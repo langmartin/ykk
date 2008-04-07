@@ -310,4 +310,11 @@
         methods
         primitive-types
         persistent-immutable
-        proc-def))
+        proc-def
+        http
+        ykk/record-procedural
+        description
+        forms
+        srfi-13
+        alists)
+  (files plist-demo))
