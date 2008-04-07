@@ -25,17 +25,19 @@
 
 (define (http-server ip port handler)
   (let ((socket (open-socket port)))
-    (socket-port-number socket)         ; make sure it's open
-    (let lp ()
-      (let ((result
-             (call-with-values
-                 (lambda () (socket-accept socket))
-               handler)))
-        (if (http-server-exec? result)
-            (begin
-              (close-socket socket)
-              ((exec-thunk result)))
-            (lp))))))
+   (dynamic-wind
+       (lambda () #t)
+       (lambda ()
+         (socket-port-number socket)    ; make sure it's open
+         (let lp ()
+           (let ((result
+                  (call-with-values
+                      (lambda () (socket-accept socket))
+                    handler)))
+             (if (http-server-exec? result)
+                 ((exec-thunk result))
+                 (lp)))))
+       (lambda () (close-socket socket)))))
 
 ;;;; richer standard dispatch
 (define (output-response output-port version response)
