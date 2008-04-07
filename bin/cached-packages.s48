@@ -1,8 +1,3 @@
-,config ,load interfaces.scm
-,config ,load ssax-5.1/packages.scm
-,config ,load packages.scm
-,open octothorpe-extensions
-
 ,in htmlprag
 ,in sxpath
 ,in sxml-tree-trans
