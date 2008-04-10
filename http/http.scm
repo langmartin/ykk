@@ -215,10 +215,10 @@
      (let ((path (request-path)))
        (or (and-let* ((page (table-ref *fixed-pages* path)))
              (page))
+           (handle-existing-file path)
            (and-let* ((path (path->list path))
                       (page (table-ref *fixed-pages* (car path))))
              (apply page (cdr path)))
-           (handle-existing-file path)
            (handle-status-code 404))))))
 
 (define (standard-handler input output)
