@@ -23,6 +23,9 @@
 (define (http-server-close)
   (http-server-exec (lambda () #t)))
 
+(define (exec thunk)
+  ((thunk)))
+
 (define (http-server ip port handler)
   (let ((socket (open-socket port)))
    (dynamic-wind
@@ -35,7 +38,7 @@
                       (lambda () (socket-accept socket))
                     handler)))
              (if (http-server-exec? result)
-                 ((exec-thunk result))
+                 (exec (exec-thunk result)) ; extra points if this makes sense
                  (lp)))))
        (lambda () (close-socket socket)))))
 
