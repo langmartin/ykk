@@ -62,7 +62,28 @@
    g
    (add-child child (graph-children g))))
 
+(define (source:update-source node new-source)
+  (sharing-record-update node source::node (code new-source)))
 
+(define (update-source g new-source)
+  (replace-node
+   g
+   (source:update-source
+    (source:graph-node (scanned->source g))
+    new-source)))
+
+(perform/path
+ "/"
+ (cut update-source <>
+      `(plist (sticky ,#t))))
+
+;; (perform/path
+;;  "/"
+;;  (cut insert <>
+;;       (edge 'first-person
+;;             (node :person (plist (name "Lang")
+;;                                  (age 31)
+;;                                  (gender 'male))))))
 
 ;; (map->list graph-name (scanned-top))
 
@@ -144,4 +165,29 @@
      (h4 "plist editor")
      ,(plist-editor path))))
 
+(http-register-page!
+ "/static"
+ (lambda path
+   (p 'called)
+   (page-response    
+    (200 "OK") "text/plain"
+    (h4 "hello")))
+ )
 
+,open thread threads-internal
+
+(define *server* #f)
+
+(define (start!)
+  (set! *server* (spawn form-server)))
+
+(define (terminate!)
+  (if *server*
+      (begin
+        (terminate-thread! *server*)
+        (set! *server* #f)
+        'terminated)
+      'no-server-running))
+
+(terminate!)
+(start!)
