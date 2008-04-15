@@ -109,6 +109,7 @@
           map-expand
           apply-macro-transformer
           transformer-procedure
+          error/syntax
           ))
 
 (define-interface srfi-89-procedural-interface
@@ -138,6 +139,7 @@
            (define/force-up :syntax)
            (syntax/eval :syntax)
            (define-syntax/applicative-order :syntax)
+           (expand/strip :syntax)
            (define-syntax* :syntax)
            (syntax/quote-non-literal :syntax))))
 
