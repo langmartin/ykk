@@ -1,135 +1,45 @@
-;;;; Web Server
 
-(define-syntax http-mng
-  (syntax-rules ()
-    ((_ text body ...)
-     (lambda ()
-       (http-server-exec
-        (lambda () body ...)
-        (let-http-response (220 "ok")
-          (let-headers ((content-type "text/plain"))
-            (let-content-length
-             text))))))))
-
-(define at-repl? #f)
-
-(define (handle-404)
-  (page-response (404 "Not Found") (string-append "page not found: " (request-path))))
-
-(define (handle-500 error)
-  (if at-repl?
-      (signal-condition error)
-      (page-response (500 "Internal Server Error")
-                     (string-append "An Internal Error Occurred: "
-                                    (let-string-output-port
-                                     (display-condition error (current-output-port)))))))
-
-(http-register-code-handler! 404 handle-404)
-(http-register-code-handler! 500 handle-500)
-
-(define (form-server)
-  (display "Starting server on port 3130 [/stop to stop, /restart to restart]...\n")
-  (standard-http-server))
-
-(http-register-page!
- "/stop"
- (http-mng "stopping server..." #t))
-
-(http-register-page!
- "/restart"
- (http-mng "restart server..." (exit 1)))
-
-;;;; Templates
-
-(define *root* "/Users/james/projects/scheme/ykk/forms")
-
-(define-syntax page
-  (syntax-rules ()
-    ((_ body-forms ...)
-     (page-response
-      `(html ,(header)
-             (body (div (@ (class "outer"))
-                        ,(bread-crumb)
-                        (div (@ (class "inner"))
-                             body-forms ...)
-                        ,(footer))))))))
+;; High level interface
 
 (define-syntax form
   (syntax-rules ()
     ((_ expr ...)
      (form->shtml
-      `(form expr ...)))))
-
-(define (bread-crumb)
-  (let* ((anchors (cons `(a (@ (href "/")) ,(url-host (request-url)))
-                        (map-path (lambda (name path)
-                                    `(a (@ (href ,path)) ,name))
-                                  (url-path (request-url))))))
-    `(div (@ (class "breadcrumb"))
-         ,@(intersperse " - " anchors))))
-
-(define (header . title)
-  `(head (title ,(if-car title "ykk devel"))
-         (link (@ (rel "stylesheet") (type "text/css") (href "/forms.css")))))
-
-(define (footer)
-  `(div (@ (class "footer")) "served by ykk"))
-
-;;;; Forms
-
-(define (forms/prototype)
-  `(form
-    (div (text (@ (class "foo-text")
-                  (name "name")
-                  ;(match "blank email")
-                  (default "hello"))))
-    (div (text (@ (name "question"))))
-    (div (textarea (@ (name "paragraph"))))
-    (div (radio (@ (name "test")
-                   (default "no"))
-                (option (@ (value "yes")) "Yes")
-                (option (@ (value "no")) "No")))
-    (div (select (@ (name "state")
-                    (default "VA"))
-                 (option "TN")
-                 (option "VA")))
-    (div (checkbox (@ (name "notify")
-                      (default "true")
-                      (value "notify-on")))
-         "Does this work for you?")
-    (div (submit (@ (name "Go")
-                    (value "Go"))))))
+      '(form expr ...)))))
 
 ;; Input types
 
-(define (input attrs type name . value)
-  (let-optionals value ((value ""))
+(define (input attrs (type :string) (name :string) . value)
+  (let-optionals value ((value #f))
     `(input (@ (type ,type)
                (name ,name)
-               (value ,value)
+               (value ,(or value ""))
                ,@attrs))))
 
-(define (text attrs name . default)
-  (let-optionals default ((default ""))
+(define (text attrs (name :string) . default)
+  (let-optionals default ((default #f))
     (input attrs "text" name default)))
 
-(define (textarea attrs name . default)
-  (let-optionals default ((default ""))
+(define (textarea attrs (name :string) . default)
+  (let-optionals default ((default #f))
     `(textarea (@ (name ,name)
                   ,@attrs)
-               ,default)))
+               ,(or default ""))))
 
-; options is a list of strings or pairs in
-; the form of (value text)
+;; options is a list of strings or pairs in
+;; the form of (value text)
 (define (map-options f lst)
   (map (lambda (o)
-         (let ((value (if (pair? o) (car o) o))
-               (text (if (pair? o) (cadr o) o)))
-           (f value text)))
+         (call-with-values
+           (lambda ()
+             (if (pair? o)
+                 (values (car o) (cdr o))
+                 (values o o)))
+           f))
        lst))
 
-(define (radio attrs name options . default)
-  (let-optionals default ((default ""))
+(define (radio attrs (name :string) (options :pair) . default)
+  (let-optionals default ((default #f))
     `(div (@ ,@attrs)
           ,@(map-options
              (lambda (value text)
@@ -140,68 +50,62 @@
                      ,text))
              options))))
 
-(define (select attrs name options . default)
-  (let-optionals default ((default ""))
+(define (select attrs (name :string) (options :pair) . default)
+  (let-optionals default ((default #f))
     `(select (@ (name ,name)
                 ,@attrs)
              ,@(map-options
                 (lambda (value text)
-                  `(option (@ (value ,value)
-                              ,(if (equal? default value)
-                                   '(selected "true")
-                                   '()))
-                           ,text))
+                  (let* ((attr `((value ,value))))
+                    `(option (@ ,@(if (equal? default value)
+                                      (cons '(selected "true") attr)
+                                      attr))
+                             ,text)))
                 options))))
 
-(define (checkbox attrs name value . default)
+(define (checkbox attrs (name :string) (value :string) . default)
   (let-optionals default ((default #f))
-    (input (if (and default (or (boolean? default)
-                                (equal? default "true")))
+    (input (if (and default (not (eq? default "false")))
                (cons '(checked "checked") attrs)
                attrs)
            "checkbox" name value)))
 
-(define (submit attrs name value)
+(define (submit attrs (name :string) (value :string))
   (input attrs "submit" name value))
 
+
 ;; SXML -> SHTML
-
-(define-syntax define-sxml-input
-  (syntax-rules ()
-    ((_ (ident item attrs name default) body)
-     (define (ident item)
-       (let* ((attrs (sxml-attlist item))
-              (name default attrs (bind-spec (name default) attrs)))
-         body)))))
 
 (define (grab-options item)
   (let ((sxml/options (sxpath-run '(option) item)))
     (map (lambda (o)
            (let* ((text (sxml-first-text o))
-                  (value (sxml-attlist-ref "value" o text)))
-             (list value text)))
+                  (value (bind-spec (value) (sxml-attlist o))))
+             (cons (or value text) text)))
          sxml/options)))
 
-(define-sxml-input (sxml/text item attrs name default)
-  (text attrs name (or default "")))
+(define (sxml-text item)
+  (let-sxml-pluck-attlist item (attrs name default)
+    (text attrs name default)))
 
-(define-sxml-input (sxml/textarea item attrs name default)
-  (textarea attrs name (or default "")))
+(define (sxml-textarea item)
+  (let-sxml-pluck-attlist item (attrs name default)
+    (textarea attrs name default)))
 
-(define-sxml-input (sxml/radio item attrs name default)
-  (let ((options (grab-options item)))
-    (radio attrs name options (or default ""))))
+(define (sxml-radio item)
+  (let-sxml-pluck-attlist item (attrs name default)
+    (radio attrs name (grab-options item) default)))
 
-(define-sxml-input (sxml/select item attrs name default)
-  (let ((options (grab-options item)))
-    (select attrs name options (or default ""))))
+(define (sxml-select item)
+  (let-sxml-pluck-attlist item (attrs name default)
+    (select attrs name (grab-options item) default)))
 
-(define-sxml-input (sxml/checkbox item attrs name default)
-  (let ((value attrs (bind-spec (value) attrs)))
-    (checkbox attrs name text value (or default ""))))
+(define (sxml-checkbox item)
+  (let-sxml-pluck-attlist item (attrs name default value)
+    (checkbox attrs name value default)))
 
-(define-sxml-input (sxml/submit item attrs name default)
-  (let ((value attrs (bind-spec (value) attrs)))
+(define (sxml-submit item)
+  (let-sxml-pluck-attlist item (attrs name value)
     (submit attrs name value)))
 
 (define (make-transformer f)
@@ -211,106 +115,99 @@
 (define (form->shtml tree)
   (pre-post-order
    tree
-   `((text . ,(make-transformer sxml/text))
-     (textarea . ,(make-transformer sxml/textarea))
-     (radio . ,(make-transformer sxml/radio))
-     (checkbox . ,(make-transformer sxml/checkbox))
-     (select . ,(make-transformer sxml/select))
-     (submit . ,(make-transformer sxml/submit))
+   `((text . ,(make-transformer sxml-text))
+     (textarea . ,(make-transformer sxml-textarea))
+     (radio . ,(make-transformer sxml-radio))
+     (checkbox . ,(make-transformer sxml-checkbox))
+     (select . ,(make-transformer sxml-select))
+     (submit . ,(make-transformer sxml-submit))
      (*text* . ,(lambda (tag str) str))
      (*default* . ,(lambda x x)))))
 
-;; SXML
+
+;; Tests
 
-(define-condition sxml-transform-error (error) sxml-transform-error?)
+(define (run-tests . giddy)
+  (let-optionals giddy ((giddy? #f))
+    (assert (sxml-text '(text (@ (class "teh") (default "junk")
+                                 (name "foo"))))
+            => '(input (@ (type "text") (name "foo")
+                          (value "junk") (class "teh"))))
 
-(define (sxpath-run expr nodes)
-  ((sxpath expr) nodes))
+    (assert (sxml-textarea '(textarea (@ (class "teh") (default "junk")
+                                         (name "foo"))))
+            => '(textarea (@ (name "foo") (class "teh")) "junk"))
+    
+    (assert (sxml-radio '(radio (@ (class "teh") (default "bar")
+                                   (name "foo"))
+                                (option "bar")
+                                (option (@ (value "Baz")) "baz")))
+            => '(div (@ (class "teh"))
+                     (div (input (@ (type "radio") (name "foo")
+                                    (value "bar") (checked "checked"))) "bar")
+                     (div (input (@ (type "radio") (name "foo")
+                                    (value "Baz"))) "baz")))
 
-(define (sxpath-first-result query)
-  (car query))
+    (assert (sxml-select '(select (@ (class "teh") (default "bar")
+                                     (name "foo"))
+                                  (option "bar")
+                                  (option (@ (value "Baz")) "baz")))
+            => '(select (@ (name "foo") (class "teh"))
+                        (option (@ (selected "true") (value "bar")) "bar")
+                        (option (@ (value "Baz")) "baz")))
 
-(define (sxml-attlist node)
-  (sxpath-run `(@ *) node))
+    (assert (sxml-checkbox '(checkbox (@ (class "teh") (name "foo")
+                                         (value "bar") (default "true"))))
+            => '(input (@ (type "checkbox") (name "foo")
+                          (value "bar") (checked "checked")
+                          (class "teh"))))
 
-(define (sxml-attlist-ref name node . default)
-  (let-optionals default ((default 'error))
-    (let* ((name (string->symbol name))
-           (xp-query (sxpath-run `(@ ,name) node)))
-      (if (and (null? xp-query) (eq? default 'error))
-          (sxml-transform-error "failed referencing attribute in nodeset" name node)
-          (if (null? xp-query)
-              default
-              (let ((el (cadr (sxpath-first-result xp-query))))
-                (if (and (pair? el) (eq? (car el) '*text*))
-                    (cadr el)
-                    el)))))))
+    (assert (sxml-submit '(submit (@ (class "submit") (value "Go")
+                                     (name "submit"))))
+            => '(input (@ (type "submit") (name "submit")
+                          (value "Go") (class "submit"))))
 
-(define (sxml-first-text node)
-  (let ((xp-query (sxpath-run `(// *text*) node)))
-    (if (null? xp-query)
-        #f
-        (car xp-query))))
+    (assert (form
+             (div (text (@ (class "foo-text")
+                           (name "name")
+                           (default "hello"))))
+             (div (text (@ (name "question"))))
+             (div (textarea (@ (name "paragraph"))))
+             (div (radio (@ (name "test")
+                            (default "no"))
+                         (option (@ (value "yes")) "Yes")
+                         (option (@ (value "no")) "No")))
+             (div (select (@ (name "state")
+                             (default "VA"))
+                          (option "TN")
+                          (option "VA")))
+             (div (checkbox (@ (name "notify")
+                               (default "true")
+                               (value "notify-on")))
+                  "Does this work for you?")
+             (div (submit (@ (name "Go")
+                             (value "Go")))))
+            => '(form
+                 (div (input (@ (type "text") (name "name")
+                                (value "hello") (class "foo-text"))))
+                 (div (input (@ (type "text") (name "question")
+                                (value ""))))
+                 (div (textarea (@ (name "paragraph")) ""))
+                 (div (div (@)
+                           (div (input (@ (type "radio") (name "test")
+                                          (value "yes")))
+                                "Yes")
+                           (div (input (@ (type "radio") (name "test")
+                                          (value "no") (checked "checked")))
+                                "No")))
+                 (div (select (@ (name "state"))
+                              (option (@ (value "TN")) "TN")
+                              (option (@ (selected "true") (value "VA")) "VA")))
+                 (div (input (@ (type "checkbox") (name "notify")
+                                (value "notify-on") (checked "checked")))
+                      "Does this work for you?")
+                 (div (input (@ (type "submit") (name "Go")
+                                (value "Go"))))))
+    (if giddy? (display "Yay!\n"))))
 
-;;;; Pages
-
-(http-register-page!
- "/forms.css"
- (lambda ()
-   (load-file (url-path (request-url)))))
-
-(http-register-page!
- "/"
- (lambda ()
-   (page
-     (h3 "YKK Playground")
-     (ul (li (a (@ (href "/forms")) "forms"))))))
-
-(http-register-page!
- "/forms"
- (lambda ()
-   (page
-     (h3 "Forms")
-     (ul (li (a (@ (href "/forms/prototype")) "a prototype"))))))
-
-(http-register-page!
- "/forms/prototype"
- (lambda ()
-   (page
-     (h4 "forms/prototype")
-     ,(forms/prototype))))
-
-;;;; Util
-
-(define (load-file path)
-  (let ((path (string-trim path #\/)))
-    (with-exception-catcher
-     (lambda (c prop)
-       (handle-404))
-     (lambda ()
-       (page-response
-        (with-input-from-file (string-append *root* "/" path)
-          (lambda ()
-            (list->string (read-all read-char)))))))))
-
-(define (map-path fn path)
-  (reverse
-   (let loop ((lst (string-tokenize (string-substitute "/" " " path)))
-              (acc '())
-              (path ""))
-     (if (null? lst)
-         acc
-         (let ((new-path (string-append path "/" (car lst))))
-           (loop (cdr lst)
-                 (cons (fn (car lst) new-path) acc)
-                 new-path))))))
-
-(define (string-substitute s1 s2 str)
-  (let loop ((str str))
-    (let ((idx (string-contains str s1)))
-      (if idx
-          (loop (string-append
-                 (substring/shared str 0 idx)
-                 s2
-                 (substring/shared str (+ idx (string-length s1)))))
-          str))))
+(run-tests)
