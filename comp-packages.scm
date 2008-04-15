@@ -315,6 +315,7 @@
         ykk/record-procedural
         description
         forms
+        form-server
         srfi-13
         alists)
   (files plist-demo))

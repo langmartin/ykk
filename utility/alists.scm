@@ -162,15 +162,25 @@
                (memq (car pair) keys))
              alist))
 
-(define-syntax pluck-spec
+(define-syntax bind-alist*
+  (syntax-rules ()
+    ((_ proc (keys ...) alist)
+     (apply values (project-alist-onto proc
+                                       (lambda (x) #f)
+                                       '(keys ...)
+                                       alist)))))
+
+(define-syntax bind-spec
   (syntax-rules ()
     ((_ (keys ...) alist)
-     (let* ((lst alist)
-            (found rest (partition-alist '(keys ...) lst))
-            (keys ... (apply values (map cadr found))))
-       (values keys ... rest)))))
+     (bind-alist* cadr (keys ...) alist))))
 
-(define-syntax bind-spec*
+(define-syntax bind-alist
+  (syntax-rules ()
+    ((_ (keys ...) alist)
+     (bind-alist* cdr (keys ...) alist))))
+
+(define-syntax pluck-alist*
   (syntax-rules ()
     ((_ proc (keys ...) alist)
      (let ((mapped (project-alist-onto proc
@@ -182,30 +192,27 @@
                          alist)))
        (apply values (append mapped (list rest)))))))
 
-(define-syntax bind-spec
+(define-syntax pluck-spec
   (syntax-rules ()
     ((_ (keys ...) alist)
-     (bind-spec* cadr (keys ...) alist))))
+     (pluck-alist* cadr (keys ...) alist))))
 
-(define-syntax bind-alist
+(define-syntax pluck-alist
   (syntax-rules ()
     ((_ (keys ...) alist)
-     (bind-spec* cdr (keys ...) alist))))
+     (pluck-alist* cdr (keys ...) alist))))
 
-(define (values->list proc . args)
-  (call-with-values
-      (lambda () (apply proc args))
-    (lambda x (apply list x))))
+(assert (values->list (pluck-spec (a b c) '((a 1) (b 2) (c 3))))
+        => '(1 2 3 ()))
 
-(assert (values->list (lambda ()
-                        (bind-spec (a b c) '((a 1) (b 2) (c 3)))))
+(assert (values->list (pluck-alist (a b c) '((a . 1) (b . 2) (c . 3))))
         => '(1 2 3 ()))
 
 (define (keyword-projector/defaults keys/defaults . project)
   (let* ((keys (map-in-order maybe-car keys/defaults))
          (normal (map-in-order keys->alist keys/defaults))
          (required (remove pair? keys/defaults))
-         (project (if (null? project) cadr (car project))))    
+         (project (if (null? project) cadr (car project))))
 
     (define (default key)
       (cond ((assq key normal) => cadr)
