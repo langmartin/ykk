@@ -317,8 +317,7 @@
         http http-protocol
         ykk/record-procedural
         description
-        forms
-        form-server
+        forms form-server
         srfi-13
         alists
         threads threads-internal

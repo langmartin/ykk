@@ -345,9 +345,10 @@
    ""))
 
 (begin
-  (assert (safe-call/resolved never? (scanned-top) '(foozle) identity) => #f)
-  (assert (graph-zipper? (safe-call/resolved never? (scanned-top) '(#f) identity)))
+  (assert (safe-call/resolved never? (scanned-top) '(foozle) proj-0) => #f)
+  (assert (graph-zipper? (safe-call/resolved never? (scanned-top) '(#f) proj-0)))
   )
+
 
 ;;;;
 (define (header/footer-wind thunk)
@@ -392,7 +393,7 @@
                        (tree->shtml
                         tree
                         (join-path path (graph-name tree))))
-                     z)))))
+                     tree)))))
 
 (define (map-children proc g)
   (fold-children (lambda (c acc)
