@@ -287,7 +287,7 @@
         ykk-ports)
   (files (prim ykk-methods))
   (optimize auto-integrate))
-
+
 ;;;; tree diffing & merging
 (define-structure tree-merging
   (export lcs-fold)
@@ -305,25 +305,33 @@
   (files (zipper diffing)))
 
 ;;;; forms
+(define-structure form-server form-server-interface
+  (open scheme+
+        posix-processes
+        pages
+        htmlprag
+        http
+        exceptions
+        display-conditions
+        forms)
+  (files forms/form-server))
+
 (define-structure forms forms-interface
   (open scheme+
-        more-regexps
-        srfi-26
-        url
-        posix-processes
-        posix-regexps
-        pages
-        http
-        htmlprag
+        sxml
+        sxml-tree-trans
+        checking
+        methods)
+  (files forms/forms))
+
+;;;; sxml
+(define-structure sxml sxml-interface
+  (open scheme+
         sxml-tree-trans
         sxpath
-        exceptions
-        conditions+
-        fluids+
-        display-conditions
-        simple-signals)
-  (files forms/forms))
-
+        conditions+)
+  (files utility/sxml))
+
 ;;;; pages
 (define-structure pages pages-interface
   (open scheme+

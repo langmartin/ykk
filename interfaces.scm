@@ -229,8 +229,7 @@
    make-not
    (case-equal :syntax)
    fold-numbers
-   fold-right-numbers
-   (if-bind :syntax)))
+   fold-right-numbers))
 
 (define-interface conditions+-interface
   (export (define-condition :syntax)
@@ -574,10 +573,46 @@
           has-init-form?))
 
 ;;;; forms
-(define-interface forms-interface
+(define-interface form-server-interface
   (export form-server
+          (page :syntax)
+          bread-crumb
+          header
+          footer
+          load-file))
+
+(define-interface forms-interface
+  (export (form :syntax)
           form->shtml
-          page))
+
+          ;; input -> shtml
+          text
+          textarea
+          radio
+          select
+          checkbox
+          submit
+
+          ;; sxml -> shtml
+          sxml-text
+          sxml-textarea
+          sxml-radio
+          sxml-select
+          sxml-checkbox
+          sxml-submit))
+
+(define-interface meta-forms-interface
+  (export input
+          (define-sxml-input :syntax)))
+
+;;;; some pre-cooked sxml querying
+(define-interface sxml-interface
+  (export sxpath-run
+          sxml-attlist
+          (let-sxml-attlist :syntax)
+          (let-sxml-pluck-attlist :syntax)
+          sxml-first-text
+          sxpath-error?))
 
 ;;;; dispatch server
 (define-interface pages-interface

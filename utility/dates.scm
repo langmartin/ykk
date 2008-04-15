@@ -32,12 +32,11 @@
                                            (list "$")))))
         (space (lambda args
                  (apply string-append (intersperse " " args)))))
-    (if-bind time (case-posix-regex date
-                    ((rx day time am/pm) (date->time date (space day-fmt time-fmt am/pm-fmt)))
-                    ((rx day time) (date->time date (space day-fmt time-fmt)))
-                    ((rx day) (date->time (space date "0:0")  (space day-fmt time-fmt))))
-             time
-             (date-error "smart/date->time: failed to detect date format for date `" date "'"))))
+    (or (case-posix-regex date
+          ((rx day time am/pm) (date->time date (space day-fmt time-fmt am/pm-fmt)))
+          ((rx day time) (date->time date (space day-fmt time-fmt)))
+          ((rx day) (date->time (space date "0:0")  (space day-fmt time-fmt))))
+        (date-error "smart/date->time: failed to detect date format for date `" date "'"))))
 
 
 ;; Tests
