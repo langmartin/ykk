@@ -445,6 +445,7 @@
    (let-http-request :syntax)
    (let-headers :syntax)
    (let-content-length :syntax)
+   (let-content-vector :syntax)
    (let-header-data :syntax)
    header-reduce
    http-keepalive?
