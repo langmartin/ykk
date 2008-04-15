@@ -194,19 +194,20 @@
    (if (not (file-regular? path))
        #f
        (let-http-response (200 "File")
-         (header-cons
-          'content-type
-          (case-equal
-              (file-name-extension path)
-            (("css") "text/css")
-            (("js") "application/x-javascript")
-            (("html" "htm") "text/html")
-            (else
-             "text/plain"))
-          header-null)
-         (call-with-input-file
-             path
-           (lambda (p) (read-line p #f)))))))
+         (let-headers ((content-type (guess-content-type path)))
+           (let-content-length
+             (call-with-input-file
+                 path
+               (lambda (p) (read-line p #f)))))))))
+
+(define (guess-content-type path)
+  (case-equal
+      (file-name-extension path)
+    (("css") "text/css")
+    (("js") "application/x-javascript")
+    (("html" "htm") "text/html")
+    (else
+     "text/plain")))
 
 (define (tablewise-handler)
   (with-exception-catcher
@@ -243,18 +244,21 @@
                              handler))))
 
 ;;;; HTTP Client
-(define (body->byte-vector body)
+(define (body->byte-vector . body)
   (let-u8-output-port
    (output body)))
 
-(define (output-content-length . body)
-  (let* ((vec (body->byte-vector body))
-         (len (byte-vector-length vec)))
+(define (output-content-vector vec)
+  (let* ((len (byte-vector-length vec)))
     (if (zero? len)
         (output crlf)
         (begin
           (output 'content-length ": " len crlf crlf)
           (write-block vec 0 len (current-output-port))))))
+
+(define (output-content-length . body)
+  (output-content-vector
+   (apply body->byte-vector body)))
 
 (assert
  (let-string-output-port (output-content-length "some stuff" "goes here")) =>
@@ -301,10 +305,17 @@
  (let-headers ((foo 3) (bar foo)) 5) =>
  '((foo ": " 3 "\r\n") (bar ": " 3 "\r\n") 5))
 
+(define-syntax let-content-vector
+  (syntax-rules ()
+    ((_ . body)
+     (let ((vec (body->byte-vector . body)))
+       (lambda ()
+         (output-content-vector vec))))))
+
 (define-syntax let-content-length
   (syntax-rules ()
     ((_ body ...)
-     (lambda ()
+     (lambda ()       
        (output-content-length
         body ...)))))
 
