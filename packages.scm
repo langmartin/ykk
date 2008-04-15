@@ -431,6 +431,12 @@
         fluids+)
     (files http/http))
 
+(define-structure http-protocol http-protocol-interface
+  (open scheme+
+        tables
+        assert)
+  (files (http protocol)))
+
 (define-structure standard-test
   (export)
   (open scheme+
