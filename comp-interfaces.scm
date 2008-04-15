@@ -342,6 +342,7 @@
 
 (define-interface graph-path-interface
   (export path->list
+          make-absolute
           
           absolute?
           relative?
