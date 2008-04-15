@@ -1,16 +1,16 @@
 ;;;; Define Checked
 (define-syntax define-checked
   (syntax-rules ()
-    ((_ (name formals ...) body ...)
-     (expand-checked (name) (formals ...) () (body ...)))
+    ((_ (name . formals) body ...)
+     (expand-checked (name) formals () (body ...)))
     ((_ otherwise ...)
      (define otherwise ...))))
 
 (define-syntax expand-checked
   (syntax-rules ()
     ;; final step in the recursion, expand into a define
-    ((_ ((name assert-return) formals ...) () (assertion ...) (body ...))
-     (define (name formals ...)
+    ((_ ((name assert-return) . formals) () (assertion ...) (body ...))
+     (define (name . formals)
        (check-return assert-return
                      (begin assertion ... body ...)
                      'name)))
@@ -18,16 +18,18 @@
      (define formals assertion ... body ...))
     
     ;; fold formals into names and checks
-    ((_ (name p ...) ((parameter assertion) formals ...) (check ...) body)
+    ((_ (name p ...) ((parameter assertion) . formals) (check ...) body)
      (expand-checked (name p ... parameter)
-                     (formals ...)
+                     formals
                      (check ... (check-formal assertion parameter 'name 'parameter))
                      body))
-    ((_ (name ...) (parameter formals ...) check body)
+    ((_ (name ...) (parameter . formals) check body)
      (expand-checked (name ... parameter)
-                     (formals ...)
+                     formals
                      check
-                     body))))
+                     body))
+    ((_ (name ...) rest check body)
+     (expand-checked (name ... . rest) () check body))))
 
 (define-syntax check-formal
   (syntax-rules ()
