@@ -302,6 +302,23 @@
     ((_ alist pattern ...)
      (unalist-proc alist '(pattern ...)))))
 
+(define (unalist-proc alist pattern)
+  (apply values
+         (reverse
+          (let recur-fold ((lst alist) (p pattern) (path '()) (acc '()))
+            (if (null? p)
+                acc
+                (fold (lambda (sub-p acc)
+                        (if (pair? sub-p)
+                            (recur-fold (unalist-ref (car sub-p) lst path pattern)
+                                        (cdr sub-p)
+                                        (cons (car sub-p) path)
+                                        acc)
+                            (cons (unalist-ref sub-p lst path pattern)
+                                  acc)))
+                      acc
+                      p))))))
+
 (define (alist-tree-insert* keylst val alist)
   (let ((key (car keylst)))
     (map* (lambda (pair)
@@ -338,23 +355,6 @@
 (assert
  (alist-tree-insert '(foo bar) 3 '((baz . 4)))
  => '((foo . ((bar . 3))) (baz . 4)))
-
-(define (unalist-proc alist pattern)
-  (apply values
-         (reverse
-          (let recur-fold ((lst alist) (p pattern) (path '()) (acc '()))
-            (if (null? p)
-                acc
-                (fold (lambda (sub-p acc)
-                        (if (pair? sub-p)
-                            (recur-fold (unalist-ref (car sub-p) lst path pattern)
-                                        (cdr sub-p)
-                                        (cons (car sub-p) path)
-                                        acc)
-                            (cons (unalist-ref sub-p lst path pattern)
-                                  acc)))
-                      acc
-                      p))))))
 
 (define (unalist-ref key lst path pattern)
   (cond ((assq key lst) => cdr)
