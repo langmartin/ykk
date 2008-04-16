@@ -67,6 +67,13 @@
            (apply-macro-transformer transformer form rename compare)))))
     ((_ name er-lambda free)
      (define-syntax/applicative-order er-lambda))))
+
+;; An trivial example -- this will work like ,expand FORM but will
+;; strip all generated path names from the output.
+(define-syntax/applicative-order expand/strip
+  (syntax-rules ()
+    ((_ expanded ...)
+     (begin 'expanded ...))))
 
 ;;;; SRFI-89 Macros
 (define-syntax define-syntax*

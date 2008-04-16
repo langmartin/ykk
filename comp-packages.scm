@@ -301,6 +301,9 @@
 
 (define-structure plist-demo
   (export)
+  (for-syntax (open scheme+
+                    (subset names (desyntaxify))
+                    http-protocol))
   (open extra-scheme
         srfi-1+
         ykk/records
@@ -311,11 +314,17 @@
         primitive-types
         persistent-immutable
         proc-def
-        http
+        http http-protocol
         ykk/record-procedural
         description
-        forms
-        form-server
+        forms form-server
         srfi-13
-        alists)
+        alists
+        threads threads-internal
+        pages
+        exceptions
+        conditions+
+        monad-style-output ykk-ports
+        syntax-util
+        htmlprag)  
   (files plist-demo))

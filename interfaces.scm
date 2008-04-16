@@ -444,6 +444,7 @@
    (let-http-request :syntax)
    (let-headers :syntax)
    (let-content-length :syntax)
+   (let-content-vector :syntax)
    (let-header-data :syntax)
    header-reduce
    http-keepalive?
@@ -459,6 +460,9 @@
    request-path
    standard-parameters
    set-standard-host!))
+
+(define http-protocol-interface
+  (export status-code->phrase))
 
 ;;;; zippers, kernel
 (define-interface zipper-interface

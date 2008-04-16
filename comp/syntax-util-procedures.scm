@@ -14,7 +14,7 @@
       (quotation? item)))
 
 (define (macro-use? item . env)
-  (let ((env (optional-env env)))    
+  (let ((env (optional-env env)))
     (cond ((and (pair? item)
                 (package-lookup env (car item)))
            => (lambda (binding)
@@ -25,15 +25,16 @@
        (not (macro-use? item (optional-env env)))))
 
 (define (keyword? name)
-  (and (symbol? name)       
-       (let ((s (symbol->string name)))    
-         (char=? #\: (string-ref s (- (string-length s) 1))))))
+  (let ((name (desyntaxify name)))
+    (and (symbol? name)
+         (let ((s (symbol->string name)))
+           (char=? #\: (string-ref s (- (string-length s) 1)))))))
 
 ;;;; Utility
 (define gensym
   (let ((i 0))
     (lambda name
-      (set! i (+ i 1))      
+      (set! i (+ i 1))
       (concatenate-symbol
        (if (null? name) 'gensym (car name))
        "##"
@@ -45,7 +46,7 @@
       `',foo))
 
 (define (remove-keyword-indication name)
-  (let* ((s (symbol->string name))
+  (let* ((s (symbol->string (desyntaxify name)))
          (size (string-length s)))
     (if (char=? #\: (string-ref s (- size 1)))
         (string->symbol (substring s 0 (- size 1)))
@@ -69,7 +70,7 @@
 ;; see bcomp/cenv.scm and bcomp/package.scm
 
 (define (define-now! name form . env)
-  (let ((env (optional-env env)))    
+  (let ((env (optional-env env)))
     (environment-define! env name (eval form env))))
 
 (define (force-up! for-syntax-name binding-name)
@@ -104,8 +105,8 @@
 (define (apply-macro-transformer transformer form rename compare)
   (let* ((transform (transformer-procedure transformer))
          (applied `(,(car form) ,@(map-expand (cdr form))))
-         (result (transform applied rename compare)))    
-    (if (eq? result applied)        
+         (result (transform applied rename compare)))
+    (if (eq? result applied)
         (syntax-error "use of macro doesn't match definition"
                       (cons (schemify (car form))
                             (desyntaxify (cdr form))))
@@ -128,7 +129,7 @@
 (define (srfi-89:require-positionals name A V n)
   (if (>= (length A) n)
       (let ((taken rest (split-at A n)))
-        (values rest (append V taken)))      
+        (values rest (append V taken)))
       (error/syntax 'too-few-positional-parameters
                     name
                     `(required: ,n)
@@ -157,7 +158,7 @@
 (define (keywords->alist source degenerate?)
   (let loop ((s source) (acc '()))
     (cond ((or (null? s)
-               (not (keyword? (car s))))           
+               (not (keyword? (car s))))
            (values acc s))
           ((or (null? (cdr s))
                (keyword? (cadr s)))
@@ -174,7 +175,7 @@
                        acc))))))
 
 (define (project-alist->named name alist named found acc)
-  (let loop ((named named) (found found) (acc acc))    
+  (let loop ((named named) (found found) (acc acc))
     (if (null? named)
         (reverse acc)
         (let ((key (caar named)))
@@ -196,11 +197,11 @@
 (define (srfi-89:parse-formals name formals)
   (let loop ((f formals) (stack '()) (t '()) (allow-positional? #t) (allow-named? #t))
     (cond ((rest? f)
-           (if (symbol? f)                   
+           (if (symbol? f)
                (values (reverse (cons f t)) (stack-rest stack))
                (parse-error name f "strange-looking rest formal")))
           ((null? f)
-           (values (reverse t) (stack-no-rest stack)))              
+           (values (reverse t) (stack-no-rest stack)))
           ((positional? (car f))
            (if allow-positional?
                (let ((f required options (take-positionals name f)))
@@ -208,8 +209,8 @@
                        (stack-options options (stack-required required stack))
                        (append (map-in-order car options) required t)
                        #f
-                       allow-named?))                   
-               (parse-error name f "only one positional section allowed")))              
+                       allow-named?))
+               (parse-error name f "only one positional section allowed")))
           ((named? (car f))
            (if allow-named?
                (let ((f named (take-named name f)))
@@ -218,12 +219,12 @@
                        (append (map-in-order cadr named) t)
                        allow-positional?
                        #f))
-               (parse-error name f "only one keyword section allowed")))          
+               (parse-error name f "only one keyword section allowed")))
           (else
            (error 'malformed-formals)))))
 
 (define (take-positionals name f)
-  (let loop ((f f) (required '()) (options '()))        
+  (let loop ((f f) (required '()) (options '()))
     (cond ((or (rest? f) (null? f) (not (positional? (car f))))
            (values f required options))
           ((optional? (car f))
@@ -304,7 +305,7 @@
        (not (null? formals))))
 
 (define (srfi-89:stack->k allowed seed stack)
-  
+
   (define (match key)
     (cond ((assq (desyntaxify key) allowed) => cadr)
           (else (error 'unrecognized-stack-keyword
@@ -331,11 +332,11 @@
         (else value)))
 
 (define (map-tree proc tree)
-  (let loop ((tree tree))          
+  (let loop ((tree tree))
     (cond ((null? tree)
            tree)
           ((not (pair? tree))
-           (proc tree))          
+           (proc tree))
           ((and (pair? tree)
                 (not (null? (cdr tree))))
            (cons (loop (car tree))
@@ -351,7 +352,7 @@
 
 (begin
   (assert (quote-non-literal 1) => 1)
-  (assert (quote-non-literal 'foo) => ''foo)  
+  (assert (quote-non-literal 'foo) => ''foo)
   (assert (quote-non-literal ''foo) => ''foo)
 
   (assert (remove-keyword-indication 'foo) => 'foo)
@@ -379,5 +380,5 @@
 
   (assert
    (beta-substitute assq '(a b c) '((+ d 1) (+ a 1) 3))
-   => '((+ d 1) (+ (+ d 1) 1) 3))  
+   => '((+ d 1) (+ (+ d 1) 1) 3))
   )
