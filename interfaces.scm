@@ -173,9 +173,8 @@
    map-car
    project-alist-onto
    partition-alist
-   pluck-spec
-   bind-spec
-   bind-alist
+   ((pluck-spec pluck-alist) :syntax)
+   ((bind-spec bind-alist) :syntax)
    keyword-projector/defaults
    keyword-partitioner/defaults
    alist-has-keys?
@@ -458,6 +457,8 @@
    request-url
    request-parameters
    request-path
+   request-headers
+   get-parameters
    standard-parameters
    set-standard-host!))
 

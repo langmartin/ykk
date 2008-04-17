@@ -85,12 +85,18 @@
     (apply h params)))
 
 (define-record-type rtd/request
-  (make-request version method url query)
+  (make-request version method url query head)
   request?
   (version request*-version)
   (method request*-method)
   (url request*-url)
-  (query request*-parameters set-request*-parameters!))
+  (query request*-parameters set-request*-parameters!)
+  (head request*-headers))
+
+(define (make-request/method-hack version method url query head)
+  (let* ((method (or (header-assoc 'X-HTTP-Method-Override head) method))
+         (param-method query (pluck-alist (_method) query)))
+    (make-request version (or param-method method) url query head)))
 
 (define-fluid ($request #f)
   current-request
@@ -101,6 +107,8 @@
 (define (request-url) (request*-url (current-request)))
 (define (request-path) (url-path (request-url)))
 (define (request-parameters) (request*-parameters (current-request)))
+(define (request-headers) (request*-headers (current-request)))
+(define (get-parameters) (url-parameters (request-url)))
 
 (define (path->list path)
   (let ((split
@@ -160,21 +168,19 @@
   (call/http-version
    input-port
    (lambda (method path version)
-     (call-with-values
-         (lambda () (parse-url-path path))
-       (lambda (path param)
-         (let* ((mime (stream-car (port->mime-stream input-port)))
-                (head (mime-headers mime))
-                (host (or (header-assoc 'host head) *standard-host*)))
-           (let ((url (make-url 'http host 80 path param)))
-             (with-request
-              (make-request version method url (catch-query mime))
-              (lambda ()
-                (perform-standard-output
-                 (handler)
-                 version
-                 input-port
-                 output-port))))))))))
+     (let* ((path param (parse-url-path path))
+            (mime (stream-car (port->mime-stream input-port)))
+            (head (mime-headers mime))
+            (host (or (header-assoc 'host head) *standard-host*))
+            (url (make-url 'http host 80 path param)))
+       (with-request
+        (make-request/method-hack version method url (or (catch-query mime) '()) head)
+        (lambda ()
+          (perform-standard-output
+           (handler)
+           version
+           input-port
+           output-port)))))))
 
 (define (file-name-extension path-string)
   (string-downcase!
