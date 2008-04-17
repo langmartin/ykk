@@ -193,12 +193,16 @@
           direct-descendant?
           ancestors
           ancestors-and-self
-          more-specific-type?))
+          more-specific-type?
+          type-name
+          scheme-form-conforms-to-type?
+          self-evaluating?))
 
 (define-interface type-implementation-utility-interface
   (compound-interface
    type-inspection-interface
-   (export compute-priority)))
+   (export compute-priority
+           &type-name)))
 
 (define-interface type-description-interface
   (export specification-type

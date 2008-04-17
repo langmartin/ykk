@@ -44,6 +44,11 @@
  (lambda ()
    (source:root (source:node :folder
                              (plist (sticky #f))))))
+
+;; (persistent-symbol-set!
+;;  'top
+;;  (source:root (source:node :folder
+;;                            (plist (sticky #f)))))
 
 ;;;; Manipulation
 (define (zip-up/update-top z)
@@ -114,6 +119,43 @@
 (assert (list->absolute-path '("foo" "bar")) => '(#f foo bar))
 (assert (name->string #f) => "")
 (assert (name->string 'foo) => "foo")
+
+;;;; Other Utilities
+(define (fmap-car proc pair)
+  (cons (proc (car pair)) (cdr pair)))
+
+(define (fmap-cdr proc pair)
+  (cons (car pair) (proc (cdr pair))))
+
+(define (fmap-pair proc pair)
+  (proc (car pair) (cdr pair)))
+
+(define (fmap-cadr proc lst)
+  (cons (car lst)
+        (cons (proc (cadr lst))
+              (cddr lst))))
+
+(define (fmap-list proc spec)
+  (proc (car spec) (cadr spec)))
+
+(define pair->list (cut fmap-pair list <>))
+(define list->pair (cut fmap-list cons <>))
+
+(define (choose-keys keys alist)
+  (filter (car-eq keys) alist))
+
+(define (remove-keys keys alist)
+  (remove (car-eq keys) alist))
+
+(define (car-eq key)
+  (let ((eq (value->eq-comparitor key)))
+    (lambda (pair) (eq (car pair) key))))
+
+(define (value->eq-comparitor v)
+  (cond ((pair? v) memq)        
+        ((string? v) string=?)
+        ((number? v) =)
+        (else eq?)))
 
 ;;;; Testing
 (define (reify-output-stream . stream)
@@ -404,7 +446,7 @@
   (join-path "/plist" rel))
 
 (define (data-tree-href rel)
-  (join-path "/plist" rel))
+  (join-path "/data" rel))
 
 ;; --------------------
 ;; Plist Editor
@@ -417,21 +459,76 @@
       ((post) (post-plist z))))))
 
 (define (get-plist z)
-  (let* ((item (z-item z))
-         (type (graph-type item)))    
-    `(div (@ (id "plist-editor"))        
-       (h2 "Editing: " ,(plist-title z))
-       ,(plist-form item type (graph-forms item)))))
+  (let* ((item (z-item z)))    
+    (plist-form (plist-title item) (graph-type item) (graph-forms item) '())))
 
-(define (plist-form item type data)
-  (form->shtml
-   `(form (@ (action ,(request-path))
-             (method "post"))
-      (ul (@ (class "plist-items"))
-        ,@(map (render-plist-entry item type) data))
-      (div (@ (class "buttons"))
-         (submit (@ (name "do-save")
-                    (value "Save")))))))
+(define (post-plist z)
+  (let* ((item (z-item z))
+         (type (graph-type item))
+         (relevant-data (schemify-parameters (remove-parameters 'do-save)))
+         (good errors (validate-plist-data type relevant-data)))
+    (if (null? errors)
+        (perform/go (cut update-source <> `(plist ,@(map-in-order pair->list good)))
+                    z data-tree-href)        
+        (plist-form (plist-title item) type relevant-data errors))))
+
+(define (schemify-parameters data)
+  (map-in-order (cut fmap-cdr string->form <>) data))
+
+(define (string->form s)
+  (let-string-input-port s (read)))
+
+(define (validate-plist-data type data)
+  (let ((slots (rtd-slots type)))
+    (let loop ((data data) (good '()) (errors '()))
+      (cond ((null? data)
+             (values (reverse good) (reverse errors)))
+            ((specification-of slots (caar data)) =>             
+             (lambda (spec)
+               (let ((name value (uncons (car data)))
+                     (type (specification-type spec)))                 
+                 (if (scheme-form-conforms-to-type? type value)
+                     (loop (cdr data)
+                           (cons (car data) good)
+                           errors)
+                     (loop (cdr data)
+                           good
+                           (alist-cons name (data-does-not-conform-to-type-error-message type name value)
+                                       errors))))))
+            (else
+             (loop (cdr data)
+                   (cons (car data) good)
+                   errors))))))
+
+(define (specification-type spec)
+  (cond ((get-specification-attribute spec 'type eq?) => attribute-value)
+        (else #f)))
+
+(define (data-does-not-conform-to-type-error-message type name value)
+  (let-string-output-port
+   (output "The value of " name " does not conform to type " (type-name type))))
+
+(define (plist-form title type data errors)
+  `(div (@ (id "plist-editor"))                
+     ,(form->shtml       
+       `(form (@ (action ,(request-path))
+                 (method "post"))
+              ,(form-errors->shtml errors)
+              (fieldset
+              (legend "Editing: " ,title)
+              (ul (@ (class "plist-items"))
+                  ,@(map (render-plist-entry type) data)))
+              (div (@ (class "buttons"))
+                   (submit (@ (name "do-save")
+                              (value "Save"))))))))
+
+(define (form-errors->shtml errors)
+  (if (null? errors)
+      ""
+      `(ul (@ (class "form-errors"))
+          ,@(map-in-order
+             (lambda (e)`(li ,(cdr e)))
+             errors))))
 
 (define-generic plist-title &plist-title (item))
 
@@ -443,22 +540,22 @@
 (define-method &plist-title ((item :graph-zipper))
   (plist-title (z-item item)))
 
-(define (render-plist-entry item type)
+(define (render-plist-entry type)
   (lambda (entry)
     (let ((name value (uncons entry)))      
-      `(li (@ (class ,(classify-plist-entry item name value)))
-         ,(label-plist-entry item name value)
-         ,(render-plist-input item name value)))))
+      `(li (@ (class ,(classify-plist-entry name value)))
+         ,(label-plist-entry name value)
+         ,(render-plist-input name value)))))
 
-(define (classify-plist-entry item name value)
+(define (classify-plist-entry name value)
   "simple")
 
-(define (label-plist-entry item name value)
+(define (label-plist-entry name value)
   (let ((string-name (symbol->string name)))    
     `(label (@ (for ,string-name))
        ,string-name ": ")))
 
-(define (render-plist-input item name value)
+(define (render-plist-input name value)
   (let ((string-name (symbol->string name)))    
     `(text (@ (name ,string-name)
               (default ,(plist-value->attribute-value value))))))
@@ -466,28 +563,8 @@
 (define (plist-value->attribute-value v)
   (concat v))
 
-(define (post-plist z)
-  (let* ((relevant-data (remove-parameters 'do-save))
-         (new-source `(plist ,@(map-in-order pair->list relevant-data))))
-    (perform/go
-     (cut update-source <> new-source) z data-tree-href)))
-
-(define (pair->list pair)
-  (list (car pair) (cdr pair)))
-
 (define (choose-parameters names)
   (choose-keys names (request-parameters)))
 
 (define (remove-parameters names)
   (remove-keys names (request-parameters)))
-
-(define (choose-keys keys alist)
-  (filter (car-eq? keys) alist))
-
-(define (remove-keys keys alist)
-  (remove (car-eq? keys) alist))
-
-(define (car-eq? key)
-  (if (pair? key)
-      (lambda (pair) (memq (car pair) key))  
-      (lambda (pair) (eq? (car pair) key))))

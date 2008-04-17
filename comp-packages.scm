@@ -146,7 +146,8 @@
   (files (comp description-syntax)))
 
 (define-structures ((type-description type-description-interface)
-                    (type-inspection type-inspection-interface))
+                    (type-inspection type-inspection-interface)
+                    (type-implementation-utility type-implementation-utility-interface))
   (open extra-scheme
         assert
         alists
@@ -156,7 +157,9 @@
         simple-signals simple-conditions handle
         primitives ; for UNSPECIFIC
         description
-        stob-utility)  
+        stob-utility
+        syntax-util
+        record-types)  
   (files (comp type-util)
          (comp type-description)))
 
@@ -166,7 +169,7 @@
         proc-def
         description
         primitive-types
-        type-description type-inspection
+        type-description type-implementation-utility
         stob-utility
         records
         assert
@@ -326,5 +329,6 @@
         conditions+
         monad-style-output ykk-ports
         syntax-util
-        htmlprag)  
+        htmlprag
+        type-inspection)  
   (files plist-demo))
