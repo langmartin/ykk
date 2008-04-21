@@ -133,12 +133,19 @@
    (lambda ()
      (stuff))))
 
-(page
- ((foo "bar"))
- (body
-  )
- )
+(let-http-response
+    200
+  ((accepts "*"))
+  (begin-content-length
+   (shtml->html
+    `(*top*
+      (head)
+      (body
+       (p "thing"))))))
 
-(define-syntax ()
-  ((_ status ...))
-  ((_ (header-pair ...) body ...)))
+(let-http-response (200 "I found it!")
+  (let-headers ((thing "bar"))
+    (begin-content-length
+     "thing"
+     "baz")))
+

@@ -47,46 +47,21 @@
   (let-u8-output-port
    (output body)))
 
-(define (output-content-vector vec)
-  (let* ((len (byte-vector-length vec)))
-    (if (zero? len)
-        (output crlf)
-        (begin
-          (output 'content-length ": " len crlf crlf)
-          (write-block vec 0 len (current-output-port))))))
+(define (page->byte-vector . page)
+  ())
 
-(define (output-content-length . body)
-  (output-content-vector
-   (apply body->byte-vector body)))
-
-(assert
- (let-string-output-port (output-content-length "some stuff" "goes here")) =>
- "content-length: 19\r\n\r\nsome stuffgoes here")
-
-(assert (let-header-data (foo 1) (bar foo)) => '((foo . 1) (bar . 1)))
+;; (assert (let-header-data (foo 1) (bar foo)) => '((foo . 1) (bar . 1)))
 
 (define-syntax let-http-response
   (syntax-rules ()
+    ((_ code (headers ...) body ...)
+     (list
+      (list code " " (lookup-http-code-text code))
+      (let-headers (headers ...) body ...)))
     ((_ (code message) body ...)
      (list
       (list code " " message crlf)
       body ...))))
-
-(define-syntax let-http-request
-  (syntax-rules ()
-    ((_ (get ...) body ...)
-     (list
-      (list get ...)
-      body ...))))
-
-;; (letrec ((key val) ...)
-;;        (list
-;;         (let-headers "headers" (key val) ...)
-;;         body ...)))
-;;     ((_ "headers") '())
-;;     ((_ "headers" (key val) (key1 val1) ...)
-;;      (cons (list 'key ": " val crlf)
-;;            (let-headers "headers" (key1 val1) ...)))
 
 (define-syntax let-headers
   (syntax-rules ()
@@ -104,19 +79,21 @@
  (let-headers ((foo 3) (bar foo)) 5) =>
  '((foo ": " 3 "\r\n") (bar ": " 3 "\r\n") 5))
 
-(define-syntax let-content-vector
-  (syntax-rules ()
-    ((_ . body)
-     (let ((vec (body->byte-vector . body)))
-       (lambda ()
-         (output-content-vector vec))))))
+(define (begin-content-length* output-list)
+  (let ((vec (body->byte-vector output-list))
+        (len (byte-vector-length vec)))
+    (define (output-content-vector vec)
+      (if (zero? len)
+          output crlf
+          (list
+           (cons 'content-length ": " len crlf crlf)
+           (lambda ()
+             (write-block vec 0 len (current-output-port))))))))
 
-(define-syntax let-content-length
+(define-syntax begin-content-length
   (syntax-rules ()
     ((_ body ...)
-     (lambda ()       
-       (output-content-length
-        body ...)))))
+     (begin-content-length* (list body ...)))))
 
 (define-syntax let-header-data
   (syntax-rules ()
@@ -206,7 +183,13 @@ Some text goes here.")
    (begin1
     (read-line p #f)
     (close-input-port p))))
-
+
+(define-syntax let-http-request
+  (syntax-rules ()
+    ((_ (get ...) body ...)
+     (list
+      (list get ...)
+      body ...))))
 ;;;; proxy
 (define *client-keep-alive* (make-string-table))
 
