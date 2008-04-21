@@ -1,6 +1,5 @@
-,config ,load interfaces.scm
+,config ,load utility/packages.scm
 ,config ,load ssax-5.1/packages.scm
 ,config ,load packages.scm
-,config ,load comp-interfaces.scm
-,config ,load comp-packages.scm
 ,open octothorpe-extensions
+,config ,load comp-packages.scm

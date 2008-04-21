@@ -38,6 +38,7 @@
 
 ;;;; Templates
 
+;; FIXME!
 (define *root* "/Users/james/projects/scheme/ykk/forms")
 
 (define-syntax page

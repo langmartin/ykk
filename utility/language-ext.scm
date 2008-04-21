@@ -53,27 +53,6 @@
 (define (make-not proc)
   (lambda x (not (apply proc x))))
 
-(define (fold-numbers proc nil start stop step)
-  (if (= start stop)
-      nil
-      (fold-numbers
-       proc
-       (proc start nil)
-       (+ start step)
-       stop
-       step)))
-
-(define (fold-right-numbers proc nil start stop step)
-  (if (= start stop)
-      nil
-      (proc start
-            (fold-right-numbers
-             proc
-             nil
-             (+ start step)
-             stop
-             step))))
-
 (define-syntax if-bind
   (syntax-rules ()
     ((_ bind expr then else ...)
@@ -81,3 +60,67 @@
        (if bind
            then
            else ...)))))
+
+(define (maybe-force foo)
+  (if (promise? foo)
+      (force foo)
+      foo))
+
+(define promise? procedure?)
+
+(define (always? . x) #t)
+(define (never? . x) #f)
+
+;; proj-N procedures to go with SRFI-61
+
+(define-syntax define-proj
+  (syntax-rules ()
+    ((_ (proj access) ...)
+     (begin (define (proj . all) (access all)) ...))))
+
+(define-proj
+  (proj-0 car)
+  (proj-1 cadr)
+  (proj-2 caddr))
+
+;; COMPOSE a series of unary procedures
+;;
+;; Conceptual example:
+;; (compose foo bar baz) => (lambda (x) (foo (bar (baz x))))
+;;
+;; Actual result:
+;; (compose foo bar baz)
+;; =>
+;; (lambda x
+;;   (call-with-values
+;;       (lambda ()
+;;         (call-with-values
+;;             (lambda ()
+;;               (call-with-values
+;;                   (lambda () (apply values x))
+;;                 baz))
+;;           bar))
+;;     foo))
+(define-syntax compose
+  (syntax-rules ()
+    ((_ "call" x (procedure))
+     (call-with-values (lambda () x) procedure))
+    ((_ "call" x (p1 . p2))
+     (compose "call" (compose "call" x (p1)) p2)) 
+    ((_ "reverse" x (p1) rev)
+     (compose "call" x (p1 . rev)))
+    ((_ "reverse" x (p1 . p2) rev)
+     (compose "reverse" x p2 (p1 . rev)))   
+    ((_ . procedures)
+     (lambda x (compose "reverse" (apply values x) procedures ())))))
+
+;;;; Tests
+(begin
+  (assert (promise? (delay 'foo)))
+  (assert (maybe-force 'foo) => 'foo)
+  (assert (maybe-force (delay 'foo)) => 'foo)
+  (assert (always? #f))
+  (assert (never? #t) => #f)
+  (assert (call-with-values (lambda () (values 0 1 2 3)) proj-0) => 0)
+  (assert (call-with-values (lambda () (values 0 1 2 3)) proj-1) => 1)
+  (assert (call-with-values (lambda () (values 0 1 2 3)) proj-2) => 2))

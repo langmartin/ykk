@@ -1,3 +1,37 @@
+(define-structure comp/s48-dependencies
+  (export undeclared-type
+
+          s48:interface?
+          s48:interface-ref
+          s48:for-each-declaration
+
+          s48:structure-name
+          s48:structure-interface
+          s48:structure?
+          s48:structure-lookup
+          
+          s48:get-structure
+          s48:get-interface
+
+          ;; for tests
+          s48:make-simple-interface)
+    
+  (open (subset meta-types (undeclared-type))
+        (with-prefix interfaces s48:)
+        (with-prefix packages s48:)
+        (with-prefix packages-internal s48:)
+
+        ;; for procedures below
+        scheme
+        environments
+        package-commands-internal)
+
+  (begin
+    (define s48:get-structure get-structure)
+    (define (s48:get-interface name)
+      (environment-ref (config-package) name))))
+
+;;;; Modules
 (define-interface comp/interface-creator-interface
   (export (define-interface-maker :syntax)
           interface?
@@ -24,6 +58,19 @@
           for-each-declaration
           fold-declarations))
 
+(define-structures ((comp/interfaces comp/interfaces-interface)
+                    (comp/interface-creator comp/interface-creator-interface))  
+  (open scheme
+        srfi-1 srfi-8 srfi-9+
+        types
+        ykk/types type-reflection
+        assert
+        fluids+
+        exceptions
+        comp/s48-dependencies)
+  
+  (files (comp interface)))
+
 (define-interface comp/structure-interface
   (export make-structure
           s48->structure
@@ -34,6 +81,16 @@
   (export structure-name
           structure-interface
           structure-bindings))
+
+(define-structures ((comp/structure comp/structure-interface)
+                    (comp/structure-reflection comp/structure-reflection-interface))
+  (open scheme
+        srfi-8 srfi-9+
+        assert
+        ykk/names ; FIXME: make this comp/names
+        comp/interfaces comp/interface-creator
+        comp/s48-dependencies)
+  (files (comp package)))
 
 (define-interface comp/module-language-interface
   (export ((define-interface
@@ -57,17 +114,30 @@
           interface-name
           (let-interface-name :syntax)))
 
-
-(define-interface primitive-types-interface
-  (export :maybe-symbol maybe-symbol?
-          :maybe-sexpr maybe-sexpr?
-          :sexpr sexpr?
-          :code-block code-block?))
-
+(define-structures ((comp/module-language comp/module-language-interface)
+                    (comp/module-language-create comp/module-language-creator-interface))
+  (open scheme
+        srfi-1 srfi-8
+        assert
+        fluids+
+        exceptions
+        big-util ; concatenate-symbol
+        ykk/names ; for testing
+        comp/interfaces comp/interface-creator
+        comp/structure comp/structure-reflection
+        comp/s48-dependencies)
+  (files (comp module-language)))
+
+;;;; Graph / Compiler
 (define-interface identifier-interface
   (export identifier
           identifier?
           new-identifier))
+
+(define-structure identifier identifier-interface
+  (open extra-scheme
+        uuidgen)
+  (files (comp identifier)))
 
 (define-interface stob-utility-interface
   (export :stob
@@ -81,67 +151,11 @@
           (define-stob-accessors :syntax)
           stob->list))
 
-(define-interface syntax-util-procedural-interface
-  (export self-evaluating?
-          quotation?
-          literal?
-          macro-use?
-          procedure-call?
-          keyword?
-
-          gensym
-          quote-non-literal
-          remove-keyword-indication
-          keywords->alist
-
-          continue
-          continue/values
-          continue-into
-          continue-into/values
-
-          define-now!
-          force-up!
-          up-one-tower-level
-          for-syntax-environment
-          definition-value
-
-          expand
-          map-expand
-          apply-macro-transformer
-          transformer-procedure
-          error/syntax
-          ))
-
-(define-interface srfi-89-procedural-interface
-  (export srfi-89:require-positionals
-          srfi-89:optional-positionals
-          srfi-89:named-parameters
-          srfi-89:parse-formals
-          srfi-89:stack->k
-          beta-substitute))
-
-(define-interface srfi-89-syntax-interface
-  (export define-syntax*
-          srfi-89/required-parameters
-          srfi-89/optional-parameters
-          srfi-89/named-parameters
-          srfi-89/rest
-          srfi-89/no-rest))
-
-(define-interface syntax-util-interface
-  (compound-interface
-   syntax-util-procedural-interface
-   (export (syntax-k :syntax)
-           (syntax-k/values :syntax)
-           (syntax-k-into :syntax)
-           (syntax-k-into/values :syntax)
-           (define/expansion :syntax)
-           (define/force-up :syntax)
-           (syntax/eval :syntax)
-           (define-syntax/applicative-order :syntax)
-           (expand/strip :syntax)
-           (define-syntax* :syntax)
-           (syntax/quote-non-literal :syntax))))
+(define-structure stob-utility stob-utility-interface
+  (open extra-scheme        
+        (with-prefix persistent-immutable z)
+        zvector-utils)
+  (files (comp stob-util)))
 
 (define-interface description-procedural-interface
   (export :description description?
@@ -178,6 +192,18 @@
           combine-descriptions-by-name
           ))
 
+(define-structure description-procedural description-procedural-interface
+  (open extra-scheme
+        syntax-util
+        assert
+        alist
+        list
+        proc-def
+        methods
+        records
+        exceptions)
+  (files (comp description)))
+
 (define-interface description-interface
   (compound-interface
    description-procedural-interface
@@ -186,6 +212,20 @@
            (syntax/update-attribute-values :syntax)
            (syntax/quote-non-literal :syntax)
            (syntax/make-description :syntax))))
+
+(define-structure description description-interface
+  (for-syntax (open extra-scheme
+                    list
+                    description-procedural
+                    names
+                    alist
+                    syntax-util
+                    uuidgen))
+  (open extra-scheme
+        assert
+        description-procedural
+        alist)
+  (files (comp description-syntax)))
 
 (define-interface type-inspection-interface
   (export strict-subtype?
@@ -211,6 +251,24 @@
           invalid
           values-consistent/description?
           value-consistent/specification?))
+
+(define-structures ((type-description type-description-interface)
+                    (type-inspection type-inspection-interface)
+                    (type-implementation-utility type-implementation-utility-interface))
+  (open extra-scheme
+        assert
+        alist
+        list
+        proc-def
+        methods meta-methods
+        exceptions
+        primitives ; for UNSPECIFIC
+        description
+        stob-utility
+        syntax-util
+        record-types)  
+  (files (comp type-util)
+         (comp type-description)))
 
 (define-interface ykk/record-procedural-interface
   (export make-protocol-driver
@@ -266,119 +324,49 @@
           rtd->constructor-name
           rtd-accessor-name))
 
+(define-structure ykk/record-procedural ykk/record-procedural-interface
+  (open extra-scheme
+        list
+        proc-def
+        description
+        primitive-types
+        type-description type-implementation-utility
+        stob-utility
+        records
+        assert
+        syntax-util
+        methods meta-methods
+        identifier
+        pp
+        simple-signals
+        (subset packages (:package)))  
+  (files (comp record-procedural)))
+
 (define-interface ykk/record-syntax-interface
   (export (unrecord :syntax)
           (record-update :syntax)
           (sharing-record-update :syntax)
           (define-record-type/primitive :syntax)))
-
-;;;; Graph
 
-;; --------------------
-;; General-pupose
+(define-structure ykk/record-syntax ykk/record-syntax-interface
+  (for-syntax (open extra-scheme
+                    names
+                    ykk/record-procedural
+                    list
+                    environments
+                    alist
+                    description
+                    syntax-util))  
+  (open extra-scheme
+        environments
+        ykk/record-procedural
+        stob-utility
+        assert
+        syntax-util
+        description
+        (subset sharing (share)))
+  (files (comp record-syntax)))
 
-(define-interface graph-interface
-  (export
-
-   ;; constructors
-   (root :syntax)
-   (edge :syntax)
-   (node :syntax)
-   (children :syntax)
-   child-list
-   add-child
-
-   ;; types
-   :graph
-   :node
-   :edge
-   :children
-   :child
-
-   ;; predicates
-   graph?
-   root?
-   leaf?
-   child?
-   children?
-   null-children?
-
-   ;; accessors
-   graph-name
-   graph-edge
-   graph-node
-   graph-children
-   graph-type
-   child-name
-   child->graph
-   next-child
-
-   ;; children
-   end-of-children?
-   share-children
-   share-child
-   fold-children
-
-   ;; mutators
-   add-child
-   replace-node
-   replace-node-children
-   replace-children
-   rename
-   
-   ;; conditions
-   graph-error
-   graph-error?))
-
-(define-interface graph-traversal-interface
-  (export walk
-          map->list
-          traverse
-
-          :graph-zipper
-          graph-zipper?
-          z-dir
-          z-item
-          z-k
-          zip-graph
-          move
-          zip-all-the-way-up))
-
-(define-interface graph-path-interface
-  (export path->list
-          make-absolute
-          
-          absolute?
-          relative?
-          path-error
-          path-error?
-          
-          resolve
-          resolve-in
-          find-child
-
-          z-graph?
-          z-child?
-          z-end?
-          up down prev next parent first-child))
-
-(define-interface graph-access-interface
-  (export has-access?))
-
-;; --------------------
-;; Implementation-specific
-
-(define-interface scanned-graph-interface
-  (compound-interface
-   graph-interface
-   (export scan
-           scanned->source
-           graph-forms
-           graph-structures
-           has-access?)))
-
-;; --------------------
-;; Auxilliary
-
-(define-interface source-scan-interface
-  (export shallow-scan))
+(define-structure ykk/records
+  ykk/record-syntax-interface
+  (open ykk/record-syntax))
