@@ -439,7 +439,8 @@
         json
         ssax-vanilla
         fluids+)
-    (files http/http))
+    (files (http http)
+           (http http-standard-dispatch)))
 
 (define-structure http-protocol http-protocol-interface
   (open scheme+

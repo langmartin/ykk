@@ -1,6 +1,10 @@
 ;;;; "Type Tree"
+(define-record-type/primitive :alist
+  nongenerative: ue2026d4b-cfc4-42e6-acd3-9066ca44406d
+  (alist (type :pair)))
+
 (define-record-type/primitive :url
-  nongenerative: E2026D4B-CFC4-42E6-ACD3-9066CA44406F
+  nongenerative: ue2026d4b-cfc4-42e6-acd3-9066ca44406f
   (proto (type :symbol))
   (host (type :string))
   (port (type :integer))
@@ -8,38 +12,30 @@
   (parameters (type :alist)))
 
 (define-record-type/primitive :text
-  nongenerative: 0E11AA4D-D182-4894-854F-AB8B6503CAC5
+  nongenerative: u0e11aa4d-d182-4894-854f-ab8b6503cac5
   (body (type :string)))
 
 (define-record-type/primitive :feed
-  nongenerative: CB1CA92A-CF7D-4D8B-929F-BFE6523BE23D
+  nongenerative: ucb1ca92a-cf7d-4d8b-929f-bfe6523be23d
   (url (type :url))
   (title (type :string))
   (link (type :url))
   (description (type :text)))
 
 ;;;; Top
-(define (persist-once name thunk)
-  (if (not (persistent-symbol name))
-      (persistent-symbol-set! name (thunk))))
+(define update-lock (make-lock))
 
-(define (top)
-  (persistent-symbol 'top))
-
-(define (scanned-top)
-  (scan (top)))
-
-(define (update-scanned-top new-top)
-  (persistent-symbol-set!
-   'top
-   (scanned->source new-top))
-  new-top)
-
-(persist-once
- 'top
- (lambda ()
-   (source:root (source:node :folder
-                             (plist (sticky #f))))))
+(define (open-update-cursor receiver)
+  (let ((starting-top (persistent-symbol 'top)))
+    (receiver (scan starting-top)
+              (lambda (top)
+                (dynamic-wind
+                    (lambda () (obtain-lock update-lock))
+                    (lambda ()
+                      (if (eq? starting-top (persistent-symbol 'top))
+                          (persistent-symbol-set! 'top (scanned->source top))
+                          (fail-top-update top)))
+                    (lambda () (release-lock update-lock)))))))
 
 ;;;; Manipulation
 (define (zip-up/update-top z)
@@ -132,6 +128,15 @@
                         (value "Go")))))))))
 
 ;(insert-test 'james-long "James" 23 'male)
+
+(intialize-logging "~/tmp/ykk-log")
+
+(if (not (persistent-symbol 'top))
+    (persistent-symbol-set!
+     'top
+     (begin
+       (source:root
+        (source:node :folder (plist (sticky #f)))))))
 
 (http-register-page!
  "/forms-plist"
@@ -139,5 +144,3 @@
    (page
      (h4 "plist editor")
      ,(plist-editor path))))
-
-

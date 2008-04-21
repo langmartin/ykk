@@ -120,3 +120,25 @@
 
 (define (go)
   (standard-http-server))
+
+(let-http-response
+    (status 500)
+  (header foo "bar")
+  (header baz "blit")
+  
+  (begin-http-body
+   type: text/html
+   "thinngs"
+   (header location "http://foo.com")
+   (lambda ()
+     (stuff))))
+
+(page
+ ((foo "bar"))
+ (body
+  )
+ )
+
+(define-syntax ()
+  ((_ status ...))
+  ((_ (header-pair ...) body ...)))

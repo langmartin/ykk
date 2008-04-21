@@ -1,7 +1,7 @@
 (define-structure rss-reader-milestone
   (export)
-  (open extra-scheme
-        srfi-1+
+  (open scheme+
+        threads
         ykk/records
         (with-prefix persisted-graph source:)
         scanned-graph        
@@ -14,6 +14,5 @@
         ykk/record-procedural
         description
         forms
-        srfi-13
         alists)
   (files rss-reader-milestone))
