@@ -40,3 +40,20 @@
 
 (define (map* proc lst)
   (map/cons* proc cons lst))
+
+(define (fmap-car proc pair . rest)
+  (cons (apply proc (car pair) rest) (cdr pair)))
+
+(define (fmap-cdr proc pair . rest)
+  (cons (car pair) (apply proc (cdr pair) rest)))
+
+(define (fmap-pair proc pair . rest)
+  (apply proc (car pair) (cdr pair) rest))
+
+(define (fmap-cadr proc lst . rest)
+  (cons (car lst)
+        (cons (apply proc (cadr lst) rest)
+              (cddr lst))))
+
+(define (fmap-list proc spec . rest)
+  (apply proc (car spec) (cadr spec) rest))

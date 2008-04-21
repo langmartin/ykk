@@ -40,7 +40,7 @@
         ykk/types type-reflection
         assert
         fluids+
-        conditions+        
+        exceptions
         comp/s48-dependencies)
   
   (files (comp interface)))
@@ -61,7 +61,7 @@
         srfi-1 srfi-8
         assert
         fluids+
-        conditions+
+        exceptions
         big-util ; concatenate-symbol
         ykk/names ; for testing
         comp/interfaces comp/interface-creator
@@ -127,8 +127,7 @@
         proc-def
         methods
         records
-        simple-signals
-        conditions+)
+        exceptions)
   (files (comp description)))
 
 (define-structure description description-interface
@@ -154,7 +153,7 @@
         srfi-1+
         proc-def
         methods meta-methods
-        simple-signals simple-conditions handle
+        exceptions
         primitives ; for UNSPECIFIC
         description
         stob-utility
@@ -231,10 +230,11 @@
           proc-def
           checking
           shift-reset
-          conditions+
+          handle
           graph
           traverse
           ykk/records ; for testing
+          exceptions
           )
     (files graph-path)))
 
@@ -256,7 +256,7 @@
 (define-structure primitive-persisted-graph graph-interface
   (open extra-scheme
         srfi-1+
-        conditions+
+        exceptions
         data-definition
         proc-def
         ykk/records
@@ -278,14 +278,14 @@
 (define-structure source-scan source-scan-interface
   (open extra-scheme
         srfi-1+
-        conditions+)
+        exceptions)
   (files source-scan))
 
 (define-structure primitive-scanned-graph scanned-graph-interface
   (open extra-scheme
         srfi-1+ srfi-9+
         proc-def
-        conditions+
+        exceptions
         (with-prefix primitive-persisted-graph source:)
         methods
         ykk/records
@@ -322,14 +322,14 @@
         ykk/record-procedural
         description
         forms form-server
-        srfi-13 srfi-14
+        string+
         alists
         threads threads-internal
         pages
         exceptions
-        conditions+
         monad-style-output ykk-ports
         syntax-util
         htmlprag
-        type-inspection)  
+        type-inspection
+        environments)  
   (files plist-demo))

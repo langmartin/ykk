@@ -84,6 +84,14 @@
         ((define-record-type type-name . stuff)
          (s48:define-record-type type-name type-name . stuff))))))
 
+(define-structure string+ string+-interface
+  (open scheme+
+        srfi-1+
+        srfi-13
+        srfi-14
+        assert)
+  (files (utility string)))
+
 (define-structure ykk-parsing
   ykk-parsing-interface
   (open scheme
@@ -135,13 +143,6 @@
   (open scheme fluids)
   (files utility/fluids))
 
-(define-structure conditions+ conditions+-interface
-  (open scheme
-        simple-signals
-        simple-conditions
-        fluids+)
-  (files (utility conditions+)))
-
 (define-structure alists
   alists-interface
   (open extra-scheme
@@ -150,7 +151,6 @@
         exceptions
         assert
         proc-def
-        conditions+
         optional-arguments)
   (files utility/alists))
 
@@ -158,7 +158,9 @@
   exceptions-interface
   (open scheme
         handle
-        simple-conditions)
+        simple-signals
+        simple-conditions
+        fluids+)  
   (files (utility exceptions)))
 
 (define-structure proc-def procedure-definition-interface
@@ -184,7 +186,7 @@
         posix-time
         regexps
         more-regexps
-        conditions+
+        exceptions
         srfi-26)
   (files utility/dates))
 
@@ -329,7 +331,7 @@
   (open scheme+
         sxml-tree-trans
         sxpath
-        conditions+)
+        exceptions)
   (files utility/sxml))
 
 ;;;; pages
@@ -565,7 +567,7 @@
         methods meta-methods
         srfi-1+ srfi-8 srfi-9+
         proc-def
-        conditions+
+        exceptions
         primitives
         (subset record-types (record-type?)))
   (files types))

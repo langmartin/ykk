@@ -1,15 +1,8 @@
 ;;;; Primitive
 (define-interface fluids+-interface
-  (export make-fluid
-          (define-fluid :syntax)
-	  let-fluid
-	  let-fluids
-	  fluid
-
-	  fluid-cell-ref
-	  fluid-cell-set!
-
-	  set-fluid!))
+  (compound-interface
+   (interface-of fluids)
+   (export (define-fluid :syntax))))
 
 (define-interface ykk/bindings-interface
   (export new-binding
@@ -181,8 +174,13 @@
    alist-has-only-keys?
    alist-has-exactly-keys?
    alist-ref
-   (unalist :syntax)
-   unalist-proc))
+   (unalist :syntax)   
+   unalist-proc
+   pair->list
+   list->pair
+   choose-keys
+   remove-keys
+   predicate-eq))
 
 (define-interface assert-interface
   (export
@@ -230,12 +228,6 @@
    fold-numbers
    fold-right-numbers))
 
-(define-interface conditions+-interface
-  (export (define-condition :syntax)
-          with-condition
-          (let-condition :syntax)
-          raise-condition))
-
 (define-interface srfi-1+-interface
   (compound-interface
    (interface-of srfi-1)
@@ -244,7 +236,24 @@
     fold-append
     fold-right-append
     map/cons*
-    map*)))
+    map*
+    fmap-car
+    fmap-cdr
+    fmap-pair
+    fmap-cadr
+    fmap-list)))
+
+(define-interface string+-interface
+  (compound-interface
+   (interface-of srfi-13)
+   (interface-of srfi-14)
+   (export
+    string->normal-symbol
+    string->label
+    string->name
+    string->identifier
+    tech-name
+    normalize-string)))
 
 (define-interface the-interface-formerly-know-as-util
   (compound-interface
@@ -324,9 +333,17 @@
    monad-style-output-interface))
 
 (define-interface exceptions-interface
-  (export
-   with-exception-catcher
-   condition-stuff))
+  (compound-interface
+   (interface-of handle)
+   (interface-of simple-signals)
+   (interface-of simple-conditions)
+   (export
+    (define-condition :syntax)
+    with-condition
+    (let-condition :syntax)
+    raise-condition
+    with-exception-catcher
+    condition-stuff)))
 
 (define-interface procedure-definition-interface
   (compound-interface (interface-of srfi-26)
