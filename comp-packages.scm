@@ -309,6 +309,7 @@
                     http-protocol))
   (open extra-scheme
         srfi-1+
+        (modify srfi-1 (prefix srfi-1:) (expose member))
         ykk/records
         (with-prefix persisted-graph source:)
         scanned-graph        
@@ -321,7 +322,7 @@
         ykk/record-procedural
         description
         forms form-server
-        srfi-13
+        srfi-13 srfi-14
         alists
         threads threads-internal
         pages

@@ -410,6 +410,7 @@
 
 (define-interface url-interface
   (export
+   for-each-display
    cons-parameter
    make-url
    url?
