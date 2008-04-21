@@ -40,3 +40,49 @@
 
 (define (map* proc lst)
   (map/cons* proc cons lst))
+
+;; update part of a structure
+(define (share foo un-foo proc new-foo)  
+  (let* (((values . orig) (un-foo foo))
+         ((values . new) (apply proc orig)))    
+    (if (every eq? orig new)
+        foo
+        (apply new-foo new))))
+
+(define (fold-numbers proc nil start stop step)
+  (if (= start stop)
+      nil
+      (fold-numbers
+       proc
+       (proc start nil)
+       (+ start step)
+       stop
+       step)))
+
+(define (fold-right-numbers proc nil start stop step)
+  (if (= start stop)
+      nil
+      (proc start
+            (fold-right-numbers
+             proc
+             nil
+             (+ start step)
+             stop
+             step))))
+
+(define (fmap-car proc pair . rest)
+  (cons (apply proc (car pair) rest) (cdr pair)))
+
+(define (fmap-cdr proc pair . rest)
+  (cons (car pair) (apply proc (cdr pair) rest)))
+
+(define (fmap-pair proc pair . rest)
+  (apply proc (car pair) (cdr pair) rest))
+
+(define (fmap-cadr proc lst . rest)
+  (cons (car lst)
+        (cons (apply proc (cadr lst) rest)
+              (cddr lst))))
+
+(define (fmap-list proc spec . rest)
+  (apply proc (car spec) (cadr spec) rest))

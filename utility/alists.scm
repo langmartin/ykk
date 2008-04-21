@@ -369,6 +369,26 @@
                      "pattern does not match data"
                      `(pattern: ,pattern)
                      `(path: ,@(reverse path))))))
+
+(define pair->list (cut fmap-pair list <>))
+
+(define list->pair (cut fmap-list cons <>))
+
+(define (choose-keys keys alist)
+  (filter (predicate-eq car keys) alist))
+
+(define (remove-keys keys alist)
+  (remove (predicate-eq car keys) alist))
+
+(define (predicate-eq ref key)
+  (let ((eq (value->eq-comparitor key)))
+    (lambda (item) (eq (ref item) key))))
+
+(define (value->eq-comparitor v)
+  (cond ((pair? v) memq)
+        ((string? v) string=?)
+        ((number? v) =)
+        (else eq?)))
 
 ;;;; Tests
 (begin

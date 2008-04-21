@@ -299,6 +299,9 @@
   (index-offset
    (description-specification-index (rtd-slots rtd) name)))
 
+(define-method &type-name ((type :rtd-type))
+  (rtd-name type))
+
 ;; INDEX-OFFSET accounts for fields not decribed by the description in
 ;; rtd-fields.
 (define (index-offset i)

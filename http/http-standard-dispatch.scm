@@ -46,7 +46,13 @@
   (version request*-version)
   (method request*-method)
   (url request*-url)
-  (query request*-parameters set-request*-parameters!))
+  (query request*-parameters set-request*-parameters!)
+  (head request*-headers))
+
+(define (make-request/method-hack version method url query head)
+  (let* ((method (or (header-assoc 'X-HTTP-Method-Override head) method))
+         (param-method query (pluck-alist (_method) query)))
+    (make-request version (string->normal-symbol (or param-method method)) url query head)))
 
 (define-fluid ($request #f)
   current-request
@@ -57,6 +63,8 @@
 (define (request-url) (request*-url (current-request)))
 (define (request-path) (url-path (request-url)))
 (define (request-parameters) (request*-parameters (current-request)))
+(define (request-headers) (request*-headers (current-request)))
+(define (get-parameters) (url-parameters (request-url)))
 
 (define (path->list path)
   (let ((split
@@ -124,7 +132,7 @@
                 (host (or (header-assoc 'host head) *standard-host*)))
            (let ((url (make-url 'http host 80 path param)))
              (with-request
-              (make-request version method url (catch-query mime))
+              (make-request/method-hack version method url (or (catch-query mime) '()) head)
               (lambda ()
                 (perform-standard-output
                  (handler)

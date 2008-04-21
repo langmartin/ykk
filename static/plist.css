@@ -1,1 +1,8 @@
+ul.nav-list {
+   margin-left: 0;	    
+}
 
+   ul.nav-list li {
+      list-style-type: none;
+      display: inline;
+   }

@@ -21,6 +21,24 @@
   (color   (type :string))
   (weight  (type :number))
   (texture (type :symbol)))
+
+(define-syntax ref-table
+  (syntax-rules ()
+    ((_ item ...)
+     (list (cons 'item item) ...))))
+
+(define *allow-types*
+  (ref-table :folder :person :place :thing))
+
+(define (lookup-type name)
+  (alist-ref *allow-types* name))
+
+(define (type-options)
+  (map-in-order (compose symbol->string car) *allow-types*))
+
+(define (type->option type)
+  (cond ((find (predicate-eq cdr type) *allow-types*) => car)
+        (else #f)))
 
 ;;;; Top
 (define (persist-once name thunk)
@@ -44,6 +62,11 @@
  (lambda ()
    (source:root (source:node :folder
                              (plist (sticky #f))))))
+
+;; (persistent-symbol-set!
+;;  'top
+;;  (source:root (source:node :folder
+;;                            (plist (sticky #f)))))
 
 ;;;; Manipulation
 (define (zip-up/update-top z)
@@ -115,6 +138,113 @@
 (assert (name->string #f) => "")
 (assert (name->string 'foo) => "foo")
 
+;;;; Other Utilities
+(define (set-parameters path params)
+  (let ((path old-params (parse-url-path path)))
+    (add-parameters-to-path
+     path
+     (merge-alists proj-1 old-params params))))
+
+(define (add-parameters-to-path path params)
+  (let-string-output-port
+   (output path #\?)
+   (for-each (lambda (p)
+               (if (pair? p)
+                   (begin
+                    (display-urlencode (car p))
+                    (display #\=)
+                    (display-urlencode (cdr p)))
+                   (display p)))
+    (intersperse #\& params))))
+
+(define (display-urlencode s)
+  (with-current-input-port
+      (value->input-port s)
+    (lambda ()
+      (for-each-display (urlencode read-char)))))
+
+(define (value->input-port v)
+  (cond ((input-port? v)
+         v)
+        ((string? v)
+         (make-string-input-port v))
+        (else
+         (make-string-input-port
+          (let-string-output-port (display v))))))
+
+(define (add-class attributes classes)
+  (update-attributes
+   attributes
+   `((class ,classes))))
+
+(define (merge-attribute-sets template . sets)
+  (apply merge-alists/template
+         list
+         cadr
+         template
+         proj-1
+         sets))
+
+(define (join-classes . sets)
+  (string-join (apply merge-class-sets sets)))
+
+(define attribute-updater
+  (cute merge-attribute-sets
+        `((class ,join-classes))
+        <...>))
+
+(define (update-attributes . sets)
+  (cons '@
+   (apply attribute-updater
+          (map-in-order remove-@ sets))))
+
+(define (remove-@ set)
+  (if (and (pair? set)
+           (eq? (car set) '@))
+      (cdr set)
+      set))
+
+(define-syntax bind-attributes
+  (syntax-rules ()
+    ((_ names attributes)
+     (bind-spec names (cdr attributes)))))
+
+(define-syntax pluck-attributes
+  (syntax-rules ()
+    ((_ names attributes)
+     (pluck-spec names (cdr attributes)))))
+
+(define (unique-conser eq)
+  (lambda (a lst)
+    (if (srfi-1:member a lst eq)
+        lst
+        (cons a lst))))
+
+(define merge-class-sets
+  (let ((kons (unique-conser string=?)))
+    (lambda sets
+      (apply merge-lists-in-order
+             kons
+             (map-in-order maybe-tokenize sets)))))
+
+(define (merge-lists-in-order kons . sets)
+  (reverse
+   (fold
+    (lambda (set acc)
+      (fold kons acc set))
+    '()
+    sets)))
+
+(define (maybe-tokenize s . rest)
+  (cond ((string? s)
+         (apply string-tokenize s rest))
+        ((pair? s)
+         s)
+        (else
+         (error 'wrong-type-argument
+                "maybe-tokenize: expecting string or list"
+                s))))
+
 ;;;; Testing
 (define (reify-output-stream . stream)
   (let-string-output-port
@@ -127,16 +257,14 @@
                  (url: url "http://localhost/")
                  (query: query '())
                  (method: method "get")
+                 (headers: headers '())
                  . body)
   (with-request
-   (make-request "HTTP/1.1" method (parse-url url) query)
+   (make-request "HTTP/1.1" method (parse-url url) query headers)
    (lambda ()
      (reify-output-stream . body))))
 
 ;;;; Infrastructure
-(define (string->normal-symbol str)
-  (string->symbol (string-downcase str)))
-
 (define-syntax* (response
                  (status: status 200)
                  (type: content-type "text/html")
@@ -164,13 +292,13 @@
                   headers)))
 
       (define (status-line)
-        (cond ((pair? status)              
+        (cond ((pair? status)
                status)
-              ((or (number? status) (string? status))               
+              ((or (number? status) (string? status))
                (list status (status-code->phrase status)))
               (else
-               `(,status (,%status-code->phrase ,status)))))      
-      
+               `(,status (,%status-code->phrase ,status)))))
+
       `(,%let-http-response ,(status-line)
         (,%let-headers ,(all-headers)
          (,%let-content-vector ,body))))))
@@ -218,7 +346,7 @@
 (define-syntax method-case
   (lambda (form rename compare)
     (let ((cases (cdr form)))
-      
+
       (define %case (rename 'case))
       (define %method-not-allowed (rename 'method-not-allowed))
       (define %request-method (rename 'request-method))
@@ -232,7 +360,7 @@
 
       (define (allowed)
         (quote-list (apply append (map car cases))))
-      
+
       `(,%case (,%string->symbol (,%request-method))
                ,@cases
                ,@(if (assq 'else cases)
@@ -252,6 +380,14 @@
    `(p ,method " is not allowed."
        " Allowed methods are: " ,allowed)))
 
+(define (bad-request . message)
+  (apply reset/simple-error-page 400 message))
+
+(define (reset/simple-error-page code . message)
+  (reset/error-page
+   code
+   (apply reify-output-stream (intersperse #\space message))))
+
 (define (reset/error-page code explaination)
   (reset-page
    status: code
@@ -263,7 +399,7 @@
    (http-error-template code `(p ,explaination))))
 
 (define (http-error-template code . body)
-  (let ((phrase (status-code->phrase code)))    
+  (let ((phrase (status-code->phrase code)))
     `(html
       (head
        (title ,phrase))
@@ -284,12 +420,12 @@
   (assert (simulate "get") =>
           (reify-output-stream
            (page "success")))
-  
+
   (assert (simulate "post") =>
           (reify-output-stream
            (page
             status: 405
-            headers: ((allowed "get"))            
+            headers: ((allowed "get"))
             (method-not-allowed-page "post" "get")))))
 
 ;;;; Resources
@@ -308,12 +444,12 @@
           body ...))))))
 
 (define (call-handler/resolved-cursor root handler)
-  (let ((root (list->absolute-path root)))    
+  (let ((root (list->absolute-path root)))
     (lambda path
       (safe-call/resolved
        handle-path-error
        (scanned-top)
-       (append root path)     
+       (append root path)
        handler))))
 
 (define (safe-call/resolved handle-error z path success)
@@ -327,7 +463,7 @@
 
 (define (handle-path-error c)
   (cond ((path-does-not-exist? c)
-         (error-page 404 "Path does not exist."))        
+         (error-page 404 "Path does not exist."))
         (else
          (error-page 500 "Unrecognized path error."))))
 
@@ -357,11 +493,11 @@
      (head
       (title "Plist Editor")
       ,(css "/static/reset-fonts-grids-base.css")
-      ,(css "/static/plist.css"))    
+      ,(css "/static/plist.css"))
      (body
-      (div (@ (id "doc"))          
+      (div (@ (id "doc"))
            (div (@ (id "hd"))
-             (h1 "Plist Editor"))
+             (h1 "Plist Editor"))           
            (div (@ (id "bd")) ,(thunk))
            (div (@ (id "ft"))))))))
 
@@ -369,6 +505,21 @@
   `(link (@ (rel "stylesheet")
             (type "text/css")
             (href ,href))))
+
+(define (nav-list attributes items)
+  `(ul ,(add-class attributes "nav-list")
+     ,@(map-in-order make-nav-list-item items)))
+
+(define (make-nav-list-item item)
+  (let ((name href (unlist item)))
+    `(li (a (@ (href ,href))
+           ,name))))
+
+(define (new-item-href href)
+  (set-parameters href '((new . true))))
+
+(define (parameterized-request-path)
+  (set-parameters (request-path) (get-parameters)))
 
 ;; --------------------
 ;; Data Tree
@@ -382,7 +533,7 @@
 
 (define (tree->shtml tree path)
   `(ul (@ (class "data-tree"))
-       (p (@ (class "item"))        
+       (p (@ (class "item"))
           (a (@ (href ,(plist-editor-href path)))
              ,(plist-title tree)))
        ,(if (leaf? tree)
@@ -404,7 +555,7 @@
   (join-path "/plist" rel))
 
 (define (data-tree-href rel)
-  (join-path "/plist" rel))
+  (join-path "/data" rel))
 
 ;; --------------------
 ;; Plist Editor
@@ -412,26 +563,167 @@
 (define-resolving-resource ("/plist" z path)
   (header/footer-wind
    (lambda ()
-     (method-case
-      ((get) (get-plist z))
-      ((post) (post-plist z))))))
+     (let ((path (apply join-path path)))       
+       (method-case
+        ((get) (get-plist z))
+        ((post) (post-plist z)))))))
 
 (define (get-plist z)
   (let* ((item (z-item z))
-         (type (graph-type item)))    
-    `(div (@ (id "plist-editor"))        
-       (h2 "Editing: " ,(plist-title z))
-       ,(plist-form item type (graph-forms item)))))
+         (new type (bind-alist (new type) (get-parameters)))
+         (title (plist-title item)))
+    (cond (new
+           (new-plist-item-form
+            title (and type (request-environment-ref type))))
+          (else          
+           (plist-form
+            title (graph-type item) (graph-forms item) '())))))
 
-(define (plist-form item type data)
-  (form->shtml
-   `(form (@ (action ,(request-path))
-             (method "post"))
-      (ul (@ (class "plist-items"))
-        ,@(map (render-plist-entry item type) data))
-      (div (@ (class "buttons"))
-         (submit (@ (name "do-save")
-                    (value "Save")))))))
+(define (post-plist path z)
+  (let* ((item (z-item z))
+         (type (graph-type item))
+         (relevant-data (schemify-parameters (remove-parameters 'do-save)))
+         (good errors (validate-plist-data type relevant-data)))
+    (if (null? errors)
+        (perform/go (cut update-source <> `(plist ,@(map-in-order pair->list good)))
+                    z data-tree-href)
+        (plist-form path (plist-title item) type relevant-data errors))))
+
+(define (string->form s)
+  (let-string-input-port s (read)))
+
+(define schemify-parameters
+  (cute map-in-order (cut fmap-cdr string->form <>) <>))
+
+(define (request-environment-ref name)
+  (with-exception-catcher
+   (lambda (c prop)
+     (if (unbound-variable-error? c)
+         (bad-request "undefined value" name)
+         (prop)))
+   (lambda ()
+     (environment-ref (interaction-environment) name))))
+
+(define (unbound-variable-error? c)
+  (and (error? c)
+       (string=? "unbound variable" (car (condition-stuff c)))))
+
+(define (validate-plist-data type data)
+  (let ((slots (rtd-slots type)))
+    (let loop ((data data) (good '()) (errors '()))
+      (cond ((null? data)
+             (values (reverse good) (reverse errors)))
+            ((specification-of slots (caar data)) =>
+             (lambda (spec)
+               (let ((name value (uncons (car data)))
+                     (type (specification-type spec)))
+                 (if (scheme-form-conforms-to-type? type value)
+                     (loop (cdr data)
+                           (cons (car data) good)
+                           errors)
+                     (loop (cdr data)
+                           good
+                           (alist-cons name (data-does-not-conform-to-type-error-message type name value)
+                                       errors))))))
+            (else
+             (loop (cdr data)
+                   (cons (car data) good)
+                   errors))))))
+
+(define (specification-type spec)
+  (cond ((get-specification-attribute spec 'type eq?) => attribute-value)
+        (else #f)))
+
+(define (data-does-not-conform-to-type-error-message type name value)
+  (let-string-output-port
+   (output "The value of " name " does not conform to type " (type-name type))))
+
+(define (plist-form title type data errors)
+  `(div (@ (id "plist-editor"))
+     ,(form->shtml
+       `(form (@ (action ,(request-path))
+                 (method "post"))
+              ,(form-errors->shtml errors)
+              (fieldset
+              (legend "Editing: " ,title)
+              (ul (@ (class "plist-items"))
+                  ,@(map (render-plist-entry type) data)))
+              (div (@ (class "buttons"))
+                   ,(button-anchor `(@ (href ,(new-item-href (parameterized-request-path))))
+                       "New Item")                   
+                   (submit (@ (name "do-save")
+                              (value "Save")))
+                   (submit (@ (name "_method")
+                              (value "Delete"))))))))
+
+(define (new-plist-item-form title type)
+  `(div (@ (id "new-item-form"))
+     ,(form->shtml
+       `(form (@ (action ,(request-path))
+                 (method "get"))
+          ,@(all-parameters->hidden-inputs)
+          (fieldset
+            (legend "New Item In: " ,title)
+            (ul (@ (class "new-item-inputs"))
+              ,(apply list-field
+                      maybe-select
+                      `(@ (label "Type")
+                          (default ,(type->option type)))
+                      (type-options))))))))
+
+(define (list-field make-field attributes . rest)
+  (let* ((label name rest (pluck-attributes (label name) attributes))
+         (label (or label (string->label name)))
+         (name (or name (string->name label))))
+    `(li (@ (class ,(join-classes "field" (string->identifier label))))
+       (label (@ (for ,name)) ,label)
+       ,(apply make-field
+               (update-attributes rest `((name ,name)))
+               rest))))
+
+(define (maybe-select attributes . options)
+  (let ((submitted default (bind-attributes (submitted default) attributes)))
+    (if )))
+
+(define (all-parameters->hidden-inputs)
+  (reverse
+   (fold parameter->hidden-input
+         (fold parameter->hidden-input
+               '()
+               (request-parameters))
+         (get-parameters))))
+
+(define (parameter->hidden-input param inputs)
+  (cons `(input (@ (type "hidden")
+                   (name ,(maybe-symbol->string (car param)))
+                   (values ,(cdr param))))
+        inputs))
+
+(define (maybe-symbol->string obj)
+  (cond ((string? obj)
+         obj)
+        ((symbol? obj)
+         (symbol->string obj))
+        (else
+         (error 'wrong-type-argument
+                "maybe-symbol->string: expecting string or symbol"
+                obj))))
+
+(define (button-anchor attributes name)
+  (let ((href attributes (pluck-spec (href) (cdr attributes))))    
+    `(input ,(update-attributes
+              `(@ (value ,name)
+                  (type "button")
+                  (onclick ,(string-append "document.location.href='" href "';")))
+              attributes))))
+
+(define (form-errors->shtml errors)
+  (if (null? errors)
+      ""
+      `(ul (@ (class "form-errors"))
+          ,@(map-in-order
+             (lambda (e)`(li ,(cdr e)))
+             errors))))
 
 (define-generic plist-title &plist-title (item))
 
@@ -443,51 +735,31 @@
 (define-method &plist-title ((item :graph-zipper))
   (plist-title (z-item item)))
 
-(define (render-plist-entry item type)
+(define (render-plist-entry type)
   (lambda (entry)
-    (let ((name value (uncons entry)))      
-      `(li (@ (class ,(classify-plist-entry item name value)))
-         ,(label-plist-entry item name value)
-         ,(render-plist-input item name value)))))
+    (let ((name value (uncons entry)))
+      `(li (@ (class ,(classify-plist-entry name value)))
+         ,(label-plist-entry name value)
+         ,(render-plist-input name value)))))
 
-(define (classify-plist-entry item name value)
+(define (classify-plist-entry name value)
   "simple")
 
-(define (label-plist-entry item name value)
-  (let ((string-name (symbol->string name)))    
+(define (label-plist-entry name value)
+  (let ((string-name (symbol->string name)))
     `(label (@ (for ,string-name))
        ,string-name ": ")))
 
-(define (render-plist-input item name value)
-  (let ((string-name (symbol->string name)))    
+(define (render-plist-input name value)
+  (let ((string-name (symbol->string name)))
     `(text (@ (name ,string-name)
               (default ,(plist-value->attribute-value value))))))
 
 (define (plist-value->attribute-value v)
   (concat v))
 
-(define (post-plist z)
-  (let* ((relevant-data (remove-parameters 'do-save))
-         (new-source `(plist ,@(map-in-order pair->list relevant-data))))
-    (perform/go
-     (cut update-source <> new-source) z data-tree-href)))
-
-(define (pair->list pair)
-  (list (car pair) (cdr pair)))
-
 (define (choose-parameters names)
   (choose-keys names (request-parameters)))
 
 (define (remove-parameters names)
   (remove-keys names (request-parameters)))
-
-(define (choose-keys keys alist)
-  (filter (car-eq? keys) alist))
-
-(define (remove-keys keys alist)
-  (remove (car-eq? keys) alist))
-
-(define (car-eq? key)
-  (if (pair? key)
-      (lambda (pair) (memq (car pair) key))  
-      (lambda (pair) (eq? (car pair) key))))
