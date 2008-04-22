@@ -3,9 +3,7 @@
 ,open octothorpe-extensions
 ,config ,load deprecated-packages.scm
 ,config ,load graph/packages.scm
+,in persistent-immutable
+,user
 ,config ,load http/packages.scm
 ,config ,load packages.scm
-
-
-
-

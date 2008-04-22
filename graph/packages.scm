@@ -37,6 +37,11 @@
         (r5 scheme)
         tables
         locks
+        srfi-9+
+        ykk-ports
+        ykk-parsing
+        monad-style-output
+        list
         uuidgen)
   (files persistent-immutable))
 
@@ -69,9 +74,10 @@
    vector-fold-right-index
    vector-fold-right))
 
-(define-structure zvector-utils tiny-srfi-43-interface  
+(define-structure zvector-utils tiny-srfi-43-interface
   (open persistent-immutable
-        scheme)  
+        scheme
+        list)
   (files zlist))
 
 ;;;; The comp Collection
@@ -86,13 +92,13 @@
           s48:structure-interface
           s48:structure?
           s48:structure-lookup
-          
+
           s48:get-structure
           s48:get-interface
 
           ;; for tests
           s48:make-simple-interface)
-    
+
   (open (subset meta-types (undeclared-type))
         (with-prefix interfaces s48:)
         (with-prefix packages s48:)
@@ -112,14 +118,14 @@
 (define-interface comp/interface-creator-interface
   (export (define-interface-maker :syntax)
           interface?
-          
+
           ref-method
           fold-method
           simple-name
           interface-type
 
           undeclared-type
-          
+
           interface-error
           interface-error?))
 
@@ -136,7 +142,7 @@
           fold-declarations))
 
 (define-structures ((comp/interfaces comp/interfaces-interface)
-                    (comp/interface-creator comp/interface-creator-interface))  
+                    (comp/interface-creator comp/interface-creator-interface))
   (open scheme
         srfi-1 srfi-8 srfi-9+
         types
@@ -145,7 +151,7 @@
         fluids+
         exceptions
         comp/s48-dependencies)
-  
+
   (files interface))
 
 (define-interface comp/structure-interface
@@ -229,8 +235,9 @@
           stob->list))
 
 (define-structure stob-utility stob-utility-interface
-  (open extra-scheme        
+  (open extra-scheme
         (with-prefix persistent-immutable z)
+        assert
         zvector-utils)
   (files stob-util))
 
@@ -261,7 +268,7 @@
           attribute-value
 
           descriptions-equal?
-          map-specification-attributes          
+          map-specification-attributes
           project-description
           project-specifications
           project-specification
@@ -341,7 +348,7 @@
         description
         stob-utility
         syntax-util
-        record-types)  
+        record-types)
   (files type-util
          type-description))
 
@@ -379,14 +386,14 @@
           rtd-type-protocol
           rtd-type-driver
           make-rtd-type
-          
+
           rtd-id
           rtd-name
           rtd-parent
           rtd-nongenerative
           rtd-sealed?
           rtd-opaque?
-          rtd-slots         
+          rtd-slots
           rtd-slot-count
           rtd-environment
           rtd-predicate
@@ -413,7 +420,7 @@
         identifier
         pp
         simple-signals
-        (subset packages (:package)))  
+        (subset packages (:package)))
   (files record-procedural))
 
 (define-interface ykk/record-syntax-interface
@@ -430,7 +437,7 @@
                     environments
                     alist
                     description
-                    syntax-util))  
+                    syntax-util))
   (open extra-scheme
         environments
         ykk/record-procedural
@@ -510,7 +517,7 @@
    replace-node-children
    replace-children
    rename
-   
+
    ;; conditions
    graph-error
    graph-error?))
@@ -532,12 +539,12 @@
 (define-interface graph-path-interface
   (export path->list
           make-absolute
-          
+
           absolute?
           relative?
           path-error
           path-error?
-          
+
           resolve
           resolve-in
           find-child
@@ -553,6 +560,7 @@
 (define-module (make-traversal-structure graph)
   (structure graph-traversal-interface
              (open extra-scheme
+                   assert
                    srfi-9+
                    shift-reset
                    graph
@@ -567,6 +575,7 @@
 (define-module (make-path-structure graph traverse)
   (structure graph-path-interface
     (open extra-scheme
+          assert
           list srfi-9+ srfi-13 srfi-14
           checking
           shift-reset
@@ -595,6 +604,7 @@
 
 (define-structure primitive-persisted-graph graph-interface
   (open extra-scheme
+        assert
         list
         exceptions
         data-definition
@@ -618,6 +628,7 @@
 
 (define-structure source-scan source-scan-interface
   (open extra-scheme
+        assert
         list
         exceptions)
   (files source-scan))
@@ -633,6 +644,7 @@
 
 (define-structure primitive-scanned-graph scanned-graph-interface
   (open extra-scheme
+        assert
         list srfi-9+
         exceptions
         (with-prefix primitive-persisted-graph source:)
