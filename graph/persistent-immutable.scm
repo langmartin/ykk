@@ -106,14 +106,21 @@
   (table-set! *cdr* id datum)
   (release-lock cdr-lock))
 
-(define (allocate id thunk commit)
+(define (allocate% setter! id thunk commit)
   (cond ((and id (direct-memory-ref id))
          => (lambda (o) (values o #f)))
         (else
          (let* ((id (or id (uuidgen-v1->hex-string)))
                 (zvec (commit (direct-make-vector id (thunk)))))
-           (direct-memory-set! id zvec)
+           (setter! id zvec)
            (values zvec #t)))))
+
+(define (allocate id thunk commit)
+  (allocate% direct-memory-set! id thunk commit))
+
+(define (allocate-unsafe id thunk commit)
+  (allocate% (lambda (id datum) (table-set! *cdr* id datum))
+             id thunk commit))
 
 (define (disclose-object obj)
   (if (vector? obj)
