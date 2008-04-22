@@ -1,3 +1,27 @@
+(define-syntax define-meta-structure
+  (syntax-rules ()
+    ((_ struct (package ...) body ...)
+     (define-structure struct
+       (compound-interface
+        (interface-of package)
+        ...)
+       (open package ...)
+       body ...))))
+
+(define-meta-structure scheme+
+  (extra-scheme
+   assert
+   ykk-ports
+   ykk-parsing
+   monad-style-output
+   optional-arguments
+   list
+   srfi-2
+   srfi-9+
+   string
+   alist
+   exceptions))
+
 ;;;; ducts
 (define-interface duct-internal-interface
   (export
@@ -29,7 +53,7 @@
 
 (define-interface ducts-interface
   (compound-interface
-   duct-interface
+   duct-internal-interface
    (export
     d/byte-len
     d/http-chunked
@@ -127,15 +151,6 @@
         assert
         url)
   (files curl))
-
-(define-structure uuidgen
-  (export uuidgen-v1->hex-string)
-  (open scheme srfi-27 bitwise
-        assert
-        ykk-ports
-        srfi-1
-        srfi-13)
-  (files uuid))
 
 (define-structure csv
   (export read-csv-record

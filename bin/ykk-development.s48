@@ -1,5 +1,11 @@
-,config ,load utility/packages.scm
 ,config ,load ssax-5.1/packages.scm
-,config ,load packages.scm
+,config ,load utility/packages.scm
 ,open octothorpe-extensions
-,config ,load comp-packages.scm
+,config ,load deprecated-packages.scm
+,config ,load graph/packages.scm
+,config ,load http/packages.scm
+,config ,load packages.scm
+
+
+
+

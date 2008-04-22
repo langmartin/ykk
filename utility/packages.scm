@@ -1,15 +1,11 @@
+(define (s48 structure)
+  (with-prefix structure s48:))
+
 ;;;; Language
 (define-structure octothorpe-extensions
   (export define-reader-ctor)
   (open scheme primitives reading extended-ports)
   (files octothorpe-extensions))
-
-(define-interface extra-scheme-interface
-  (compound-interface
-   (interface-of scheme)
-   (interface-of srfi-71)
-   (interface-of srfi-26)
-   scheme-extensions))
 
 (define checking-interface
   (export (define-checked :syntax)
@@ -24,14 +20,6 @@
         meta-methods)
   (files check))
 
-(define-structure extra-scheme extra-scheme-interface
-  (open (modify scheme (hide cond let let* letrec define))
-        srfi-61                         ; steroidal cond
-        srfi-71                         ; steroidal let
-        language-ext
-        (modify checking (rename (define-checked define)))))
-
-;;;; core utilites
 (define-interface optional-arguments-interface
   (export
    ;; optional arguments
@@ -111,19 +99,18 @@
 
 (define-interface scheme-extensions-interface
   (export
-   
    (unless :syntax)
    (when :syntax)
    (begin1 :syntax)
    make-not
    (case-equal :syntax)
-
+   ;; lang's language-ext
    promise?
    maybe-force
    always?
    never?
    proj-0 proj-1 proj-2
-   
+   (compose :syntax)
    ;; part of big-util
    error
    breakpoint
@@ -219,7 +206,7 @@
         handle
         simple-signals
         simple-conditions
-        fluids+)  
+        fluids+)
   (files exceptions))
 
 (define-interface dates-interface
@@ -237,6 +224,15 @@
         exceptions
         srfi-26)
   (files dates))
+
+(define-structure uuidgen
+  (export uuidgen-v1->hex-string)
+  (open scheme srfi-27 bitwise
+        assert
+        ykk-ports
+        srfi-1
+        srfi-13)
+  (files uuid))
 
 ;;;; Data
 ;; FIXME: remove when graph is refactored
@@ -274,9 +270,9 @@
 (define-structures ((red/black red/black-interface)
                     (red/black-inspection red/black-inspection-interface))
    (open scheme srfi-8 srfi-9 record-types primitives simple-signals pp)
-   (files (utility red-black-constructed-from-records)
-          (utility red-black)
-          (utility vred-black)))
+   (files red-black-constructed-from-records
+          red-black
+          vred-black))
 
 (define-structures ((list-red/black red/black-interface)
                     (list-red/black-inspection red/black-inspection-interface))
@@ -311,7 +307,7 @@
 
 (define-structure list-set set-interface
   (open scheme srfi-1 srfi-9+ assert)
-  (files (utility set-list)
+  (files set-list
          vset))
 
 (define set rb-set)
@@ -326,3 +322,215 @@
   (open scheme
         methods)
   (files primitive-types))
+
+;; SRFI-9 + define-record-discloser
+(define-structure srfi-9+
+  (export (define-record-type :syntax)
+          define-record-discloser)
+  (open scheme-level-2
+	(s48 define-record-types))
+  (begin
+    (define define-record-discloser s48:define-record-discloser)
+    (define-syntax define-record-type
+      (syntax-rules ()
+        ((define-record-type type-name . stuff)
+         (s48:define-record-type type-name type-name . stuff))))))
+
+;;;; Bundle
+(define-interface extra-scheme-interface
+  (compound-interface
+   (interface-of scheme)
+   (interface-of srfi-61)
+   (interface-of srfi-71)
+   (interface-of srfi-26)
+   (interface-of scheme-extensions)))
+
+(define-structure extra-scheme extra-scheme-interface
+  (open (modify scheme (hide cond let let* letrec define))
+        srfi-61                         ; steroidal cond
+        srfi-71                         ; steroidal let
+        scheme-extensions
+        srfi-26
+        (modify checking (rename (define-checked define)))))
+
+(define-interface list-interface
+  (compound-interface
+   (interface-of srfi-1)
+   (export
+    intersperse
+    fold-append
+    fold-right-append
+    map/cons*
+    map*
+    share
+    fmap-car
+    fmap-cdr
+    fmap-pair
+    fmap-cadr
+    fmap-list
+    fold-numbers
+    fold-right-numbers)))
+
+(define-structure list
+  list-interface
+  (open extra-scheme
+        srfi-1
+        assert)
+  (files list))
+
+(define-interface alist-interface
+  (export
+   cons-alist
+   fold-two
+   list->alist
+   unfold-list->alist
+   update-alist
+   update-force-alist
+   merge-alists/template
+   merge-alists
+   (let-foldr* :syntax)
+   alist-tree-insert
+   alist-key-index
+   map-car
+   project-alist-onto
+   partition-alist
+   ((pluck-spec pluck-alist) :syntax)
+   ((bind-spec bind-alist) :syntax)
+   keyword-projector/defaults
+   keyword-partitioner/defaults
+   alist-has-keys?
+   alist-has-only-keys?
+   alist-has-exactly-keys?
+   alist-ref
+   (unalist :syntax)   
+   unalist-proc
+   pair->list
+   list->pair
+   choose-keys
+   remove-keys
+   predicate-eq))
+
+(define-structure alist
+  alist-interface
+  (open extra-scheme
+        list
+        big-util
+        exceptions
+        assert
+        optional-arguments)
+  (files alists))
+
+(define-interface string-interface
+  (compound-interface
+   (interface-of srfi-13)
+   (interface-of srfi-14)
+   (export
+    string->normal-symbol
+    string->label
+    string->name
+    string->identifier
+    tech-name
+    normalize-string)))
+
+(define-structure string string-interface
+  (open extra-scheme
+        list
+        srfi-13
+        srfi-14
+        assert)
+  (files string))
+
+;;;; Syntax
+(define-interface syntax-util-procedural-interface
+  (export self-evaluating?
+          quotation?
+          literal?
+          macro-use?
+          procedure-call?
+          keyword?
+
+          gensym
+          quote-non-literal
+          remove-keyword-indication
+          keywords->alist
+
+          continue
+          continue/values
+          continue-into
+          continue-into/values
+
+          define-now!
+          force-up!
+          up-one-tower-level
+          for-syntax-environment
+          definition-value
+
+          expand
+          map-expand
+          apply-macro-transformer
+          transformer-procedure
+          error/syntax
+          ))
+
+(define-interface srfi-89-procedural-interface
+  (export srfi-89:require-positionals
+          srfi-89:optional-positionals
+          srfi-89:named-parameters
+          srfi-89:parse-formals
+          srfi-89:stack->k
+          beta-substitute))
+
+(define-structures ((syntax-procedural syntax-util-procedural-interface)
+                    (srfi-89-procedural srfi-89-procedural-interface))
+  (open extra-scheme
+        environments
+        packages
+        (subset compiler-envs (environment-macro-eval))
+        (subset nodes (schemify))
+        (subset names (desyntaxify))
+        types
+        bindings
+        locations
+        syntactic
+        list
+        simple-signals
+        assert
+        alist)  
+  (files syntax-util-procedures))
+
+(define-interface srfi-89-syntax-interface
+  (export define-syntax*
+          srfi-89/required-parameters
+          srfi-89/optional-parameters
+          srfi-89/named-parameters
+          srfi-89/rest
+          srfi-89/no-rest))
+
+(define-interface syntax-util-interface
+  (compound-interface
+   syntax-util-procedural-interface
+   (export (syntax-k :syntax)
+           (syntax-k/values :syntax)
+           (syntax-k-into :syntax)
+           (syntax-k-into/values :syntax)
+           (define/expansion :syntax)
+           (define/force-up :syntax)
+           (syntax/eval :syntax)
+           (define-syntax/applicative-order :syntax)
+           (expand/strip :syntax)
+           (define-syntax* :syntax)
+           (syntax/quote-non-literal :syntax))))
+
+(define-structures ((syntax-util syntax-util-interface)
+                    (srfi-89-syntax srfi-89-syntax-interface))
+  (for-syntax (open extra-scheme
+                    syntax-procedural
+                    srfi-89-procedural
+                    names
+                    alist
+                    list
+                    uuidgen))  
+  (open extra-scheme
+        syntax-procedural
+        assert)
+  (files syntax-util))

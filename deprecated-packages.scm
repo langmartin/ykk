@@ -163,10 +163,9 @@
   ;; for destructuring
   (for-syntax (open scheme srfi-1))
   (open extra-scheme
-        (modify sharing (rename (shared:share share)) (prefix shared:))
+        (modify list (rename (shared:share share)) (prefix shared:))
         methods meta-methods
-        list srfi-8 srfi-9+
-        proc-def
+        srfi-8 srfi-9+
         exceptions
         primitives
         (subset record-types (record-type?)))

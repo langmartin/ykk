@@ -189,7 +189,8 @@ Some text goes here.")
     ((_ (get ...) body ...)
      (list
       (list get ...)
-      body ...))))
+      body ...))))
+
 ;;;; proxy
 (define *client-keep-alive* (make-string-table))
 
