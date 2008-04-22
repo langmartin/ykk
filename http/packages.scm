@@ -182,9 +182,9 @@
    (let-http-response :syntax)
    (let-http-request :syntax)
    (let-headers :syntax)
-   (let-content-length :syntax)
-   (let-content-vector :syntax)
    (let-header-data :syntax)
+   begin-content-length*
+   (begin-content-length :syntax)
    header-reduce
    http-keepalive?
    http-register-page!

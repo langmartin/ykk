@@ -47,21 +47,21 @@
   (let-u8-output-port
    (output body)))
 
-(define (page->byte-vector . page)
-  ())
+;; (define (page->byte-vector . page)
+;;   ())
 
 ;; (assert (let-header-data (foo 1) (bar foo)) => '((foo . 1) (bar . 1)))
 
 (define-syntax let-http-response
   (syntax-rules ()
-    ((_ code (headers ...) body ...)
-     (list
-      (list code " " (lookup-http-code-text code))
-      (let-headers (headers ...) body ...)))
     ((_ (code message) body ...)
      (list
       (list code " " message crlf)
-      body ...))))
+      body ...))
+    ((_ code (headers ...) body ...)
+     (list
+      (list code " " (lookup-http-code-text code))
+      (let-headers (headers ...) body ...)))))
 
 (define-syntax let-headers
   (syntax-rules ()
@@ -80,15 +80,13 @@
  '((foo ": " 3 "\r\n") (bar ": " 3 "\r\n") 5))
 
 (define (begin-content-length* output-list)
-  (let ((vec (body->byte-vector output-list))
-        (len (byte-vector-length vec)))
-    (define (output-content-vector vec)
-      (if (zero? len)
-          output crlf
-          (list
-           (cons 'content-length ": " len crlf crlf)
-           (lambda ()
-             (write-block vec 0 len (current-output-port))))))))
+  (let* ((vec (body->byte-vector output-list))
+         (len (byte-vector-length vec)))
+    (if (zero? len)
+        crlf
+        (list (list 'content-length ": " len crlf crlf)
+              (lambda ()
+                (write-block vec 0 len (current-output-port)))))))
 
 (define-syntax begin-content-length
   (syntax-rules ()
@@ -127,16 +125,12 @@
 (assert
  (let-string-output-port
   (output
-   (let-http-response
-    (200 "Ok")
-    (let-headers
-     ((user-agent "scheme48")
-      (host "coptix.com"))
-     (let-headers
-      ((content-type "text/plain"))
-      (let-content-length
-       "Some text goes here.")))))) =>
-        "200 Ok\r
+   (let-http-response (200 "Ok")
+     (let-headers ((user-agent "scheme48") (host "coptix.com"))
+       (let-headers ((content-type "text/plain"))
+         (begin-content-length*
+          "Some text goes here.")))))) =>
+          "200 Ok\r
 user-agent: scheme48\r
 host: coptix.com\r
 content-type: text/plain\r
@@ -147,11 +141,11 @@ Some text goes here.")
 (define (http-form-post/method method url)
   (receive
    (input output)
-   (proxy-client "HTTP/1.1" method url '()
-                 (let-headers
-                  ((content-type "text/x-url-form-encoded"))
-                  (let-content-length
-                   (url-parameter-string url))))
+   (proxy-client
+    "HTTP/1.1" method url '()
+    (let-headers ((content-type "text/x-url-form-encoded"))
+      (begin-content-length
+       (url-parameter-string url))))
    (close-output-port output)
    input))
 
@@ -262,16 +256,13 @@ Some text goes here.")
 (define (proxy-client-handler thunk)
   (with-exception-catcher
    (lambda (c propagate)
-     (let-http-response
-      (500 "Proxy Failure")
-      (let-headers
-       ((content-type "text/plain"))
-       (let-content-length
-        (lambda ()
-          (output "500\n"
-                  "https requests are not yet supported.\n"
-                  "non-existent hostname?\n"
-                  (condition-stuff c)))))))
+     (let-http-response (500 "Proxy Failure")
+       (let-headers ((content-type "text/plain"))
+         (begin-content-length
+          "500\n"
+          "https requests are not yet supported.\n"
+          "non-existent hostname?\n"
+          (condition-stuff c)))))
    thunk))
 
 (define (proxy-handler version method path port)
@@ -293,14 +284,13 @@ Some text goes here.")
               (code text)
               (header-reduce *proxy-reply-headers*
                              head)
-              (let-content-length
-               (lambda ()
-                 (proxy-body mime)
-                 (if (and #f (http-keepalive? head)) ; disabled
-                     (store-client-connection host input output)
-                     (begin
-                       (close-output-port output)
-                       (close-input-port input))))))))))))))
+              (begin-content-length
+               (proxy-body mime)
+               (if (and #f (http-keepalive? head)) ; disabled
+                   (store-client-connection host input output)
+                   (begin
+                     (close-output-port output)
+                     (close-input-port input)))))))))))))
 
 (define (proxy-handler-wrapper)
   (lambda (input-port output-port)

@@ -6,7 +6,7 @@
         (lambda () body ...)
         (let-http-response (220 "ok")
           (let-headers ((content-type "text/plain"))
-            (let-content-length
+            (begin-content-length
              text))))))))
 
 (http-register-code-handler!
@@ -14,7 +14,7 @@
  (lambda ()
    (let-http-response (404 "Not Found")
     (let-headers ((content-type "text/plain"))
-      (let-content-length
+      (begin-content-length
        "404\n The path "
        (request-path)
        " is not registered.\n\n"
@@ -34,7 +34,7 @@
     ((_ type body ...)
      (let-http-response (220 "ok")
        (let-headers ((content-type type))
-         (let-content-length
+         (begin-content-length
           body ...))))))
 
 (define-syntax let-html-page
@@ -121,31 +121,31 @@
 (define (go)
   (standard-http-server))
 
-(let-http-response
-    (status 500)
-  (header foo "bar")
-  (header baz "blit")
+;; (let-http-response
+;;     (status 500)
+;;   (header foo "bar")
+;;   (header baz "blit")
   
-  (begin-http-body
-   type: text/html
-   "thinngs"
-   (header location "http://foo.com")
-   (lambda ()
-     (stuff))))
+;;   (begin-http-body
+;;    type: text/html
+;;    "thinngs"
+;;    (header location "http://foo.com")
+;;    (lambda ()
+;;      (stuff))))
 
-(let-http-response
-    200
-  ((accepts "*"))
-  (begin-content-length
-   (shtml->html
-    `(*top*
-      (head)
-      (body
-       (p "thing"))))))
+;; (let-http-response
+;;     200
+;;   ((accepts "*"))
+;;   (begin-content-length
+;;    (shtml->html
+;;     `(*top*
+;;       (head)
+;;       (body
+;;        (p "thing"))))))
 
-(let-http-response (200 "I found it!")
-  (let-headers ((thing "bar"))
-    (begin-content-length
-     "thing"
-     "baz")))
+;; (let-http-response (200 "I found it!")
+;;   (let-headers ((thing "bar"))
+;;     (begin-content-length
+;;      "thing"
+;;      "baz")))
 

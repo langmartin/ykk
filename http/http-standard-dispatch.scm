@@ -41,7 +41,7 @@
     (apply h params)))
 
 (define-record-type rtd/request
-  (make-request version method url query)
+  (make-request version method url query head)
   request?
   (version request*-version)
   (method request*-method)
