@@ -207,78 +207,59 @@
                              handler))))
 
 ;;;; New page form
-(define (header* key val)
-  (list header* key val))
+(define-fluid ($http-status '())
+  current-http-status
+  with-http-status)
 
-(define (header? obj)
-  (and (pair? obj) (eq? (car obj) header*)))
-
-(define (status* code . text)
+(define (status code . text)
   (let-optionals* text ((text (status-code->phrase code)))
-    (list status* code #\space text crlf)))
+    (set-fluid! $http-status (list status* code #\space text crlf))))
 
-(define (status? obj)
-  (and (pair? obj) (eq? (car obj) status*)))
+(define-fluid ($http-headers '())
+  current-http-headers
+  with-http-headers)
 
-(define (clear-body*) clear-body*)
+(define (set-headers! val)
+  (set-fluid! $http-headers val)
+  6)
 
-(define (clear-headers*) clear-headers*)
+(define (header key val)
+  (set-headers!
+   (cons (cons key val)
+         (current-http-headers))))
 
-(define reduce-handler
-  (lambda (x acc)
-    (let ((stat head body (acc)))
-      (cond ((status? x)
-             (lambda ()
-               (values (cdr x) head body)))
-            ((header? x)
-             (lambda ()
-               (values stat (cons (cdr x) head) body)))
-            ((pair? x)
-             (reduce-http-response-fold acc x))
-            ((eq? clear-headers* x)
-             (lambda () (values stat '() body)))
-            ((eq? clear-body* x)
-             (lambda () (values stat head (make-byte-vector-output-port))))
-            (else
-             (display x body)
-             (lambda ()
-               (values stat head body)))))))
+(define (header-delete key)
+  (set-headers!
+   (filter (lambda (pair)
+             (eq? key (car pair)))
+           (current-http-headers))))
 
-(define reduce-nil
-  (lambda () (values '() '() (make-byte-vector-output-port))))
+(define (header-clear-all)
+  (set-headers! '()))
 
-(define (reduce-http-response-fold nil lst) ; -> thunk
-  (fold reduce-handler nil lst))
-
-(define (reduce-http-response* . lst)
-  (call-with-values
-      (reduce-http-response-fold reduce-nil lst)
-    (lambda (stat head body)
-      (list stat
-            (header-reduce head)
-            (vector->content-length
-             (byte-vector-output-port-output body))))))
-
-(define (see-other link)
-  (list
-   (clear-body*)
-   (clear-headers*)
-   (status* 301)
-   (header* 'location link)))
+(define-syntax begin-http-response
+  (syntax-rules ()
+    ((_ body ...)
+     (let-fluids
+      $http-status (list 200 " Ok" crlf)
+      $http-headers '()
+      (lambda ()
+        (let ((res (begin-content-length body ...)))
+          (output (current-http-status)
+                  (header-reduce (current-http-headers))
+                  res)))))))
 
 (assert
  (let-string-output-port
-  (output
-   (reduce-http-response*
-    (status* 200)
-    (header* 'content-type "text/html")
-    '("things " ("more" " here" (1 2 3)) "to do ")
-    (if #t
-        "success!"
-        (see-other "http://coptix.com/"))))) =>
-        "200 OK\r
+  (begin-http-response
+   (shtml->html
+    `(html
+      (head (title "foo"))
+      (body
+       (h1 "foo bar")
+       (p "some text" ,(header 'content-type "text/html"))))))) =>
+       "200 Ok\r
 content-type: text/html\r
-content-length: 33\r
+content-length: 89\r
 \r
-things more here123to do success!")
-
+<html><head><title>foo</title></head><body><h1>foo bar</h1><p>some text</p></body></html>")

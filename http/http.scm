@@ -310,18 +310,3 @@ Some text goes here.")
 ;;     "HTTP/1.1"
 ;;     (proxy-handler
 ;;      "HTTP/1.1" "GET" "/index" (current-input-port)))))
-
-(define (test-rss-parser . url)
-  (let-optionals* url ((url "http://okmij.org/ftp/rss.xml"))
-    (let ((mime (http-get->mime url)))
-      (call-with-string-input-port
-          (duct->string (mime->duct mime))
-        (lambda (port)
-          (if #f
-              (read-line port #f)
-              (ssax:xml->sxml port '())))))))
-
-;; (define (rss-eg)
-;;   (call-with-output-file
-;;       "parsed-rss.scm"
-;;     (lambda (file) (p (test-rss-parser) file))))

@@ -202,12 +202,12 @@
    standard-parameters
    set-standard-host!
    ;; client forms v2
+   begin-http-response
    begin-content-length
-   reduce-http-response*
-   header*
-   status*
-   clear-headers*
-   clear-body*))
+   status
+   header
+   header-delete
+   header-clear-all))
 
 (define-structure http
   (compound-interface http-interface (interface-of url))
@@ -225,7 +225,8 @@
         ducts
         json
         ssax-vanilla
-        fluids+)
+        fluids+
+        fluids)
   (files http
          protocol
          http-standard-dispatch))
