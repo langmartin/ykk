@@ -1,11 +1,9 @@
 paths = \
 http \
-persisted-graph.scm \
 prim \
 repl.scm \
 types.scm \
 utility \
-zipper \
 
 files = $(shell find $(paths) -name '*.sc[hm]' -o -name '*.c')
 CLIB_DIR=c-lib
@@ -16,7 +14,7 @@ TAGS: $(files)
 	etags $(files)
 
 bin/ykk-development.img: bin/ykk-development.s48 bin/cached-packages.s48 \
-			 interfaces.scm ssax-5.1/packages.scm packages.scm
+			 ssax-5.1/packages.scm packages.scm
 	{ cat bin/ykk-development.s48 bin/cached-packages.s48; echo ",dump $@"; } | scheme48 -a batch
 
 $(CLIB_DIR)/dates.so: $(CLIB_DIR)/dates.c

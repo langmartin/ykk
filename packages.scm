@@ -34,8 +34,7 @@
   (files http/form-server))
 
 (define-interface forms-interface
-  (export (form :syntax)
-          form->shtml
+  (export form->shtml
 
           ;; input -> shtml
           text
@@ -45,34 +44,35 @@
           checkbox
           submit
 
-          ;; sxml -> shtml
-          sxml-text
-          sxml-textarea
-          sxml-radio
-          sxml-select
-          sxml-checkbox
-          sxml-submit))
+          form-data
+          with-form-data
+          (let-form-data :syntax)))
 
 (define-structure forms forms-interface
   (open scheme+
-        sxml
         sxml-tree-trans
-        checking
-        methods)
+        sxml-tools
+        methods
+        (with-prefix regexps rx:)
+        exceptions
+        environments
+        exceptions
+        fluids+)
   (files http/forms))
 
 (define-interface sxml-interface
-  (export sxpath-run
-          sxml-attlist
-          (let-sxml-attlist :syntax)
-          (let-sxml-pluck-attlist :syntax)
-          sxml-first-text
-          sxpath-error?))
+  (export txpath-run
+          sxpath-run
+          (let-sxml-attrs :syntax)
+          (let-sxml-pluck-attrs :syntax)))
 
-(define-structure sxml sxml-interface
+(define-structure sxml-tools
+  (compound-interface
+   (interface-of sxml-basic-tools)
+   sxml-interface)
   (open scheme+
-        sxml-tree-trans
-        sxpath)  
+        alist
+        sxml-basic-tools)
   (files utility/sxml))
 
 (define-interface pages-interface

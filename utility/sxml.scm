@@ -1,47 +1,26 @@
 
-(define-condition sxpath-error (error) sxpath-error?)
+(define (path-run make path nodes)
+  (let ((path (if (procedure? path) path (make path))))
+    (path nodes)))
 
-(define (sxpath-run expr nodes)
-  ((sxpath expr) nodes))
+(define (sxpath-run path nodes)
+  (path-run sxpath path nodes))
 
-(define (sxml-attlist node)
-  (sxpath-run `(@ *) node))
+(define (txpath-run path nodes)
+  (path-run txpath path nodes))
 
-(define-syntax let-sxml-attlist
+(define-syntax let-sxml-attrs
   (syntax-rules ()
     ((_ item (attrs keys ...) expr ...)
-     (let* ((attrs (sxml-attlist item))
+     (let* ((attrs (sxml:attr-list-u item))
             (keys ... (bind-spec (keys ...) attrs)))
        expr ...))))
 
-(define-syntax let-sxml-pluck-attlist
+(define-syntax let-sxml-pluck-attrs
   (syntax-rules ()
     ((_ item (attrs keys ...) expr ...)
-     (let* ((attrs (sxml-attlist item))
+     (let* ((attrs (sxml:attr-list-u item))
             (keys ... attrs (pluck-spec (keys ...) attrs)))
        expr ...))))
 
-(define (sxml-first-text node)
-  (and-let* ((xp-query (sxpath-run `(// *text*) node))
-             (null? xp-query))
-    (car xp-query)))
-
-;; Tests
-
-(define *test-element* '(div (@ (class "outer"))
-                             (div "foo content")
-                             "bar content"
-                             (div "footer")))
-
-(assert (sxpath-run '(// div) *test-element*)
-        => '((div "foo content") (div "footer")))
-
-(assert (sxml-attlist *test-element*)
-        => '((class "outer")))
-
-(assert (sxml-first-text *test-element*)
-        => "bar content")
-
-(assert (let-sxml-pluck-attlist *test-element* (attrs class bad)
-          (list class bad))
-        => '("outer" #f))
+;(define test '(div (@ (class "foo") (width "90")) "some text"))
