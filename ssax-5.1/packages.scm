@@ -131,9 +131,53 @@
 
 (define-interface sxpath-interface
   (export nodeset?
-	  node-typeof?
 	  map-union
-	  sxpath))
+	  sxpath
+          txpath))
+
+;; this list was made by quick glances at
+;; sxml-tools.scm.  it is not complete
+(define-interface sxml-basic-tools-interface
+  (export sxml:attr-list-node
+          sxml:attr-as-list
+          sxml:attr-list-u
+          sxml:aux-list-node
+          sxml:aux-as-list
+          sxml:empty-element?
+          sxml:shallow-normalized?
+          sxml:normalized?
+          sxml:shallow-minimized?
+          sxml:minimized?
+          sxml:content
+          sxml:text
+          sxml:content-raw
+          sxml:name
+          sxml:node-name
+          sxml:attr
+          sxml:attr-from-list
+          sxml:num-attr
+          sxml:change-content!
+          sxml:change-content
+          sxml:change-attrlist
+          sxml:change-attrlist!
+          sxml:change-name!
+          sxml:change-name
+          sxml:add-attr!
+          sxml:add-attr
+          sxml:change-attr!
+          sxml:change-attr
+          sxml:set-attr!
+          sxml:set-attr
+          sxml:add-aux!
+          sxml:add-aux
+          sxml:squeeze!
+          sxml:squeeze
+          sxml:clean
+          sxml:node-parent
+          sxml:add-parents
+          sxml:lookup))
+
+
 
 ;; Structures
 
@@ -301,13 +345,42 @@
 (define ssax-vanilla (make-ssax input-parses-vanilla
 				ssax-warnings-vanilla))
 
-(define-structure sxpath sxpath-interface
+(define-structure sxml-basic-tools
+  (compound-interface sxml-basic-tools-interface
+                      sxpath-interface)
   (open scheme
-	assertions
-	coutputs
+        assertions
+        coutputs
+        simple-signals
+        oleg-utils
         crementing
-	pp
-	srfi-23) ; ERROR
+        srfi-1
+        srfi-2
+        extended-ports
+        srfi-13
+        pp)
   (begin
-    (define pretty-print p))
-  (files "SXPath.scm"))
+    (define pp p)
+    
+    (define (call-with-input-string str proc)
+      (proc (make-string-input-port str)))
+
+    (define-syntax define-macro
+      (lambda (e r c)
+        (let* ((pattern (cadr e))
+               (name (if (pair? pattern)
+                         (car pattern)
+                         pattern))
+               (lamb (if (pair? pattern)
+                         (cons 'lambda (cons (cdr pattern) (cddr e)))
+                         (caddr e))))
+          `(define-syntax ,name
+             (lambda (e r c)
+               (let ((args (cdr e)))
+                 (apply ,lamb args))))))))
+  (files "sxml-tools/sxpathlib.scm"
+         "sxml-tools/xpath-parser.scm"
+         "sxml-tools/sxml-tools.scm"
+         "sxml-tools/sxpath-ext.scm"
+         "sxml-tools/sxpath.scm"
+         "sxml-tools/txpath.scm"))
