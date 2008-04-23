@@ -2,74 +2,7 @@
 ;;;; Forms
 ;;;;
 
-;; Input types
-
-(define (input attrs (type :string) (name :string) . value)
-  (let-optionals value ((value #f))
-    `(input (@ (type ,type)
-               (name ,name)
-               (value ,(or value ""))
-               ,@attrs))))
-
-(define (text attrs (name :string) . default)
-  (let-optionals default ((default #f))
-    (input attrs "text" name default)))
-
-(define (textarea attrs (name :string) . default)
-  (let-optionals default ((default #f))
-    `(textarea (@ (name ,name)
-                  ,@attrs)
-               ,(or default ""))))
-
-; options is a list of strings or pairs in
-; the form of (value text)
-(define (map-options f lst)
-  (map (lambda (o)
-         (call-with-values
-           (lambda ()
-             (if (pair? o)
-                 (values (car o) (cdr o))
-                 (values o o)))
-           f))
-       lst))
-
-(define (radio attrs (name :string) (options :pair) . default)
-  (let-optionals default ((default #f))
-    `(div (@ ,@attrs)
-          ,@(map-options
-             (lambda (value text)
-               `(div ,(input (if (equal? default value)
-                                 '((checked "checked"))
-                                 '())
-                             "radio" name value)
-                     ,text))
-             options))))
-
-(define (select attrs (name :string) (options :pair) . default)
-  (let-optionals default ((default #f))
-    `(select (@ (name ,name)
-                ,@attrs)
-             ,@(map-options
-                (lambda (value text)
-                  (let* ((attr `((value ,value))))
-                    `(option (@ ,@(if (equal? default value)
-                                      (cons '(selected "true") attr)
-                                      attr))
-                             ,text)))
-                options))))
-
-(define (checkbox attrs (name :string) . value/default)
-  (let-optionals value/default ((value #f) (default #f))
-    (input (if (and default (not (eq? default "false")))
-               (cons '(checked "checked") attrs)
-               attrs)
-           "checkbox" name (or value "true"))))
-
-(define (submit attrs (name :string) (value :string))
-  (input attrs "submit" name value))
-
-
-;; Input SXML Tags
+;; Inputs Types
 
 (define-condition form-error (error) form-error?)
 
@@ -93,15 +26,40 @@
        (memq (car form) (input-names))
        #t))
 
-;; todo - combine input functions with tag definitions
-(define-syntax define-input-tag
-  (syntax-rules ()
-    ((_ (name item attrs keys ...) arglist)
-     (register-input!
-      'name
-      (lambda item
-        (let-sxml-pluck-attrs item (attrs validate keys ...)
-          (apply name arglist)))))))
+(define-syntax define-input
+  (syntax-rules (convert extract lambda)
+    ((_ "create" func name formals expr ...)
+     (begin
+       (define (name . formals)
+         expr ...)
+       (register-input!
+        'name
+        func)))
+    ((_ name (convert item converter) (lambda formals expr ...))
+     (define-input "create" (lambda item
+                              (apply name converter))
+                    name
+                    formals
+                    expr ...))
+     ((_ name (extract attr ...) (lambda formals expr ...))
+     (define-input "create" (lambda item
+                              (let-sxml-pluck-attrs item (attrs validate attr ...)
+                                (apply name (list attrs attr ...))))
+                   name
+                   formals
+                   expr ...))))
+
+; options is a list of strings or pairs in
+; the form of (value text)
+(define (map-options f lst)
+  (map (lambda (o)
+         (call-with-values
+           (lambda ()
+             (if (pair? o)
+                 (values (car o) (cdr o))
+                 (values o o)))
+           f))
+       lst))
 
 (define (grab-options item)
   (let ((sxml/options (sxpath-run '(option) item)))
@@ -112,23 +70,75 @@
              (cons value text)))
          sxml/options)))
 
-(define-input-tag (text item attrs name default)
-  (list attrs name default))
+(define-input input
+  (extract type name value)
+  (lambda (attrs (type :string) (name :string) . value)
+    (let-optionals value ((value #f))
+      `(input (@ (type ,type)
+                 (name ,name)
+                 (value ,(or value ""))
+                 ,@attrs)))))
 
-(define-input-tag (textarea item attrs name default)
-  (list attrs name default))
+(define-input text
+  (extract name default)
+  (lambda (attrs (name :string) . default)
+    (let-optionals default ((default #f))
+      (input attrs "text" name default))))
 
-(define-input-tag (radio item attrs name default)
-  (list attrs name (grab-options item) default))
+(define-input textarea
+  (extract name default)
+  (lambda (attrs (name :string) . default)
+    (let-optionals default ((default #f))
+      `(textarea (@ (name ,name)
+                    ,@attrs)
+                 ,(or default "")))))
 
-(define-input-tag (select item attrs name default)
-  (list attrs name (grab-options item) default))
+(define-input radio
+  (convert item
+    (let-sxml-pluck-attrs item (attrs name default)
+      (list attrs name (grab-options item) default)))
+  (lambda (attrs (name :string) (options :pair) . default)
+    (let-optionals default ((default #f))
+      `(div (@ ,@attrs)
+            ,@(map-options
+               (lambda (value text)
+                 `(div ,(input (if (equal? default value)
+                                   '((checked "checked"))
+                                   '())
+                               "radio" name value)
+                       ,text))
+               options)))))
 
-(define-input-tag (checkbox item attrs name value default)
-  (list attrs name value default))
+(define-input select
+  (convert item
+    (let-sxml-pluck-attrs item (attrs name default)
+      (list attrs name (grab-options item) default)))
+  (lambda (attrs (name :string) (options :pair) . default)
+    (let-optionals default ((default #f))
+      `(select (@ (name ,name)
+                  ,@attrs)
+               ,@(map-options
+                  (lambda (value text)
+                    (let* ((attr `((value ,value))))
+                      `(option (@ ,@(if (equal? default value)
+                                        (cons '(selected "true") attr)
+                                        attr))
+                               ,text)))
+                  options)))))
 
-(define-input-tag (submit item attrs name value)
-  (list attrs name value))
+(define-input checkbox
+  (extract name value default)
+  (lambda (attrs (name :string) . value/default)
+    (let-optionals value/default ((value #f) (default #f))
+      (input (if (and default (not (eq? default "false")))
+                 (cons '(checked "checked") attrs)
+                 attrs)
+             "checkbox" name (or value "true")))))
+
+(define-input submit
+  (extract name value)
+  (lambda (attrs (name :string) (value :string))
+    (input attrs "submit" name value)))
 
 ;; The Transformation
 
