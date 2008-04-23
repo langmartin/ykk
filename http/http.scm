@@ -47,11 +47,6 @@
   (let-u8-output-port
    (output body)))
 
-;; (define (page->byte-vector . page)
-;;   ())
-
-;; (assert (let-header-data (foo 1) (bar foo)) => '((foo . 1) (bar . 1)))
-
 (define-syntax let-http-response
   (syntax-rules ()
     ((_ (code message) body ...)

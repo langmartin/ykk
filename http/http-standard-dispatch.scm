@@ -205,3 +205,53 @@
     (http-server ip port (if threaded
                              (let-multithreaded handler)
                              handler))))
+
+(define (header* key val)
+  (list header* key val))
+
+(define (header? obj)
+  (and (pair? obj) (eq? (car obj) header*)))
+
+(define (status* code . text)
+  (let-optionals* text ((text (status-code->phrase code)))
+    (list status* code text)))
+
+(define (status? obj)
+  (and (pair? obj) (eq? (car obj) status*)))
+
+(define handler
+  (lambda (x acc)
+    (let ((stat head body (acc)))
+      (lambda ()
+        (cond ((status? x)
+               (values (cdr x) head '()))
+              ((header? x)
+               (values stat (cons (cdr x) head) body))
+              (else
+               (values stat head (cons x body))))))))
+
+(define (reduce-http-response-fold lst)
+  ((fold handler
+         (lambda () (values '() '() '()))
+         lst)))
+
+(define (reduce-http-response* . lst)
+  (call-with-values
+      (lambda () (reduce-http-response-fold lst))
+    (lambda (stat head body)
+      (list stat
+            (header-reduce head)
+            (begin-content-length*
+             (reverse body))))))
+
+(reduce-http-response*
+ (status* 200)
+ (header* 'content-type "text/html")
+ "things"
+ "to do"
+ (if #t
+     (list
+      (status* 500)
+      "foo"
+      "bar")
+     "blow up"))

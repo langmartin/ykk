@@ -220,6 +220,7 @@
         ssax-vanilla
         fluids+)
   (files http
+         protocol
          http-standard-dispatch))
 
 (define http-protocol-interface
