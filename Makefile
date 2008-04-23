@@ -1,9 +1,10 @@
 paths = \
+graph \
 http \
-prim \
-repl.scm \
 types.scm \
+packages.scm \
 utility \
+
 
 files = $(shell find $(paths) -name '*.sc[hm]' -o -name '*.c')
 CLIB_DIR=c-lib
