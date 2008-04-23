@@ -206,8 +206,8 @@
    reduce-http-response*
    header*
    status*
-   clear-headers!
-   clear-body!))
+   clear-headers*
+   clear-body*))
 
 (define-structure http
   (compound-interface http-interface (interface-of url))

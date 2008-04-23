@@ -43,10 +43,6 @@
        (lambda () (close-socket socket)))))
 
 ;;;; HTTP Client
-(define (body->byte-vector . body)
-  (let-u8-output-port
-   (output body)))
-
 (define-syntax let-http-response
   (syntax-rules ()
     ((_ (code message) body ...)
@@ -74,14 +70,18 @@
  (let-headers ((foo 3) (bar foo)) 5) =>
  '((foo ": " 3 "\r\n") (bar ": " 3 "\r\n") 5))
 
-(define (begin-content-length . output-list)
-  (let* ((vec (body->byte-vector output-list))
-         (len (byte-vector-length vec)))
+(define (vector->content-length vec)
+  (let ((len (byte-vector-length vec)))
     (if (zero? len)
         crlf
         (list (list 'content-length ": " len crlf crlf)
               (lambda ()
                 (write-block vec 0 len (current-output-port)))))))
+
+(define (begin-content-length . body)
+  (vector->content-length
+   (let-u8-output-port
+    (output body))))
 
 (define-syntax let-header-data
   (syntax-rules ()

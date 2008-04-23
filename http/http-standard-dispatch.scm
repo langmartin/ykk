@@ -215,36 +215,37 @@
 
 (define (status* code . text)
   (let-optionals* text ((text (status-code->phrase code)))
-    (list status* code text crlf)))
+    (list status* code #\space text crlf)))
 
 (define (status? obj)
   (and (pair? obj) (eq? (car obj) status*)))
 
-(define (clear-body!) clear-body!)
+(define (clear-body*) clear-body*)
 
-(define (clear-headers!) clear-headers!)
+(define (clear-headers*) clear-headers*)
 
 (define reduce-handler
   (lambda (x acc)
     (let ((stat head body (acc)))
       (cond ((status? x)
              (lambda ()
-               (values (cdr x) head '())))
+               (values (cdr x) head body)))
             ((header? x)
              (lambda ()
                (values stat (cons (cdr x) head) body)))
             ((pair? x)
              (reduce-http-response-fold acc x))
-            ((eq? clear-headers! x)
+            ((eq? clear-headers* x)
              (lambda () (values stat '() body)))
-            ((eq? clear-body! x)
-             (lambda () (values stat head '())))
+            ((eq? clear-body* x)
+             (lambda () (values stat head (make-byte-vector-output-port))))
             (else
+             (display x body)
              (lambda ()
-               (values stat head (cons x body))))))))
+               (values stat head body)))))))
 
 (define reduce-nil
-  (lambda () (values '() '() '())))
+  (lambda () (values '() '() (make-byte-vector-output-port))))
 
 (define (reduce-http-response-fold nil lst) ; -> thunk
   (fold reduce-handler nil lst))
@@ -255,15 +256,29 @@
     (lambda (stat head body)
       (list stat
             (header-reduce head)
-            (begin-content-length
-             (reverse body))))))
+            (vector->content-length
+             (byte-vector-output-port-output body))))))
 
-(let-string-output-port
- (output
-  (reduce-http-response*
-   (status* 200)
-   (header* 'content-type "text/html")
-   "things " "to do "
-   (if #f
-       "success!"
-       (list (status* 500) "foo" "bar")))))
+(define (see-other link)
+  (list
+   (clear-body*)
+   (clear-headers*)
+   (status* 301)
+   (header* 'location link)))
+
+(assert
+ (let-string-output-port
+  (output
+   (reduce-http-response*
+    (status* 200)
+    (header* 'content-type "text/html")
+    '("things " ("more" " here" (1 2 3)) "to do ")
+    (if #t
+        "success!"
+        (see-other "http://coptix.com/"))))) =>
+        "200 OK\r
+content-type: text/html\r
+content-length: 33\r
+\r
+things more here123to do success!")
+
