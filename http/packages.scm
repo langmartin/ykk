@@ -178,14 +178,14 @@
    http-server-exec
    http-server-exec?
    http-server-close
+   ;; client forms v1
    (let-multithreaded :syntax)
    (let-http-response :syntax)
    (let-http-request :syntax)
    (let-headers :syntax)
    (let-header-data :syntax)
-   begin-content-length*
-   (begin-content-length :syntax)
    header-reduce
+   ;; std handler
    http-keepalive?
    http-register-page!
    http-register-code-handler!
@@ -200,7 +200,14 @@
    request-headers
    get-parameters
    standard-parameters
-   set-standard-host!))
+   set-standard-host!
+   ;; client forms v2
+   begin-content-length
+   reduce-http-response*
+   header*
+   status*
+   clear-headers!
+   clear-body!))
 
 (define-structure http
   (compound-interface http-interface (interface-of url))

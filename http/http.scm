@@ -74,7 +74,7 @@
  (let-headers ((foo 3) (bar foo)) 5) =>
  '((foo ": " 3 "\r\n") (bar ": " 3 "\r\n") 5))
 
-(define (begin-content-length* output-list)
+(define (begin-content-length . output-list)
   (let* ((vec (body->byte-vector output-list))
          (len (byte-vector-length vec)))
     (if (zero? len)
@@ -82,11 +82,6 @@
         (list (list 'content-length ": " len crlf crlf)
               (lambda ()
                 (write-block vec 0 len (current-output-port)))))))
-
-(define-syntax begin-content-length
-  (syntax-rules ()
-    ((_ body ...)
-     (begin-content-length* (list body ...)))))
 
 (define-syntax let-header-data
   (syntax-rules ()
@@ -123,7 +118,7 @@
    (let-http-response (200 "Ok")
      (let-headers ((user-agent "scheme48") (host "coptix.com"))
        (let-headers ((content-type "text/plain"))
-         (begin-content-length*
+         (begin-content-length
           "Some text goes here.")))))) =>
           "200 Ok\r
 user-agent: scheme48\r
@@ -166,12 +161,6 @@ Some text goes here.")
      port
      (lambda (version code text)
        (stream-car (port->mime-stream port))))))
-
-(define (test-get-coptix)
- (let ((p (http-get "http://coptix.com")))
-   (begin1
-    (read-line p #f)
-    (close-input-port p))))
 
 (define-syntax let-http-request
   (syntax-rules ()

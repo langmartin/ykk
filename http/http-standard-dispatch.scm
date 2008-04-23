@@ -205,7 +205,8 @@
     (http-server ip port (if threaded
                              (let-multithreaded handler)
                              handler))))
-
+
+;;;; New page form
 (define (header* key val)
   (list header* key val))
 
@@ -214,44 +215,55 @@
 
 (define (status* code . text)
   (let-optionals* text ((text (status-code->phrase code)))
-    (list status* code text)))
+    (list status* code text crlf)))
 
 (define (status? obj)
   (and (pair? obj) (eq? (car obj) status*)))
 
-(define handler
+(define (clear-body!) clear-body!)
+
+(define (clear-headers!) clear-headers!)
+
+(define reduce-handler
   (lambda (x acc)
     (let ((stat head body (acc)))
-      (lambda ()
-        (cond ((status? x)
-               (values (cdr x) head '()))
-              ((header? x)
-               (values stat (cons (cdr x) head) body))
-              (else
+      (cond ((status? x)
+             (lambda ()
+               (values (cdr x) head '())))
+            ((header? x)
+             (lambda ()
+               (values stat (cons (cdr x) head) body)))
+            ((pair? x)
+             (reduce-http-response-fold acc x))
+            ((eq? clear-headers! x)
+             (lambda () (values stat '() body)))
+            ((eq? clear-body! x)
+             (lambda () (values stat head '())))
+            (else
+             (lambda ()
                (values stat head (cons x body))))))))
 
-(define (reduce-http-response-fold lst)
-  ((fold handler
-         (lambda () (values '() '() '()))
-         lst)))
+(define reduce-nil
+  (lambda () (values '() '() '())))
+
+(define (reduce-http-response-fold nil lst) ; -> thunk
+  (fold reduce-handler nil lst))
 
 (define (reduce-http-response* . lst)
   (call-with-values
-      (lambda () (reduce-http-response-fold lst))
+      (reduce-http-response-fold reduce-nil lst)
     (lambda (stat head body)
       (list stat
             (header-reduce head)
-            (begin-content-length*
+            (begin-content-length
              (reverse body))))))
 
-(reduce-http-response*
- (status* 200)
- (header* 'content-type "text/html")
- "things"
- "to do"
- (if #t
-     (list
-      (status* 500)
-      "foo"
-      "bar")
-     "blow up"))
+(let-string-output-port
+ (output
+  (reduce-http-response*
+   (status* 200)
+   (header* 'content-type "text/html")
+   "things " "to do "
+   (if #f
+       "success!"
+       (list (status* 500) "foo" "bar")))))
