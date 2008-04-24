@@ -213,7 +213,8 @@
 
 (define (status code . text)
   (let-optionals* text ((text (status-code->phrase code)))
-    (set-fluid! $http-status (list status* code #\space text crlf))))
+    (set-fluid! $http-status (list status* code #\space text crlf))
+    ""))
 
 (define-fluid ($http-headers '())
   current-http-headers
@@ -221,7 +222,7 @@
 
 (define (set-headers! val)
   (set-fluid! $http-headers val)
-  6)
+  "")
 
 (define (header key val)
   (set-headers!
