@@ -167,7 +167,8 @@
     disp
     writ
     output-for-each
-    output))
+    output
+    output->string))
 
 (define-structure monad-style-output
   monad-style-output-interface
@@ -369,12 +370,16 @@
     fmap-cadr
     fmap-list
     fold-numbers
-    fold-right-numbers)))
+    fold-right-numbers
+    unique-conser
+    srfi-1:member 
+    srfi-1:assoc)))
 
 (define-structure list
   list-interface
   (open extra-scheme
         srfi-1
+        (with-prefix srfi-1 srfi-1:)
         assert)
   (files list))
 
@@ -430,7 +435,9 @@
     string->name
     string->identifier
     tech-name
-    normalize-string)))
+    camel-case
+    normalize-string
+    maybe-tokenize)))
 
 (define-structure string string-interface
   (open extra-scheme
@@ -449,8 +456,9 @@
           procedure-call?
           keyword?
 
-          gensym
+          gensym          
           quote-non-literal
+          desyntaxify
           remove-keyword-indication
           keywords->alist
 

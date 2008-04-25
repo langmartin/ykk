@@ -128,7 +128,9 @@
    urldecode
    urldecode-string
    urlencode
-   urlencode-string))
+   urlencode-string
+   set-parameters
+   add-parameters-to-path))
 
 (define-structure url url-interface
   (open scheme+
@@ -202,6 +204,7 @@
    standard-parameters
    set-standard-host!
    ;; client forms v2
+   http-response
    begin-http-response
    begin-content-length
    status
@@ -226,7 +229,8 @@
         json
         ssax-vanilla
         fluids+
-        fluids)
+        htmlprag ; for tests
+        )  
   (files http
          protocol
          http-standard-dispatch))
@@ -249,3 +253,43 @@
         url
         json)
   (files standard-test))
+
+(define-interface pages-interface
+  (export
+   (define-resource :syntax)
+   (response :syntax)
+   (page :syntax)
+   (reset-page :syntax)
+   (page-response :syntax)
+   (simulate-request :syntax)
+   (method-case :syntax)
+
+   simple-error
+
+   moved-permanently
+   redirect-found   
+   see-other
+   temporary-redirect
+   bad-request
+   forbidden
+   not-found
+   method-not-allowed
+   server-error
+   not-implemented
+   ))
+
+(define-structure pages pages-interface
+  (for-syntax
+   (open extra-scheme
+         syntax-util
+         http-protocol
+         list alist))  
+  (open extra-scheme
+        syntax-util
+        list string
+        http http-protocol
+        htmlprag
+        exceptions
+        ykk-ports monad-style-output
+        assert)
+  (files page page-responses))

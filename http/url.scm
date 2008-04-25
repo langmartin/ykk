@@ -97,10 +97,20 @@
 
 (assert (urlencode-string "foo bar baz!") => "foo+bar+baz%21")
 
-(define (urlencode-display string)
-  (let-string-input-port
-   string
-   (for-each-display (urlencode read-char))))
+(define (urlencode-display s)
+  (with-current-input-port
+      (value->input-port s)
+    (lambda ()
+      (for-each-display (urlencode read-char)))))
+
+(define (value->input-port v)
+  (cond ((input-port? v)
+         v)
+        ((string? v)
+         (make-string-input-port v))
+        (else
+         (make-string-input-port
+          (let-string-output-port (display v))))))
 
 ;;;; Data type, Interface
 (define-record-type url
@@ -258,23 +268,38 @@
  (make-url 'http "coptix.com" 3140 "/" '()))
 
 (define (url-parameter-string url)
+  (let-string-output-port
+   (parameter-string (url-parameters url))))
+
+(define (parameter-string param)
+  
   (define (show key val)
     (urlencode-display key)
     (display #\=)
     (urlencode-display val))
-  (let ((param (url-parameters url)))
-    (let-string-output-port
-     (if (not (null? param))
-         (for-each (lambda (x)
-                     (if (pair? x)
-                         (show (car x) (cdr x))
-                         (display x)))
-                   (intersperse #\& param))))))
+  
+  (if (not (null? param))
+      (for-each (lambda (x)
+                  (if (pair? x)
+                      (show (car x) (cdr x))
+                      (display x)))
+                (intersperse #\& param))))
 
 (define (url-parameters? url)
   (not (null? (url-parameters url))))
 
 (assert
  (url-parameter-string
-  (make-url 1 2 3 4 '(("foo" . "bar!") ("baz" . "quux, biatch!"))))
- => "foo=bar%21&baz=quux%2c+biatch%21")
+  (make-url 1 2 3 4 '(("foo" . "bar!") ("baz" . "quux, biatch!") (bum . 20))))
+ => "foo=bar%21&baz=quux%2c+biatch%21&bum=20")
+
+(define (set-parameters path params)
+  (let ((path old-params (parse-url-path path)))
+    (add-parameters-to-path
+     path
+     (merge-alists proj-1 old-params params))))
+
+(define (add-parameters-to-path path params)
+  (let-string-output-port
+   (output path #\?)
+   (parameter-string params)))

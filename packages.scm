@@ -64,35 +64,30 @@
   (export txpath-run
           sxpath-run
           (let-sxml-attrs :syntax)
-          (let-sxml-pluck-attrs :syntax)))
+          (let-sxml-pluck-attrs :syntax)
+          (pluck-attributes :syntax)
+          (bind-attributes :syntax)
+          update-attributes
+          add-class
+          join-classes
+          merge-attribute-sets))
 
 (define-structure sxml-tools
   (compound-interface
    (interface-of sxml-basic-tools)
    sxml-interface)
   (open scheme+
+        list
         alist
+        string
         sxml-basic-tools)
   (files utility/sxml))
-
-(define-interface pages-interface
-  (export (page-response :syntax)))
-
-(define-structure pages pages-interface
-  (open scheme+
-        http
-        htmlprag)
-  (files http/page))
 
 ;;;; Plist
 (define-structure plist-demo
   (export)
-  (for-syntax (open scheme+
-                    (subset names (desyntaxify))
-                    http-protocol))
   (open extra-scheme
         list
-        (modify srfi-1 (prefix srfi-1:) (expose member))
         ykk/records
         (with-prefix persisted-graph source:)
         scanned-graph        
@@ -111,7 +106,7 @@
         exceptions
         monad-style-output ykk-ports
         syntax-util
-        htmlprag
+        htmlprag sxml-tools
         type-inspection
         environments)  
   (files plist-demo))

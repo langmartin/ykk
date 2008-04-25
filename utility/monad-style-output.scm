@@ -35,6 +35,10 @@
         port
       (output-for-each display rest))))
 
+(define (output->string . stream)
+  (let-string-output-port
+   (apply output stream)))
+
 (assert
  (call-with-string-output-port
   (lambda (p)

@@ -172,87 +172,11 @@
          (make-string-input-port
           (let-string-output-port (display v))))))
 
-(define (add-class attributes classes)
-  (update-attributes
-   attributes
-   `((class ,classes))))
-
-(define (merge-attribute-sets template . sets)
-  (apply merge-alists/template
-         list
-         cadr
-         template
-         proj-1
-         sets))
-
-(define (join-classes . sets)
-  (string-join (apply merge-class-sets sets)))
-
-(define attribute-updater
-  (cute merge-attribute-sets
-        `((class ,join-classes))
-        <...>))
-
-(define (update-attributes . sets)
-  (cons '@
-   (apply attribute-updater
-          (map-in-order remove-@ sets))))
-
-(define (remove-@ set)
-  (if (and (pair? set)
-           (eq? (car set) '@))
-      (cdr set)
-      set))
-
-(define-syntax bind-attributes
-  (syntax-rules ()
-    ((_ names attributes)
-     (bind-spec names (cdr attributes)))))
-
-(define-syntax pluck-attributes
-  (syntax-rules ()
-    ((_ names attributes)
-     (pluck-spec names (cdr attributes)))))
-
-(define (unique-conser eq)
-  (lambda (a lst)
-    (if (srfi-1:member a lst eq)
-        lst
-        (cons a lst))))
-
-(define merge-class-sets
-  (let ((kons (unique-conser string=?)))
-    (lambda sets
-      (apply merge-lists-in-order
-             kons
-             (map-in-order maybe-tokenize sets)))))
-
-(define (merge-lists-in-order kons . sets)
-  (reverse
-   (fold
-    (lambda (set acc)
-      (fold kons acc set))
-    '()
-    sets)))
-
-(define (maybe-tokenize s . rest)
-  (cond ((string? s)
-         (apply string-tokenize s rest))
-        ((pair? s)
-         s)
-        (else
-         (error 'wrong-type-argument
-                "maybe-tokenize: expecting string or list"
-                s))))
-
-;;;; Testing
-(define (reify-output-stream . stream)
+(define (output->string . stream)
   (let-string-output-port
    (apply output stream)))
-
-(define (response-body . args)
-  (string-join args "\r\n"))
-
+
+;;;; Testing
 (define-syntax* (simulate-request
                  (url: url "http://localhost/")
                  (query: query '())
@@ -262,7 +186,7 @@
   (with-request
    (make-request "HTTP/1.1" method (parse-url url) query headers)
    (lambda ()
-     (reify-output-stream . body))))
+     (output->string . body))))
 
 ;;;; Infrastructure
 (define-syntax* (response
@@ -343,30 +267,6 @@
      (make-reset-page
       (lambda () (page . arguments))))))
 
-(define-syntax method-case
-  (lambda (form rename compare)
-    (let ((cases (cdr form)))
-
-      (define %case (rename 'case))
-      (define %method-not-allowed (rename 'method-not-allowed))
-      (define %request-method (rename 'request-method))
-      (define %string->symbol (rename 'string->normal-symbol))
-      (define %quote (rename 'quote))
-
-      (define (quote-list lst)
-        (map (lambda (item)
-               (list %quote item))
-             lst))
-
-      (define (allowed)
-        (quote-list (apply append (map car cases))))
-
-      `(,%case (,%string->symbol (,%request-method))
-               ,@cases
-               ,@(if (assq 'else cases)
-                     '()
-                     `((else (,%method-not-allowed ,@(allowed)))))))))
-
 (define (method-not-allowed . allowed)
   (let ((allowed (string-join (map symbol->string allowed) " ")))
     (reset-page
@@ -386,7 +286,7 @@
 (define (reset/simple-error-page code . message)
   (reset/error-page
    code
-   (apply reify-output-stream (intersperse #\space message))))
+   (apply output->string (intersperse #\space message))))
 
 (define (reset/error-page code explaination)
   (reset-page
@@ -418,11 +318,11 @@
                      ((get) "success")))))))
 
   (assert (simulate "get") =>
-          (reify-output-stream
+          (output->string
            (page "success")))
 
   (assert (simulate "post") =>
-          (reify-output-stream
+          (output->string
            (page
             status: 405
             headers: ((allowed "get"))

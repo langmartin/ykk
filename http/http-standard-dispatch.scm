@@ -41,7 +41,7 @@
     (apply h params)))
 
 (define-record-type rtd/request
-  (make-request version method url query head)
+  (really-make-request version method url query head)
   request?
   (version request*-version)
   (method request*-method)
@@ -49,10 +49,10 @@
   (query request*-parameters set-request*-parameters!)
   (head request*-headers))
 
-(define (make-request/method-hack version method url query head)
+(define (make-request version method url query head)
   (let* ((method (or (header-assoc 'X-HTTP-Method-Override head) method))
          (param-method query (pluck-alist (_method) query)))
-    (make-request version (string->normal-symbol (or param-method method)) url query head)))
+    (really-make-request version (string->normal-symbol (or param-method method)) url query head)))
 
 (define-fluid ($request #f)
   current-request
@@ -132,7 +132,7 @@
                 (host (or (header-assoc 'host head) *standard-host*)))
            (let ((url (make-url 'http host 80 path param)))
              (with-request
-              (make-request/method-hack version method url (or (catch-query mime) '()) head)
+              (make-request version method url (or (catch-query mime) '()) head)
               (lambda ()
                 (perform-standard-output
                  (handler)
@@ -211,10 +211,13 @@
   current-http-status
   with-http-status)
 
-(define (status code . text)
+(define (make-status code . text)
   (let-optionals* text ((text (status-code->phrase code)))
-    (set-fluid! $http-status (list status* code #\space text crlf))
-    ""))
+    (list code #\space text crlf)))
+
+(define (status . rest)
+  (set-fluid! $http-status (apply make-status rest))
+  "")
 
 (define-fluid ($http-headers '())
   current-http-headers
@@ -240,15 +243,24 @@
 
 (define-syntax begin-http-response
   (syntax-rules ()
-    ((_ body ...)
+    ((_ . body)
+     (http-response 200 '() body))))
+
+(define-syntax http-response
+  (syntax-rules ()
+    ((_ ("expand") status ((k v) ...) body)
      (let-fluids
-      $http-status (list 200 " Ok" crlf)
-      $http-headers '()
-      (lambda ()
-        (let ((res (begin-content-length body ...)))
+      $http-status (make-status . status)
+      $http-headers (list (cons 'k v) ...)
+      (lambda ()        
+        (let ((res (begin-content-length . body)))
           (output (current-http-status)
                   (header-reduce (current-http-headers))
-                  res)))))))
+                  res)))))
+    ((_ (code text) headers body)
+     (http-response ("expand") (code text) headers body))    
+    ((_ code headers body)
+     (http-response ("expand") (code) headers body))))
 
 (assert
  (let-string-output-port
@@ -259,7 +271,7 @@
       (body
        (h1 "foo bar")
        (p "some text" ,(header 'content-type "text/html"))))))) =>
-       "200 Ok\r
+       "200 OK\r
 content-type: text/html\r
 content-length: 89\r
 \r

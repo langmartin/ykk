@@ -86,3 +86,37 @@
 
 (define (fmap-list proc spec . rest)
   (apply proc (car spec) (cadr spec) rest))
+
+(define (unique-conser eq)  
+  (lambda (a lst)
+    (if (srfi-1:member a lst eq)
+        lst
+        (cons a lst))))
+
+;;;; Tests
+(begin
+  (let* ((item (list 'a 'b))
+         (mod1 (share item uncons values cons))
+         (mod2 (share item uncons (lambda (a b) (values (symbol->string a) b)) cons)))
+
+    ;; sharing is preserved
+    (assert (eq? item mod1))
+    (assert (neq? item mod2))
+    (assert mod2 => '("a" b))
+    (assert (eq? (cdr item) (cdr mod2))))
+
+  (assert (fmap-car + '(1 2) 10) => '(11 2))
+  
+  (assert (fmap-cdr + `(1 . 2) 10) => `(1 . 12))
+  
+  (assert (fmap-cadr + '(1 2) 10) => '(1 12))
+  
+  (assert (map-in-order (cut fmap-pair xcons <>) '((a . 1) (b . 2)))
+          => '((1 . a) (2 . b)))
+  
+  (assert (map-in-order (cut fmap-list cons <>) '((a 1) (b 2)))
+          => '((a . 1) (b . 2)))
+  
+  (assert (fold-right (unique-conser =) '() '(1 2 1 2))
+          => (delete-duplicates '(1 2 1 2) =))  
+  )
