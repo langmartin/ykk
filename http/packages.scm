@@ -175,6 +175,7 @@
 (define-interface http-interface
   (export
    http-get
+   http-get->mime
    http-form-post
    http-server
    http-server-exec
@@ -213,7 +214,9 @@
    header-clear-all))
 
 (define-structure http
-  (compound-interface http-interface (interface-of url))
+  (compound-interface http-interface
+                      (interface-of url)
+                      (interface-of mime))
   (open scheme+
         sockets
         byte-vectors
@@ -230,7 +233,7 @@
         ssax-vanilla
         fluids+
         htmlprag ; for tests
-        )  
+        )
   (files http
          protocol
          http-standard-dispatch))

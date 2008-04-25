@@ -244,33 +244,38 @@
 (define-syntax begin-http-response
   (syntax-rules ()
     ((_ . body)
-     (http-response 200 '() body))))
+     (http-response 200 () body))))
 
 (define-syntax http-response
   (syntax-rules ()
-    ((_ ("expand") status ((k v) ...) body)
+    ((_ ("expand") status headers body)
      (let-fluids
       $http-status (make-status . status)
-      $http-headers (list (cons 'k v) ...)
+      $http-headers (http-response ("headers") headers)
       (lambda ()        
         (let ((res (begin-content-length . body)))
-          (output (current-http-status)
-                  (header-reduce (current-http-headers))
-                  res)))))
+          (list (current-http-status)
+                (header-reduce (current-http-headers))
+                res)))))
     ((_ (code text) headers body)
      (http-response ("expand") (code text) headers body))    
     ((_ code headers body)
-     (http-response ("expand") (code) headers body))))
+     (http-response ("expand") (code) headers body))
+    ((_ ("headers") ((k v) ...))
+     (list (cons 'k v) ...))
+    ((_ ("headers") ())
+     '())))
 
 (assert
  (let-string-output-port
-  (begin-http-response
-   (shtml->html
-    `(html
-      (head (title "foo"))
-      (body
-       (h1 "foo bar")
-       (p "some text" ,(header 'content-type "text/html"))))))) =>
+  (output
+   (begin-http-response
+    (shtml->html
+     `(html
+       (head (title "foo"))
+       (body
+        (h1 "foo bar")
+        (p "some text" ,(header 'content-type "text/html")))))))) =>
        "200 OK\r
 content-type: text/html\r
 content-length: 89\r

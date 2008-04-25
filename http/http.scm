@@ -9,16 +9,14 @@
         (current-error-port)
       (output "output-debug\n" body "\n\n"))))
 
-(define (http-server-exec? obj)
-  (and (pair? obj)
-       (eq? http-server-exec? (car obj))))
+(define-record-type :server-exec
+  (http-server-exec% thunk output)
+  http-server-exec?
+  (thunk  exec-thunk)
+  (output exec-output))
 
 (define (http-server-exec thunk . out)
-  (let-optionals* out ((out #f))
-    (list http-server-exec? thunk out)))
-
-(define exec-thunk cadr)
-(define exec-output caddr)
+  (http-server-exec% thunk out))
 
 (define (http-server-close)
   (http-server-exec (lambda () #t)))
