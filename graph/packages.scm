@@ -55,6 +55,9 @@
         posix-time
         locks
         os-strings
+        assert
+        ykk-ports
+        list
         persistent-internal)
   (files heap-rotate))
 

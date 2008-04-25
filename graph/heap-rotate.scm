@@ -18,7 +18,7 @@
 
 (define (initialize-logging path)
   (if (log-port)
-      (error "the log is initialized")
+      #f
       (if (not (accessible? path (access-mode write)))
           (error "the logging path is not writable" path)
           (begin
