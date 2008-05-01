@@ -21,9 +21,34 @@
   (title (type :string))
   (link (type :url))
   (description (type :text)))
+
+(define-record-type/primitive :rss-item
+  nongenerative: u1e4520ea-ed79-4199-bcf0-d6a8e415123f
+  (guid (type :string))
+  (pubDate (type :date))
+  (link (type :url))
+  (description (type :text)))
+
+(define-record-type/primitive :cron-job
+  nongenerative: u58175730-4c1d-41c6-a041-b60576593a81
+  (hour (type :string))
+  (minute (type :string))
+  (days (type :list))
+  (last (type :date)))
 
-;;;; Top
+;;;; Tree
+(define (scanned-top)
+  (scan (persistent-symbol 'top)))
+
 (define update-lock (make-lock))
+
+(define (replay-zipped-transcript updated top)
+  (error "I don't know what to do here"))
+
+(define (fail-top-update updated-top)
+  (open-update-cursor
+   (lambda (top k)
+     (k (replay-zipped-transcript updated-top top)))))
 
 (define (open-update-cursor receiver)
   (let ((starting-top (persistent-symbol 'top)))
@@ -36,101 +61,87 @@
                           (persistent-symbol-set! 'top (scanned->source top))
                           (fail-top-update top)))
                     (lambda () (release-lock update-lock)))))))
-
-;;;; Manipulation
-(define (zip-up/update-top z)
-  (update-scanned-top
-   (zip-all-the-way-up z)))
 
-(define (perform z op)
-  (zip-up/update-top
-   (move 'up (op (z-item z)) z)))
+;; (define tree (test-rss-parser "http://okmij.org/ftp/rss.xml"))
+;; (p (car ((sxpath `(// item)) tree)))
 
-(define (perform/path p op)
-  (perform (resolve (scanned-top) p) op))
-
-(define (insert g child)
-  (replace-children
-   g
-   (add-child child (graph-children g))))
-
-
-
-;; (map->list graph-name (scanned-top))
-
-;; (graph-name (z-item (resolve (scanned-top) "/first-person")))
-
-(define-syntax insert-test
+(define-syntax let-alist
   (syntax-rules ()
-    ((_ tech-name ?name ?age ?gender)
-     (perform/path
-      "/"
-      (cut insert <>
-           (edge tech-name
-                 (node :person (plist (name ?name)
-                                      (age ?age)
-                                      (gender ?gender)))))))))
+    ((_ ((key ... alist)) body ...)
+     (let ((key ... (bind-alist (key ...) alist)))
+       body ...))))
 
+(define (//item->item-source alist)
+  (let-alist ((description link guid pubDate alist))
+    (make-rss-item
+     guid
+     pubDate
+     link
+     description)))
 
-(define (source:update-source node new-source)
-  (sharing-record-update node source::node (code new-source)))
+(define (assoc-right/rest key lst . test?)
+  (let-optionals* test? ((test? equal?))
+    (let* ((box '())
+           (filtered
+            (pair-fold-right (lambda (lst tail)
+                               (let ((x (car lst)))
+                                 (if (and (null? box) (test? key (car x)))
+                                     (begin
+                                       (set! box x)
+                                       tail)
+                                     (if (eq? tail (cdr lst))
+                                         lst
+                                         (cons x tail)))))
+                             '()
+                             lst)))
+      (values box filtered))))
 
-(define (update-source g new-source)
-  (replace-node
-   g
-   (source:update-source
-    (source:graph-node (scanned->source g))
-    new-source)))
+(assert
+ (values->list (assoc-right/rest 'foo '((bar . 2) (foo . 4) (1 2) (foo baz)))) =>
+ '((foo baz)
+   ((bar . 2) (foo . 4) (1 2))))
 
-#;
-(perform/path
- "/james-long"
- (cut update-source <>
-      `(plist (name "billy") (age 25) (gender 'poop))))
+(assert
+ (let ((lst (list '(bar . 2) '(foo . 4) '(1 2))))
+   (eq? lst
+        (cadr (values->list (assoc-right/rest 'foov lst))))))
 
-#;
-(map->list graph-name (scanned-top))
+(define (match-rss-items zipper sxml-spec)
+  (let lp ((zipper zipper) (spec sxml-spec))
+    (let* ((guid (rss-item-guid (z-curr-node zipper)))
+           (pair rest (assoc-right/rest guid sxml-spec)))
+      ))
+)
 
+(define (make-update-rss-feed path top update-k)
+  (update-k
+   (let* ((scanned-z (resolve top path))
+          (scanned (z-item scanned-z))
+          (xml (test-rss-parser (feed-url scanned))))
+     (move
+      'up
+      (replace-children
+       scanned
+       (fold (lambda (item new)
+               (add-child (//item->item-source item)
+                          new))
+             (graph-children scanned)
+             ((sxpath `(// item)) xml)))
+      scanned-z))))
 
-
-(define (plist-editor path)
-  (let* ((path (cons #f (map string->symbol path)))
-         (z (resolve (scanned-top) path))
-         (node (z-item z))
-         (type (graph-type node))
-         (slots (description-specifications (rtd-slots type)))
-         (values (graph-forms node))
-         (req (request-parameters)))
-    (if (string-ci= (request-method) "post")
-        (let ((name age gender tail (bind-alist (name age gender) req)))
-          (perform z
-                   (cut update-source <> `(plist (name ,name)
-                                                 (age ,age)
-                                                 (gender ,gender))))
-          `(ul (li "name " ,name)
-               (li "age " ,age)
-               (li "gender " ,gender)))
-        (form->shtml
-         `(form (@ (action ,(request-path))
-                   (method "post"))
-            (ul
-             ,(map (lambda (spec)
-                     (let ((type (cadr (assq 'type (cdr spec))))
-                           (field-name (symbol->string (car spec)))
-                           (field-value (concat (cdr (assq (car spec) values)))))
-                       `(li ,field-name
-                            ": "
-                            (text (@ (name ,field-name)
-                                     (default ,field-value)))
-                            )))
-                   slots)
-             (submit (@ (name "Name")
-                        (value "Go")))))))))
-
-;(insert-test 'james-long "James" 23 'male)
+(define (test-rss-parser url)
+  (let ((mime (http-get->mime url)))
+    (call-with-string-input-port
+     (duct->string (mime->duct mime))
+     (lambda (port)
+       (if #f
+           (read-line port #f)
+           (ssax:xml->sxml port '()))))))
 
-(intialize-logging "~/tmp/ykk-log")
+;;;; Init
+(initialize-logging "/Users/lang/tmp/ykk")
 
+;; this only runs once, ever
 (if (not (persistent-symbol 'top))
     (persistent-symbol-set!
      'top
@@ -138,9 +149,8 @@
        (source:root
         (source:node :folder (plist (sticky #f)))))))
 
-(http-register-page!
- "/forms-plist"
- (lambda path
-   (page
-     (h4 "plist editor")
-     ,(plist-editor path))))
+(define (find-next-cron-job)
+  (let ((jobs (resolve `(#f crontabs) (scanned-top))))
+    
+    )
+  )

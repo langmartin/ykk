@@ -114,15 +114,21 @@
 (define-structure rss-reader-milestone
   (export)
   (open scheme+
+        pp
+        ssax-vanilla
+        htmlprag
         threads
+        locks
         ykk/records
         (with-prefix persisted-graph source:)
-        scanned-graph        
+        scanned-graph
         assert
         methods
         primitive-types
         persistent-immutable
+        heap-rotate
         http
+        ducts
         ykk/record-procedural
         description
         forms
