@@ -101,3 +101,28 @@
 ;; FOO is applied
 `(begin
    (other-tag ...))
+
+(package rss->html
+ (export link)
+ (open html4)
+ (begin
+   (foo (lambda (x) `(something ,x)))
+   (link (lambda (tag href)
+           `(a (@ (href ,(foo tag))) ,href)))))
+
+(package rss-feed
+  (open rss->html)
+  (begin
+    ...
+    (link "http://foo.com")))
+
+(begin
+  ...
+  (html4:a (@ href ...)))
+
+
+(package display
+  (open rss-feed)
+  ())
+
+
