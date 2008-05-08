@@ -132,5 +132,5 @@
         ykk/record-procedural
         description
         forms
-        alist)
-  (files rss-reader-milestone))
+        alist))
+

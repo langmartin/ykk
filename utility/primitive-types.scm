@@ -7,6 +7,8 @@
 (define (pair-or-null? foo)
   (or (null? foo) (pair? foo)))
 
+(define-simple-type :list () pair-or-null?)
+
 (define (maybe-sexpr? foo)
   (or (not foo) (sexpr? foo)))
 

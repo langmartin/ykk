@@ -1,4 +1,3 @@
-
 (import-dynamic-externals "c-lib/dates")
 
 ;; C Functions
@@ -10,16 +9,22 @@
 (define-condition date-error (error) date-error?)
 
 ;; Public Interface
-(define (date->time date fmt)
+(define (date->seconds date fmt)
   (let ((time (strptime date fmt)))
     (if time
         (make-time time)
         (date-error (string-append "date->time: failed parsing date `" date "' as `" fmt "'")))))
 
-(define (time->date time fmt)
-  (strftime fmt (time-seconds time)))
+(define (date->time date fmt)
+  (make-time (date->seconds date fmt)))
 
-(define (smart/date->time date)
+(define (seconds->date time fmt)
+  (strftime fmt time))
+
+(define (time->date time fmt)
+  (seconds->date (time-seconds time) fmt))
+
+(define (smart/date->seconds date)
   (let ((day "[0-9]\\{1,2\\}/[0-9]\\{1,2\\}/[0-9]\\{4\\}")
         (day-fmt "%m/%d/%Y")
         (time "[0-9]\\{1,2\\}:[0-9]\\{2\\}")
@@ -27,17 +32,23 @@
         (am/pm "[AP]M")
         (am/pm-fmt "%p")
         (rx (lambda args
-              (apply string-append (append (list "^")
-                                           (intersperse " " args)
-                                           (list "$")))))
+              (apply string-append
+                     (append (list "^")
+                             (intersperse " " args)
+                             (list "$")))))
         (space (lambda args
                  (apply string-append (intersperse " " args)))))
     (or (case-posix-regex date
-          ((rx day time am/pm) (date->time date (space day-fmt time-fmt am/pm-fmt)))
-          ((rx day time) (date->time date (space day-fmt time-fmt)))
-          ((rx day) (date->time (space date "0:0")  (space day-fmt time-fmt))))
+          ((rx day time am/pm)
+           (date->seconds date (space day-fmt time-fmt am/pm-fmt)))
+          ((rx day time)
+           (date->seconds date (space day-fmt time-fmt)))
+          ((rx day)
+           (date->seconds (space date "0:0")  (space day-fmt time-fmt))))
         (date-error "smart/date->time: failed to detect date format for date `" date "'"))))
 
+(define (smart/date->time date)
+  (make-time (smart/date->seconds date)))
 
 ;; Tests
 (assert (time->date (smart/date->time "3/20/2008") "%D") =>

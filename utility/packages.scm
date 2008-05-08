@@ -212,8 +212,11 @@
 
 (define-interface dates-interface
   (export date->time
+          date->seconds
           smart/date->time
-          time->date))
+          smart/date->seconds
+          time->date
+          seconds->date))
 
 (define-structure dates dates-interface
   (open scheme
@@ -223,8 +226,19 @@
         regexps
         more-regexps
         exceptions
-        srfi-26)
+        srfi-26
+        assert
+        list)
   (files dates))
+
+(define-interface when-interface
+  (export next-month))
+
+(define-structure when
+  when-interface
+  (open scheme
+        assert
+        dates))
 
 (define-structure uuidgen
   (export uuidgen-v1->hex-string)
@@ -314,7 +328,8 @@
 (define set rb-set)
 
 (define-interface primitive-types-interface
-  (export :maybe-symbol maybe-symbol?
+  (export :list pair-or-null?
+          :maybe-symbol maybe-symbol?
           :maybe-sexpr maybe-sexpr?
           :sexpr sexpr?
           :code-block code-block?))
