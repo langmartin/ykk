@@ -85,17 +85,17 @@
 
 ; A sxml:whitespace or () <> [] : / + * , = | ! " ' @ $
 (define sxml:delimiter (append sxml:whitespace
-                              '(#\( #\) #\< #\> #\[ #\] #\: #\/ #\+ 
+                              '(#\( #\) #\< #\> #\[ #\] #\: #\/ #\+
                                 #\* #\, #\= #\| #\! #\" #\' #\@ #\$)))
 
 ; A list of characters a NCName cannot start with
 (define (sxml:non-first? ch)
   (or (char-numeric? ch)
-      (memv ch sxml:delimiter) 
+      (memv ch sxml:delimiter)
       (memv ch '(#\. #\-))))
 
 ; The function reads a whitespace , production [3] (S) in XML Rec.
-;  path - xpointer path string as a list of chars 
+;  path - xpointer path string as a list of chars
 ; It returns a new path
 (define (sxml:skip-ws path)
   (if (or (null? path)
@@ -108,7 +108,7 @@
 ; fails, signals an error message
 (define (sxml:assert-end-of-path path)
   (let ((path (sxml:skip-ws path)))
-    (or 
+    (or
      (null? path)
      (begin
        (sxml:xpointer-parse-error "unexpected - \"" (list->string path) "\"")
@@ -126,7 +126,7 @@
 ; If 'str' is really in the beginning of path, a new path is returned
 ; Otherwise, function returns #f (path remains unchanged)
 (define (sxml:parse-check str path . char-list)
-  (let loop ((lst (string->list str)) 
+  (let loop ((lst (string->list str))
              (p (sxml:skip-ws path)))
     (cond
       ((null? lst)
@@ -159,12 +159,12 @@
 ; effect. It displays an error message if the 'str' doesn't match the beginning
 ; of 'path'.
 (define (sxml:parse-assert str path)
-  (let loop ((lst (string->list str)) 
+  (let loop ((lst (string->list str))
 	     (p (sxml:skip-ws path)))
     (cond
       ((null? lst) p)
-      ((null? p) 
-       (sxml:xpointer-parse-error 
+      ((null? p)
+       (sxml:xpointer-parse-error
         "unexpected end of XPath expression. "
         "Expected - \"" str "\", given - \"" (list->string path) "\""))
       ((char=? (car lst) (car p)) (loop (cdr lst) (cdr p)))
@@ -172,7 +172,7 @@
        (sxml:xpointer-parse-error
         "expected - \"" str "\", given - \"" (list->string path) "\"")))))
 
-             
+
 ;------------------------------------------------
 ; NCName readers
 
@@ -183,12 +183,12 @@
 ; The result:  (list  ncname  new-path)
 ;          or  #f
 ;  ncname - NCName represented as a string
-; If there is no NCName in the current position of the path, then an error 
+; If there is no NCName in the current position of the path, then an error
 ; message is displayed and #f is returned
 (define (sxml:parse-ncname path)
   (let((path (sxml:skip-ws path)))
     (cond
-      ((null? path) 
+      ((null? path)
        (sxml:xpointer-parse-error
         "unexpected end of XPath expression. Expected - NCName"))
       ((sxml:non-first? (car path))
@@ -199,7 +199,7 @@
                   (path (cdr path)))
          (cond
            ((null? path) (list (list->string (reverse ncname)) path))
-           ((memv (car path) sxml:delimiter)           
+           ((memv (car path) sxml:delimiter)
             (list (list->string (reverse ncname)) path))
            (else (loop (cons (car path) ncname) (cdr path)))))))))
 
@@ -217,7 +217,7 @@
       (else (let loop ((ncname (list (car path)))
 		       (path (cdr path)))
 	      (cond
-		((null? path) 
+		((null? path)
 		 (list (list->string (reverse ncname)) path))
 		((and (memv (car path) sxml:delimiter)
 		      (not (char=? (car path) #\:)))
@@ -227,7 +227,7 @@
 ; The function reads a qualified name (QName)
 ; Returns: ( (prefix . local-part) new-path )
 ;      or  ( local-part new-path )    if there is no prefix
-;       if there is not QName in the beginning of the 'path' it calls 
+;       if there is not QName in the beginning of the 'path' it calls
 ;          sxml:xpointer-parse-error
 ;  prefix, local-part - strings
 ;  new-path - a list of characters
@@ -244,7 +244,7 @@
 		(else (and-let* ((r2 (sxml:parse-ncname (cdr path2))))
 				(list (cons first (car r2)) (cadr r2)))
 		      )))))
-                   
+
 ;------------------------------------------------
 ; Parsers for data of basic types
 
@@ -265,24 +265,24 @@
          (cond
            ((null? path) (list res path))
            ((char-numeric? (car path))
-            (loop (+ (* res 10) (- (char->integer (car path)) 
+            (loop (+ (* res 10) (- (char->integer (car path))
 				   48)) ; (char->integer #\0)
                   (cdr path)))
            (else (list res path))))))))
 
 ; Reads a Literal ([29] in XPath specification)
-; [29]    Literal    ::=    '"' [^"]* '"'  
+; [29]    Literal    ::=    '"' [^"]* '"'
 ;                           | "'" [^']* "'"
 ; The result:  (string new-path)  or  #f
 (define (sxml:parse-literal path)
   (let ((ch (if (sxml:parse-check "\"" path) #\" #\')))
     (let loop ((res '())
-	       (path (sxml:parse-assert (if (char=? ch #\") "\"" "'") 
+	       (path (sxml:parse-assert (if (char=? ch #\") "\"" "'")
 				       path)))
       (cond
 	((not path) #f)
 	((null? path)
-	 (sxml:parse-assert (if (char=? ch #\") "\"" "'") 
+	 (sxml:parse-assert (if (char=? ch #\") "\"" "'")
 			   path)
 	 #f)
 	((char=? (car path) ch)
@@ -291,17 +291,17 @@
 	(else (loop (cons (car path) res) (cdr path)))))))
 
 ; Reads a Number ([30]-[31] in XPath specification)
-; [30]    Number    ::=    Digits ('.' Digits?)?  
-;                          | '.' Digits  
+; [30]    Number    ::=    Digits ('.' Digits?)?
+;                          | '.' Digits
 ; [31]    Digits    ::=    [0-9]+
 ; The result:  (number new-path)  or  #f
-(define (sxml:parse-number path) 
+(define (sxml:parse-number path)
   (define (digits path)
     (let loop ((n-lst '())
                (path path))
       (cond
         ((and (null? path) (null? n-lst))
-         (sxml:xpointer-parse-error 
+         (sxml:xpointer-parse-error
           "unexpected end of XPath expression. Expected - number"))
         ((null? path) (list n-lst path))
         ((and (or (char<? (car path) #\0) (char>? (car path) #\9))
@@ -312,11 +312,11 @@
         (else
          (loop (cons (- (char->integer (car path)) (char->integer #\0)) n-lst)
                (cdr path))))))
-    
+
   (let ((path (sxml:skip-ws path)))
     (cond
       ((null? path)
-       (sxml:xpointer-parse-error 
+       (sxml:xpointer-parse-error
         "unexpected end of XPath expression. Expected - number"))
       ((char=? (car path) #\.)
        (and-let*
@@ -327,7 +327,7 @@
           (if (null? n-lst)
               (list (/ res 10) path)
               (rpt (+ (/ res 10) (car n-lst))
-                   (cdr n-lst) 
+                   (cdr n-lst)
                    path)))))
       (else
        (and-let*
@@ -350,7 +350,7 @@
                              (if (null? n-lst)
                                  (list (+ num1 (/ num2 10)) path)
                                  (rpt (+ (/ num2 10) (car n-lst))
-                                      (cdr n-lst) 
+                                      (cdr n-lst)
                                       path))))))
               (loop (+ (* num1 10) (car n-lst))
                     (cdr n-lst)
@@ -398,27 +398,27 @@
        ;  ns-binding - declared namespace prefixes (not for all functions)
        ; ns-binding = (listof (prefix . uri))
        ; prefix - symbol, uri - string
-       
+
        ;-------------------------------------------------
        ; Functions which parse XPath grammar
-       
+
        ; Parses an AxisSpecifier production ([5],[6],[13] in XPath specification)
-       ; [5]    AxisSpecifier    ::=    AxisName '::'  
+       ; [5]    AxisSpecifier    ::=    AxisName '::'
        ;                                | AbbreviatedAxisSpecifier
-       ; [6]    AxisName    ::=    'ancestor'  
-       ;                           | 'ancestor-or-self'  
-       ;                           | 'attribute'  
-       ;                           | 'child'  
-       ;                           | 'descendant'  
-       ;                           | 'descendant-or-self'  
-       ;                           | 'following'  
-       ;                           | 'following-sibling'  
-       ;                           | 'namespace'  
-       ;                           | 'parent'  
-       ;                           | 'preceding'  
-       ;                           | 'preceding-sibling'  
-       ;                           | 'self' 
-       ; [13]    AbbreviatedAxisSpecifier    ::=    '@'? 
+       ; [6]    AxisName    ::=    'ancestor'
+       ;                           | 'ancestor-or-self'
+       ;                           | 'attribute'
+       ;                           | 'child'
+       ;                           | 'descendant'
+       ;                           | 'descendant-or-self'
+       ;                           | 'following'
+       ;                           | 'following-sibling'
+       ;                           | 'namespace'
+       ;                           | 'parent'
+       ;                           | 'preceding'
+       ;                           | 'preceding-sibling'
+       ;                           | 'self'
+       ; [13]    AbbreviatedAxisSpecifier    ::=    '@'?
        ;
        ; txp-params are to include the following parameter:
        ;  param-name = 'axis
@@ -449,18 +449,18 @@
                       (list ((cadar pairs) add-on) path)))
                 (else  ; continue loop
                  (loop (cdr pairs))))))))
-       
-       ; Parses a NodeTest production 
+
+       ; Parses a NodeTest production
        ; ([7],[37] in XPath specification, [11] in XPointer specification)
-       ; [7]    NodeTest    ::=    NameTest  
-       ;                           | NodeType '(' ')'  
-       ;                           | 'processing-instruction' '(' Literal ')' 
-       ; [37]    NameTest    ::=    '*'  
-       ;                            | NCName ':' '*'  
-       ;                            | QName  
-       ; [11]   NodeType   ::=   'comment'  
-       ;                         | 'text'  
-       ;                         | 'processing-instruction'  
+       ; [7]    NodeTest    ::=    NameTest
+       ;                           | NodeType '(' ')'
+       ;                           | 'processing-instruction' '(' Literal ')'
+       ; [37]    NameTest    ::=    '*'
+       ;                            | NCName ':' '*'
+       ;                            | QName
+       ; [11]   NodeType   ::=   'comment'
+       ;                         | 'text'
+       ;                         | 'processing-instruction'
        ;                         | 'node'
        ;                         | 'point'
        ;                         | 'range'
@@ -558,14 +558,14 @@
                          (list
                           (qname-impl uri (car lst) add-on)
                           (cadr lst))))))))))))))
-                
-       ; Parses a Step production 
+
+       ; Parses a Step production
        ; ([4xptr] in XPointer specification, [12] in XPath specification)
        ; [4xptr] Step ::= AxisSpecifier NodeTest Predicate*
        ;                  | AbbreviatedStep
        ;                  | 'range-to' '(' Expr ')' Predicate*
-       ; [12]    AbbreviatedStep    ::=    '.'  
-       ;                                   | '..' 
+       ; [12]    AbbreviatedStep    ::=    '.'
+       ;                                   | '..'
        ;
        ; txp-params are to include the following parameter:
        ;  param-name ::= 'step
@@ -634,7 +634,7 @@
                          ((lst (txp:parse-predicate path ns-binding add-on)))
                          (loop (cons (car lst) preds)
                                (cadr lst)))
-                        ; No more predicates                   
+                        ; No more predicates
                         (list
                          (if (or (txp:semantic-errs-detected? axis test)
                                  (apply txp:semantic-errs-detected? preds))
@@ -644,9 +644,9 @@
 
        ; Parses a RelativeLocationPath production ([3],[11] in
        ; XPath specification)
-       ; [3]  RelativeLocationPath  ::=  Step  
-       ;                                 | RelativeLocationPath '/' Step  
-       ;                                 | AbbreviatedRelativeLocationPath 
+       ; [3]  RelativeLocationPath  ::=  Step
+       ;                                 | RelativeLocationPath '/' Step
+       ;                                 | AbbreviatedRelativeLocationPath
        ; [11]  AbbreviatedRelativeLocationPath  ::=
        ;                                    RelativeLocationPath '//' Step
        ;
@@ -682,7 +682,7 @@
                      (sxml:parse-assert "//" path)))
                    ((sxml:parse-check "/" path)
                     (loop (cons step-res step-res-lst)
-                          (sxml:parse-assert "/" path)))                          
+                          (sxml:parse-assert "/" path)))
                    (else  ; no more steps
                     (list
                      (if
@@ -693,9 +693,9 @@
                      path)))))))))
 
        ; Parses a LocationPath production ([1],[2],[10] in XPath specification)
-       ; [1]    LocationPath    ::=    RelativeLocationPath  
-       ;                               | AbsoluteLocationPath  
-       ; [2]    AbsoluteLocationPath    ::=   '/' RelativeLocationPath?  
+       ; [1]    LocationPath    ::=    RelativeLocationPath
+       ;                               | AbsoluteLocationPath
+       ; [2]    AbsoluteLocationPath    ::=   '/' RelativeLocationPath?
        ;                                      | AbbreviatedAbsoluteLocationPath
        ; [10]    AbbreviatedAbsoluteLocationPath    ::=
        ;                                              '//' RelativeLocationPath
@@ -715,7 +715,7 @@
                (slash-value
                 (txp:param-value 'slash location-path-value))
                (double-slash-value
-                (txp:param-value 'double-slash location-path-value))               
+                (txp:param-value 'double-slash location-path-value))
                (nothing?  ; whether no relative location path follows '/'
                 (lambda (path)
                   (let ((path (sxml:skip-ws path)))
@@ -760,8 +760,8 @@
                (txp:parse-relative-location-path path ns-binding add-on))))))
 
        ; Parses a Predicate production ([8]-[9] in XPath specification)
-       ; [8]    Predicate    ::=    '[' PredicateExpr ']'  
-       ; [9]    PredicateExpr    ::=    Expr 
+       ; [8]    Predicate    ::=    '[' PredicateExpr ']'
+       ; [9]    PredicateExpr    ::=    Expr
        ;
        ; txp-params are to include the following parameter:
        ;  param-name ::= 'predicate
@@ -780,18 +780,18 @@
               path)))))
 
        ; Parses a VariableReference production ([36] in XPath specification)
-       ; [36]    VariableReference    ::=    '$' QName 
+       ; [36]    VariableReference    ::=    '$' QName
        ;
        ; txp-params are to include the following parameter:
        ;  param-name ::= 'variable-ref
        ;  param-value ::= (lambda (var-name-string add-on) ...)
-       (txp:parse-variable-reference  
+       (txp:parse-variable-reference
         (let ((var-ref-value (txp:param-value 'variable-ref txp-params)))
           (lambda (path ns-binding add-on)
             (and-let*
              ((path (sxml:parse-assert "$" path))
               (lst (sxml:parse-qname path)))
-             (let ((name              
+             (let ((name
                     (if (pair? (car lst))  ; contains a prefix-part
                         (string-append (caar lst) ":" (cdar lst))
                         (car lst))))
@@ -799,9 +799,9 @@
 
        ; Parses a FunctionCall production ([16],[17],[35] in
        ; XPath specification)
-       ; [16]    FunctionCall    ::=    FunctionName 
+       ; [16]    FunctionCall    ::=    FunctionName
        ;                                '(' ( Argument ( ',' Argument )* )? ')'
-       ; [17]    Argument    ::=    Expr 
+       ; [17]    Argument    ::=    Expr
        ; [35]    FunctionName    ::=    QName - NodeType
        ;
        ; txp-params are to include the following parameter:
@@ -816,7 +816,7 @@
                (lambda (path ns-binding add-on)
                  (and-let*
                   ((path (sxml:parse-assert "(" path)))
-                  (cond	
+                  (cond
                     ((sxml:parse-check ")" path)
                       => (lambda (path) (list '() path)))
                     (else
@@ -853,22 +853,22 @@
                             fun-name)
                         arg-res-lst add-on))
                    path))))))))
-                     
+
        ; Parses a PrimaryExpr production ([15] in XPath specification)
-       ; [15]    PrimaryExpr    ::=    VariableReference  
-       ;                               | '(' Expr ')'  
-       ;                               | Literal  
-       ;                               | Number  
-       ;                               | FunctionCall 
-       ; [29]    Literal    ::=    '"' [^"]* '"'  
-       ;                           | "'" [^']* "'"  
-       ; [30]    Number    ::=    Digits ('.' Digits?)?  
-       ;                          | '.' Digits  
-       ; [31]    Digits    ::=    [0-9]+ 
+       ; [15]    PrimaryExpr    ::=    VariableReference
+       ;                               | '(' Expr ')'
+       ;                               | Literal
+       ;                               | Number
+       ;                               | FunctionCall
+       ; [29]    Literal    ::=    '"' [^"]* '"'
+       ;                           | "'" [^']* "'"
+       ; [30]    Number    ::=    Digits ('.' Digits?)?
+       ;                          | '.' Digits
+       ; [31]    Digits    ::=    [0-9]+
        ;
        ; txp-params are to include the following parameter:
        ;  param-name ::= 'primary-expr
-       ;  param-value ::= 
+       ;  param-value ::=
        ;   (list  (list  'literal  (lambda (literal add-on) ...) )
        ;          (list  'number   (lambda (number add-on) ...)  ))
        (txp:parse-primary-expr
@@ -899,16 +899,16 @@
                        ((and (char>=? (car p) #\0) (char<=? (car p) #\9)) #t)
                        (else #f)))
                (and-let*
-                ((lst (sxml:parse-number path)))                               
+                ((lst (sxml:parse-number path)))
                 (list
-                 (number-value (car lst) add-on)	   
+                 (number-value (car lst) add-on)
                  (cadr lst))))
               (else   ; a Function call
                (txp:parse-function-call path ns-binding add-on))))))
 
        ; Parses a FilterExpr production ([20] in XPath specification)
-       ; [20]    FilterExpr    ::=    PrimaryExpr  
-       ;                              | FilterExpr Predicate 
+       ; [20]    FilterExpr    ::=    PrimaryExpr
+       ;                              | FilterExpr Predicate
        ;
        ; txp-params are to include the following parameter:
        ;  param-name ::= 'filter-expr
@@ -930,7 +930,7 @@
                            (cadr lst))))
                    ; No more predicates
                    ((null? pred-res-lst) (list prim-res path))
-                   (else              
+                   (else
                     (list
                      (if
                       (apply txp:semantic-errs-detected?
@@ -940,9 +940,9 @@
                      path)))))))))
 
        ; Parses a PathExpr production ([19] in XPath specification)
-       ; [19]    PathExpr    ::=    LocationPath  
-       ;                            | FilterExpr  
-       ;                            | FilterExpr '/' RelativeLocationPath  
+       ; [19]    PathExpr    ::=    LocationPath
+       ;                            | FilterExpr
+       ;                            | FilterExpr '/' RelativeLocationPath
        ;                            | FilterExpr '//' RelativeLocationPath
        ;
        ; txp-params are to include the following parameter:
@@ -959,8 +959,8 @@
                   (let ((path (sxml:skip-ws path)))
                     (cond
                       ((null? path) #f)
-                      ((member 
-                        (car path) 
+                      ((member
+                        (car path)
                         '(#\$ #\( #\" #\' #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
                        #t)
                       ((char=? (car path) #\.)
@@ -1042,14 +1042,14 @@
                       lst)))))))))
 
        ; Parses a UnionExpr production ([18] in XPath specification)
-       ; [18]    UnionExpr    ::=    PathExpr  
+       ; [18]    UnionExpr    ::=    PathExpr
        ;                             | UnionExpr '|' PathExpr
        ;
        ; txp-params are to include the following parameter:
        ;  param-name ::= 'union-expr
        ;  param-value ::= (lambda (path-expr-res-lst add-on) ...)
        (txp:parse-union-expr
-        (let ((union-expr-value (txp:param-value 'union-expr txp-params)))              
+        (let ((union-expr-value (txp:param-value 'union-expr txp-params)))
           (lambda (path ns-binding add-on)
             (let loop ((p-e-res-lst '())
                        (path path))
@@ -1062,7 +1062,7 @@
                      (new-path  ; more PathExprs
                       (loop (cons p-e-res p-e-res-lst) new-path))
                      ; no more PathExprs
-                     ((null? p-e-res-lst)  ; only one PathExpr                                
+                     ((null? p-e-res-lst)  ; only one PathExpr
                       (list p-e-res path))
                      (else  ; several Path-exprs
                       (list
@@ -1073,24 +1073,24 @@
                         (union-expr-value
                          (reverse (cons p-e-res p-e-res-lst)) add-on))
                        path))))))))))
- 
+
        ; Parses a UnaryExpr production ([27] in XPath specification)
-       ; [27]    UnaryExpr    ::=    UnionExpr  
-       ;                             | '-' UnaryExpr 
+       ; [27]    UnaryExpr    ::=    UnionExpr
+       ;                             | '-' UnaryExpr
        ; Note that the grammar allows multiple unary minuses
        ;
        ; txp-params are to include the following parameter:
        ;  param-name ::= 'unary-expr
        ;  param-value ::= (lambda (union-expr-res num-minuses add-on) ...)
        (txp:parse-unary-expr
-        (let ((unary-expr-value (txp:param-value 'unary-expr txp-params)))              
+        (let ((unary-expr-value (txp:param-value 'unary-expr txp-params)))
           (lambda (path ns-binding add-on)
             (if (not (sxml:parse-check "-" path))
                 (txp:parse-union-expr path ns-binding add-on)
                 (let loop ((num-minuses 0) (path path))
                   (let ((new-path (sxml:parse-check "-" path)))
                     (if new-path   ; more minuses
-                        (loop (+ num-minuses 1) new-path)               
+                        (loop (+ num-minuses 1) new-path)
                         (and-let*
                          ((lst (txp:parse-union-expr path ns-binding add-on)))
                          (let ((union-expr-res (car lst))
@@ -1102,14 +1102,14 @@
                              (unary-expr-value
                               union-expr-res num-minuses add-on))
                             path))))))))))
-                     			
+
        ; Parses a MultiplicativeExpr production ([26],[34] in
        ; XPath specification)
        ; [26] MultiplicativeExpr  ::=
-       ;                 UnaryExpr  
+       ;                 UnaryExpr
        ;                 | MultiplicativeExpr MultiplyOperator UnaryExpr
-       ;                 | MultiplicativeExpr 'div' UnaryExpr  
-       ;                 | MultiplicativeExpr 'mod' UnaryExpr 
+       ;                 | MultiplicativeExpr 'div' UnaryExpr
+       ;                 | MultiplicativeExpr 'mod' UnaryExpr
        ; [34] MultiplyOperator  ::=  '*'
        ;
        ; txp-params are to include the following parameter:
@@ -1155,11 +1155,11 @@
                        (reverse (cons unary-expr-res unary-expr-res-lst))
                        (reverse op-lst) add-on))
                      path)))))))))
-              
+
        ; Parses a AdditiveExpr production ([25] in XPath specification)
-       ; [25]    AdditiveExpr    ::=    MultiplicativeExpr  
-       ;                                | AdditiveExpr '+' MultiplicativeExpr  
-       ;                                | AdditiveExpr '-' MultiplicativeExpr 
+       ; [25]    AdditiveExpr    ::=    MultiplicativeExpr
+       ;                                | AdditiveExpr '+' MultiplicativeExpr
+       ;                                | AdditiveExpr '-' MultiplicativeExpr
        ;
        ; txp-params are to include the following parameter:
        ;  param-name ::= 'add-expr
@@ -1199,9 +1199,9 @@
                        (reverse (cons mul-expr-res mul-expr-res-lst))
                        (reverse op-lst) add-on))
                      path)))))))))
-       
+
        ; Parses a RelationalExpr production ([24] in XPath specification)
-       ; [24]    RelationalExpr    ::=    AdditiveExpr  
+       ; [24]    RelationalExpr    ::=    AdditiveExpr
        ;                                  | RelationalExpr '<' AdditiveExpr
        ;                                  | RelationalExpr '>' AdditiveExpr
        ;                                  | RelationalExpr '<=' AdditiveExpr
@@ -1217,7 +1217,7 @@
                (ls-value (txp:param-value '< operations-value))
                (gt-value (txp:param-value '> operations-value))
                (le-value (txp:param-value '<= operations-value))
-               (ge-value (txp:param-value '>= operations-value)))                              
+               (ge-value (txp:param-value '>= operations-value)))
           (lambda (path ns-binding add-on)
             (let loop ((add-res-lst '())
                        (cmp-op-lst '())
@@ -1243,7 +1243,7 @@
                     (loop (cons add-res add-res-lst)
                           (cons (gt-value add-on) cmp-op-lst)
                           (sxml:parse-assert ">" path)))
-                   ; no more AdditiveExprs                   
+                   ; no more AdditiveExprs
                    ((null? add-res-lst) ; single AdditiveExpr
                     lst)
                    (else   ; several AdditiveExprs
@@ -1256,7 +1256,7 @@
                        (reverse (cons add-res add-res-lst))
                        (reverse cmp-op-lst) add-on))
                      path)))))))))
-       
+
        ; Parses an EqualityExpr production ([23] in XPath specification)
        ; [23]    EqualityExpr    ::=    RelationalExpr
        ;                                | EqualityExpr '=' RelationalExpr
@@ -1303,7 +1303,7 @@
                        (reverse (cons rel-res rel-res-lst))
                        (reverse cmp-op-lst) add-on))
                      path)))))))))
-                   
+
        ; Parses an AndExpr production ([22] in XPath specification)
        ; [22]    AndExpr    ::=    EqualityExpr
        ;                           | AndExpr 'and' EqualityExpr
@@ -1339,10 +1339,10 @@
                          (reverse (cons equality-res equality-res-lst))
                          add-on))
                      path))))))))))
-                  
+
        ; Parses an Expr production ([14],[21] in XPath specification)
-       ; [14]    Expr    ::=    OrExpr 
-       ; [21]    OrExpr    ::=    AndExpr  
+       ; [14]    Expr    ::=    OrExpr
+       ; [21]    OrExpr    ::=    AndExpr
        ;                          | OrExpr 'or' AndExpr
        ; Note that according to 3.4 in XPath specification, the right operand
        ; is not evaluated if the left operand evaluates to true
@@ -1375,21 +1375,21 @@
                         (or-expr-value
                          (reverse (cons and-res and-res-lst)) add-on))
                       path))))))))))
-       
+
        ;------------------------------------------------
        ; Functions which parse XPointer grammar
-       
+
        ; Parses an FullXPtr production ([3]-[10] in XPointer specification)
-       ; [3]    FullXPtr    ::=    XPtrPart (S? XPtrPart)* 
+       ; [3]    FullXPtr    ::=    XPtrPart (S? XPtrPart)*
        ; [4]    XPtrPart    ::=    'xpointer' '(' XPtrExpr ')'
-       ;                           | 'xmlns' '(' XPtrNsDecl? ')' 
-       ;                           | Scheme '(' SchemeSpecificExpr ')' 
-       ; [5]    Scheme    ::=    NCName 
-       ; [6]    SchemeSpecificExpr    ::=    StringWithBalancedParens 
+       ;                           | 'xmlns' '(' XPtrNsDecl? ')'
+       ;                           | Scheme '(' SchemeSpecificExpr ')'
+       ; [5]    Scheme    ::=    NCName
+       ; [6]    SchemeSpecificExpr    ::=    StringWithBalancedParens
        ; [7]    StringWithBalancedParens    ::=
        ;                    [^()]* ('(' StringWithBalancedParens ')' [^()]*)*
        ; [8]    XPtrExpr    ::=    Expr
-       ; [9]    XPtrNsDecl    ::=    NCName S? '=' S? XPtrNsURI 
+       ; [9]    XPtrNsDecl    ::=    NCName S? '=' S? XPtrNsURI
        ; [10]    XPtrNsURI    ::=    Char*
        ;
        ; txp-params are to include the following parameter:
@@ -1402,7 +1402,7 @@
                        (ns-binding ns-binding)
                        (path path))
               (if
-               (null? (sxml:skip-ws path))  ; the string is over               
+               (null? (sxml:skip-ws path))  ; the string is over
                (cond
                  ((= (length expr-res-lst) 1)  ; a single XPointer part
                   (car expr-res-lst))
@@ -1461,7 +1461,7 @@
                         ((char=? (car path) #\() (rpt3 (+ n 1) (cdr path)))
                         ((char=? (car path) #\)) (rpt3 (- n 1) (cdr path)))
                         (else (rpt3 n (cdr path))))))))))))))
-       
+
        ; Parses an ChildSeq production ([2] in XPointer specification)
        ; [2]    ChildSeq    ::=    Name? ('/' [1-9] [0-9]* )+
        ;
@@ -1487,7 +1487,7 @@
                        ((null? (sxml:skip-ws path))  ; end of path
                         (reverse num-lst))
                        (else    ; this will cause an error message
-                        (sxml:parse-assert "/" path))))))))                         
+                        (sxml:parse-assert "/" path))))))))
           (let* ((child-seq-value (txp:param-value 'child-seq txp-params))
                  (with-name-value (txp:param-value 'with-name child-seq-value))
                   (without-name-value
@@ -1497,14 +1497,14 @@
                 (if
                  path2  ; "/" found => no Name supported
                  (and-let*
-                  ((number-lst (helper path)))                  
+                  ((number-lst (helper path)))
                   (without-name-value number-lst add-on))
                  (and-let*
                   ((lst (sxml:parse-name path))
                    (name (car lst))
                    (number-lst (helper (cadr lst))))
                   (with-name-value name number-lst add-on))))))))
-                   
+
        ;-------------------------------------------------
        ; Higher level functions
        ;  ns-binding - declared namespace prefixes (an optional argument)
@@ -1515,7 +1515,7 @@
        ;  ns-binding = (listof  (prefix . uri))
        ;  prefix - a symbol
        ;  uri - a string
-       
+
        ; Parses XPath grammar
        ;  path is a string here
        (txp:parse-xpath
@@ -1526,9 +1526,9 @@
                      (sxml:assert-end-of-path (cadr res)))
                 (car res)
                 'txp:parser-error))))
-       
+
        ; Parses an XPointer production ([1] in XPointer specification)
-       ; [1]    XPointer    ::=    Name | ChildSeq | FullXPtr 
+       ; [1]    XPointer    ::=    Name | ChildSeq | FullXPtr
        (txp:parse-xpointer
         (lambda (path-string ns-binding add-on)
           (let ((path (string->list path-string)))
@@ -1540,7 +1540,7 @@
                  (if (sxml:parse-check "(" new-path)  ; FullXPtr production
                      (txp:parse-full-xptr path ns-binding add-on)
                      (txp:parse-child-seq path ns-binding add-on)))))))
-       
+
        ; Parses XPath Expression
        ; [14]    Expr    ::=    OrExpr
        (txp:parse-xpath-expression
@@ -1551,9 +1551,9 @@
                      (sxml:assert-end-of-path (cadr res)))
                 (car res)
                 'txp:parser-error))))
-       
+
        )
-        
+
     `((xpath ,txp:parse-xpath)
       (xpointer ,txp:parse-xpointer)
       (expr ,txp:parse-xpath-expression))

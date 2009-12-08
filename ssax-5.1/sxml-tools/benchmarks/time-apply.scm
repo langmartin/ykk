@@ -13,7 +13,7 @@
 ; f-result - result produced by applying procedure `f'
 ; exec-time - time in milliseconds taken by `f' to execute
 (cond-expand
- 
+
  (chicken
   (define (sxml:time-apply f argv)
     (call-with-values
@@ -26,14 +26,14 @@
             (cons res
                   (- (+ user-end system-end)
                      (+ user-begin system-begin))))))))))
- 
+
  (plt
   (define (sxml:time-apply f argv)
     (call-with-values
      (lambda () (time-apply f argv))
      (lambda (f-res-lst t1 t2 t3)
        (cons (car f-res-lst) t2)))))
- 
+
  (gambit
   (define (sxml:time-apply f argv)
     (let ((t-begin (time->seconds (current-time))))
