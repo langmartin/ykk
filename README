@@ -1,0 +1,9 @@
+This is an incomplete implementation of a web framework for Scheme48.
+It runs from a standalone HTTP server (included), and features a
+persistent memory structure and cursor gadget designed to support
+functional updates over a native tree structure as the primary mode of
+operation. The "memory" framework is organized in anticipation of
+merging the memory heap between several identical servers.
+
+It contains bits of interesting code. This code is under the BSD
+license, see the file LICENSE in this repository.
